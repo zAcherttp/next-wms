@@ -1,0 +1,42 @@
+{
+  "name": "@next-wms/db",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown",
+    "db:push": "drizzle-kit push",
+    "db:studio": "drizzle-kit studio",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.31.2",
+    "@types/ws": "^8.18.1",
+    "tsdown": "catalog:"
+  },
+  "peerDependencies": {
+    "typescript": "^5"
+  },
+  "dependencies": {
+    "drizzle-orm": "^0.44.2",
+    "@neondatabase/serverless": "^1.0.1",
+    "ws": "^8.18.3",
+    "dotenv": "catalog:",
+    "zod": "catalog:"
+  },
+  "overrides": {
+    "esbuild": "^0.25.9",
+    "esm-loader": "tsx@^4.20.4"
+  }
+}
