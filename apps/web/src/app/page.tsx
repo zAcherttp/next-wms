@@ -13,7 +13,7 @@ export default function Home() {
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-2">
-      <pre className="overflow-x-none font-mono text-2xl leading-none tracking-tighter py-4">
+      <pre className="overflow-x-none py-4 font-mono text-2xl leading-none tracking-tighter">
         {TITLE_TEXT}
       </pre>
       <div className="grid gap-6">
@@ -29,8 +29,8 @@ export default function Home() {
               {healthCheck.isLoading
                 ? "Checking..."
                 : healthCheck.data
-                ? "Connected"
-                : "Disconnected"}
+                  ? "Connected"
+                  : "Disconnected"}
             </span>
           </div>
         </section>

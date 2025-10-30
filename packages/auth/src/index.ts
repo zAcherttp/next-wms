@@ -3,6 +3,7 @@ import * as schema from "@next-wms/db/schema/auth";
 import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { nextCookies } from "better-auth/next-js";
+import { organization } from "better-auth/plugins/organization";
 import { passkey } from "better-auth/plugins/passkey";
 
 export const auth = betterAuth<BetterAuthOptions>({
@@ -10,7 +11,7 @@ export const auth = betterAuth<BetterAuthOptions>({
     provider: "pg",
     schema: schema,
   }),
-  trustedOrigins: [process.env.CORS_ORIGIN!],
+  trustedOrigins: [process.env.CORS_ORIGIN || ""],
   emailAndPassword: {
     enabled: true,
     async sendResetPassword(data, request) {
@@ -20,9 +21,9 @@ export const auth = betterAuth<BetterAuthOptions>({
   },
   socialProviders: {
     github: {
-      clientId: process.env.GITHUB_CLIENT_ID!,
-      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+      clientId: process.env.GITHUB_CLIENT_ID || "",
+      clientSecret: process.env.GITHUB_CLIENT_SECRET || "",
     },
   },
-  plugins: [nextCookies(), passkey()],
+  plugins: [nextCookies(), passkey(), organization()],
 });

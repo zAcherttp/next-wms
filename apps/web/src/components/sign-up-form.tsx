@@ -1,5 +1,11 @@
 "use client";
 
+import { revalidateLogic, useForm } from "@tanstack/react-form";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { toast } from "sonner";
+import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,26 +16,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { useState } from "react";
-import Image from "next/image";
-import { Loader2, X } from "lucide-react";
 import { signUp } from "@/lib/auth-client";
-import { toast } from "sonner";
-import { useRouter } from "next/navigation";
-import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { convertImageToBase64 } from "@/lib/utils";
-import {
-  FieldSet,
-  FieldLegend,
-  FieldDescription,
-  FieldGroup,
-  FieldLabel,
-  Field,
-  FieldError,
-} from "./ui/field";
-import { z } from "zod";
-import Link from "next/link";
+import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field";
 
 const SignUpFormSchema = z
   .object({
@@ -89,7 +77,7 @@ export default function SignUpForm() {
   const [loading, setLoading] = useState(false);
 
   return (
-    <Card className="w-full sm:max-w-md h-min gap-4">
+    <Card className="h-min w-full gap-4 sm:max-w-md">
       <CardHeader>
         <CardTitle className="text-lg md:text-xl">Sign Up</CardTitle>
         <CardDescription className="text-xs md:text-sm">
@@ -114,9 +102,8 @@ export default function SignUpForm() {
           }}
         >
           <FieldGroup className="gap-4">
-            <form.Field
-              name="name"
-              children={(field) => {
+            <form.Field name="name">
+              {(field) => {
                 const isInvalid =
                   field.state.meta.isTouched && !field.state.meta.isValid;
 
@@ -139,10 +126,10 @@ export default function SignUpForm() {
                   </Field>
                 );
               }}
-            />
-            <form.Field
-              name="email"
-              children={(field) => {
+            </form.Field>
+
+            <form.Field name="email">
+              {(field) => {
                 const isInvalid =
                   field.state.meta.isTouched && !field.state.meta.isValid;
 
@@ -165,10 +152,10 @@ export default function SignUpForm() {
                   </Field>
                 );
               }}
-            />
-            <form.Field
-              name="password"
-              children={(field) => {
+            </form.Field>
+
+            <form.Field name="password">
+              {(field) => {
                 const isInvalid =
                   field.state.meta.isTouched && !field.state.meta.isValid;
 
@@ -191,10 +178,10 @@ export default function SignUpForm() {
                   </Field>
                 );
               }}
-            />
-            <form.Field
-              name="passwordConfirmation"
-              children={(field) => {
+            </form.Field>
+
+            <form.Field name="passwordConfirmation">
+              {(field) => {
                 const isInvalid =
                   field.state.meta.isTouched && !field.state.meta.isValid;
 
@@ -219,7 +206,7 @@ export default function SignUpForm() {
                   </Field>
                 );
               }}
-            />
+            </form.Field>
           </FieldGroup>
         </form>
       </CardContent>
