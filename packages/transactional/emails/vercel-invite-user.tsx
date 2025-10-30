@@ -10,6 +10,7 @@ import {
   Img,
   Link,
   Preview,
+  pixelBasedPreset,
   Row,
   Section,
   Tailwind,
@@ -32,7 +33,7 @@ const baseUrl = process.env.VERCEL_URL
   ? `https://${process.env.VERCEL_URL}`
   : "";
 
-export const VercelInviteUserEmail = ({
+export const VercelInviteUserEmail: React.FC<VercelInviteUserEmailProps> = ({
   username,
   userImage,
   invitedByUsername,
@@ -48,16 +49,20 @@ export const VercelInviteUserEmail = ({
   return (
     <Html>
       <Head />
-      <Preview>{previewText}</Preview>
-      <Tailwind>
+      <Tailwind
+        config={{
+          presets: [pixelBasedPreset],
+        }}
+      >
         <Body className="mx-auto my-auto bg-white px-2 font-sans">
+          <Preview>{previewText}</Preview>
           <Container className="mx-auto my-[40px] max-w-[465px] rounded border border-[#eaeaea] border-solid p-[20px]">
             <Section className="mt-[32px]">
               <Img
                 src={`${baseUrl}/static/vercel-logo.png`}
                 width="40"
                 height="37"
-                alt="Vercel"
+                alt="Vercel Logo"
                 className="mx-auto my-0"
               />
             </Section>
@@ -86,6 +91,7 @@ export const VercelInviteUserEmail = ({
                     src={userImage}
                     width="64"
                     height="64"
+                    alt={`${username}'s profile picture`}
                   />
                 </Column>
                 <Column align="center">
@@ -93,7 +99,7 @@ export const VercelInviteUserEmail = ({
                     src={`${baseUrl}/static/vercel-arrow.png`}
                     width="12"
                     height="9"
-                    alt="invited you to"
+                    alt="Arrow indicating invitation"
                   />
                 </Column>
                 <Column align="left">
@@ -102,6 +108,7 @@ export const VercelInviteUserEmail = ({
                     src={teamImage}
                     width="64"
                     height="64"
+                    alt={`${teamName} team logo`}
                   />
                 </Column>
               </Row>
@@ -145,7 +152,7 @@ VercelInviteUserEmail.PreviewProps = {
   invitedByEmail: "alan.turing@example.com",
   teamName: "Enigma",
   teamImage: `${baseUrl}/static/vercel-team.png`,
-  inviteLink: "https://vercel.com/teams/invite/foo",
+  inviteLink: "https://vercel.com",
   inviteFromIp: "204.13.186.218",
   inviteFromLocation: "São Paulo, Brazil",
 } as VercelInviteUserEmailProps;

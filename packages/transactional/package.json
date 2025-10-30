@@ -1,5 +1,5 @@
 {
-  "name": "@next-wms/email",
+  "name": "@next-wms/transactional",
   "version": "0.0.0",
   "type": "module",
   "private": true,
@@ -8,12 +8,12 @@
     "export": "email export"
   },
   "dependencies": {
-    "@react-email/components": "0.5.7",
-    "react-email": "4.3.2"
+    "@react-email/components": "0.5.7"
   },
   "devDependencies": {
     "@react-email/preview-server": "4.3.2",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "react-email": "4.3.2"
   }
 }

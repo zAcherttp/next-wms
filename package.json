@@ -8,12 +8,13 @@
     "packages/*"
   ],
   "scripts": {
-    "check": "biome check --write .",
-    "dev": "turbo dev",
     "build": "turbo build",
+    "check": "biome check --write .",
     "check-types": "turbo check-types",
+    "dev": "turbo dev --filter=!@next-wms/transactional",
     "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
+    "dev:email": "turbo -F @next-wms/transactional dev",
     "db:push": "turbo -F @next-wms/db db:push",
     "db:studio": "turbo -F @next-wms/db db:studio",
     "db:generate": "turbo -F @next-wms/db db:generate",
@@ -29,5 +30,11 @@
     "tsdown": "^0.15.12",
     "turbo": "^2.5.8"
   },
-  "packageManager": "pnpm@10.18.3"
+  "packageManager": "pnpm@10.18.3",
+  "pnpm": {
+    "overrides": {
+      "@types/react": "19.2.2",
+      "@types/react-dom": "19.2.2"
+    }
+  }
 }
