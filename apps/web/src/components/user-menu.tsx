@@ -23,7 +23,13 @@ export default function UserMenu() {
   if (!session) {
     return (
       <Button variant="outline" asChild>
-        <Link href="/login">Sign In</Link>
+        <Link
+          href={{
+            pathname: "/sign-in",
+          }}
+        >
+          Sign In
+        </Link>
       </Button>
     );
   }

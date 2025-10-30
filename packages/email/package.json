@@ -1,0 +1,19 @@
+{
+  "name": "@next-wms/email",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "dev": "email dev -p 3001",
+    "export": "email export"
+  },
+  "dependencies": {
+    "@react-email/components": "0.5.7",
+    "react-email": "4.3.2"
+  },
+  "devDependencies": {
+    "@react-email/preview-server": "4.3.2",
+    "react": "catalog:",
+    "react-dom": "catalog:"
+  }
+}

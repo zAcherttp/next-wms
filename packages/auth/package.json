@@ -23,10 +23,10 @@
     "typescript": "^5"
   },
   "dependencies": {
+    "@next-wms/db": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
-    "zod": "catalog:",
-    "@next-wms/db": "workspace:*"
+    "zod": "catalog:"
   },
   "overrides": {
     "esbuild": "^0.25.9",
