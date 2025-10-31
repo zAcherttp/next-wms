@@ -24,6 +24,7 @@
   },
   "dependencies": {
     "@next-wms/db": "workspace:*",
+    "@next-wms/email": "workspace:*",
     "better-auth": "catalog:",
     "dotenv": "catalog:",
     "zod": "catalog:"

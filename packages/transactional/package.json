@@ -5,7 +5,18 @@
   "private": true,
   "scripts": {
     "dev": "email dev -p 3001",
-    "export": "email export"
+    "export": "email export",
+    "build": "tsdown"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./src/*.ts"
+    }
   },
   "dependencies": {
     "@react-email/components": "0.5.7"

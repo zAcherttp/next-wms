@@ -1,0 +1,24 @@
+{
+  "name": "@next-wms/email",
+  "version": "0.0.0",
+  "type": "module",
+  "private": true,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./dist/*.d.ts",
+      "default": "./src/*.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsdown"
+  },
+  "dependencies": {
+    "zod": "catalog:",
+    "resend": "^6.3.0",
+    "@next-wms/transactional": "workspace:*"
+  }
+}
