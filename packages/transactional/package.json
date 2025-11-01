@@ -5,7 +5,6 @@
   "private": true,
   "scripts": {
     "dev": "email dev -p 3001",
-    "export": "email export",
     "build": "tsdown"
   },
   "exports": {

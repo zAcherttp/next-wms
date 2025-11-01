@@ -1,7 +1,6 @@
 import { auth } from "@next-wms/auth";
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
-import Dashboard from "./dashboard";
 
 export default async function DashboardPage() {
   const session = await auth.api.getSession({
@@ -9,14 +8,12 @@ export default async function DashboardPage() {
   });
 
   if (!session?.user) {
-    redirect("/sign-in");
+    redirect("/auth/sign-in");
   }
 
   return (
     <div>
-      <h1>Dashboard</h1>
-      <p>Welcome {session.user.name}</p>
-      <Dashboard session={session} />
+      <pre>{JSON.stringify(session, null, 2)}</pre>
     </div>
   );
 }

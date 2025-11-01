@@ -1,1 +1,1 @@
-export { sendEmailConfirmationCode } from "./send";
+export { resend } from "./client";

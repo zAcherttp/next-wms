@@ -5,23 +5,16 @@ import {
   Heading,
   Hr,
   Html,
-  Img,
   Preview,
   Section,
   Text,
 } from "@react-email/components";
 
-interface WMSVerifyEmailProps {
+interface EmailOtpProps {
   verificationCode?: string;
 }
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL
-  ? `https://${process.env.NEXT_PUBLIC_APP_URL}`
-  : "";
-
-export default function WMSVerifyEmail({
-  verificationCode,
-}: WMSVerifyEmailProps) {
+export function EmailOtp({ verificationCode }: EmailOtpProps) {
   return (
     <Html>
       <Head />
@@ -29,14 +22,6 @@ export default function WMSVerifyEmail({
         <Preview>WMS Email Verification</Preview>
         <Container style={container}>
           <Section style={coverSection}>
-            <Section style={imageSection}>
-              <Img
-                src={`${baseUrl}/static/UIT.png`}
-                width="45"
-                height="45"
-                alt="UIT Logo"
-              />
-            </Section>
             <Section style={upperSection}>
               <Heading style={h1}>Verify your email address</Heading>
               <Text style={mainText}>
@@ -68,9 +53,9 @@ export default function WMSVerifyEmail({
   );
 }
 
-WMSVerifyEmail.PreviewProps = {
+EmailOtp.PreviewProps = {
   verificationCode: "596853",
-} satisfies WMSVerifyEmailProps;
+} satisfies EmailOtpProps;
 
 const main = {
   backgroundColor: "#fff",
@@ -98,14 +83,6 @@ const text = {
     "-apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif",
   fontSize: "14px",
   margin: "24px 0",
-};
-
-const imageSection = {
-  backgroundColor: "#252f3d",
-  display: "flex",
-  padding: "20px 0",
-  alignItems: "center",
-  justifyContent: "center",
 };
 
 const coverSection = { backgroundColor: "#fff" };

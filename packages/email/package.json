@@ -18,7 +18,6 @@
   },
   "dependencies": {
     "zod": "catalog:",
-    "resend": "^6.3.0",
-    "@next-wms/transactional": "workspace:*"
+    "resend": "^6.3.0"
   }
 }

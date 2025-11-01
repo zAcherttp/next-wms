@@ -1,1 +1,3 @@
-export { default as WMSVerifyEmail } from "./verify-email";
+export { InviteUserEmail } from "./invitation";
+export { ResetPasswordEmail } from "./reset-password";
+export { EmailOtp } from "./verify-email";

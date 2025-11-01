@@ -1,9 +1,9 @@
 "use client";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
+import { Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { signUp } from "@/lib/auth-client";
+import { authClient, signUp } from "@/lib/auth-client";
+import EmailOtpCard from "./ui/email-otp";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field";
 
 const SignUpFormSchema = z
@@ -34,7 +35,10 @@ const SignUpFormSchema = z
   });
 
 export default function SignUpForm() {
-  const router = useRouter();
+  const [loading, startTransition] = useTransition();
+  const [step, setStep] = useState<"form" | "confirm">("form");
+  const [signupEmail, setSignupEmail] = useState("");
+
   const form = useForm({
     defaultValues: {
       name: "",
@@ -51,175 +55,184 @@ export default function SignUpForm() {
     }),
 
     onSubmit: async ({ value }) => {
-      signUp.email({
-        email: value.email,
-        password: value.password,
-        name: value.name,
-        callbackURL: "/dashboard",
-        fetchOptions: {
-          onResponse: () => {
-            setLoading(false);
+      startTransition(async () => {
+        await signUp.email({
+          email: value.email,
+          password: value.password,
+          name: value.name,
+          callbackURL: "/dashboard",
+          fetchOptions: {
+            onError: (context) => {
+              toast.error(context.error.message);
+            },
+            onSuccess: async () => {
+              setSignupEmail(value.email);
+              await authClient.emailOtp.sendVerificationOtp({
+                email: value.email,
+                type: "email-verification",
+              });
+              setStep("confirm");
+            },
           },
-          onRequest: () => {
-            setLoading(true);
-          },
-          onError: (ctx) => {
-            toast.error(ctx.error?.message);
-          },
-          onSuccess: async () => {
-            router.push("/dashboard");
-          },
-        },
+        });
       });
     },
   });
 
-  const [loading, setLoading] = useState(false);
-
   return (
-    <Card className="h-min w-full gap-4 sm:max-w-md">
-      <CardHeader>
-        <CardTitle className="text-lg md:text-xl">Sign Up</CardTitle>
-        <CardDescription className="text-xs md:text-sm">
-          or go back to{" "}
-          <Link
-            className="underline"
-            href={{
-              pathname: "/sign-in",
-            }}
-          >
-            sign in
-          </Link>
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form
-          noValidate
-          id="sign-up-form"
-          onSubmit={(e) => {
-            e.preventDefault();
-            form.handleSubmit();
-          }}
-        >
-          <FieldGroup className="gap-4">
-            <form.Field name="name">
-              {(field) => {
-                const isInvalid =
-                  field.state.meta.isTouched && !field.state.meta.isValid;
-
-                return (
-                  <Field data-invalid={isInvalid} className="gap-2">
-                    <FieldLabel htmlFor={field.name}>Name</FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      type="text"
-                      aria-invalid={isInvalid}
-                      placeholder="John Doe"
-                    />
-                    {isInvalid && (
-                      <FieldError errors={field.state.meta.errors} />
-                    )}
-                  </Field>
-                );
+    <>
+      {step === "form" ? (
+        <Card className="h-min w-full gap-4 sm:max-w-md">
+          <CardHeader>
+            <CardTitle className="text-lg md:text-xl">Sign Up</CardTitle>
+            <CardDescription className="text-xs md:text-sm">
+              or go back to{" "}
+              <Link
+                className="underline"
+                href={{
+                  pathname: "sign-in",
+                }}
+              >
+                sign in
+              </Link>
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form
+              noValidate
+              id="sign-up-form"
+              onSubmit={(e) => {
+                e.preventDefault();
+                form.handleSubmit();
               }}
-            </form.Field>
+            >
+              <FieldGroup className="gap-4">
+                <form.Field name="name">
+                  {(field) => {
+                    const isInvalid =
+                      field.state.meta.isTouched && !field.state.meta.isValid;
 
-            <form.Field name="email">
-              {(field) => {
-                const isInvalid =
-                  field.state.meta.isTouched && !field.state.meta.isValid;
+                    return (
+                      <Field data-invalid={isInvalid} className="gap-2">
+                        <FieldLabel htmlFor={field.name}>Name</FieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          type="text"
+                          aria-invalid={isInvalid}
+                          placeholder="John Doe"
+                        />
+                        {isInvalid && (
+                          <FieldError errors={field.state.meta.errors} />
+                        )}
+                      </Field>
+                    );
+                  }}
+                </form.Field>
 
-                return (
-                  <Field data-invalid={isInvalid} className="gap-2">
-                    <FieldLabel htmlFor={field.name}>Email</FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      type="email"
-                      aria-invalid={isInvalid}
-                      placeholder="m@example.com"
-                    />
-                    {isInvalid && (
-                      <FieldError errors={field.state.meta.errors} />
-                    )}
-                  </Field>
-                );
-              }}
-            </form.Field>
+                <form.Field name="email">
+                  {(field) => {
+                    const isInvalid =
+                      field.state.meta.isTouched && !field.state.meta.isValid;
 
-            <form.Field name="password">
-              {(field) => {
-                const isInvalid =
-                  field.state.meta.isTouched && !field.state.meta.isValid;
+                    return (
+                      <Field data-invalid={isInvalid} className="gap-2">
+                        <FieldLabel htmlFor={field.name}>Email</FieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          type="email"
+                          aria-invalid={isInvalid}
+                          placeholder="m@example.com"
+                        />
+                        {isInvalid && (
+                          <FieldError errors={field.state.meta.errors} />
+                        )}
+                      </Field>
+                    );
+                  }}
+                </form.Field>
 
-                return (
-                  <Field data-invalid={isInvalid} className="gap-2">
-                    <FieldLabel htmlFor={field.name}>Password</FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      type="password"
-                      aria-invalid={isInvalid}
-                      placeholder="••••••••"
-                    />
-                    {isInvalid && (
-                      <FieldError errors={field.state.meta.errors} />
-                    )}
-                  </Field>
-                );
-              }}
-            </form.Field>
+                <form.Field name="password">
+                  {(field) => {
+                    const isInvalid =
+                      field.state.meta.isTouched && !field.state.meta.isValid;
 
-            <form.Field name="passwordConfirmation">
-              {(field) => {
-                const isInvalid =
-                  field.state.meta.isTouched && !field.state.meta.isValid;
+                    return (
+                      <Field data-invalid={isInvalid} className="gap-2">
+                        <FieldLabel htmlFor={field.name}>Password</FieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          type="password"
+                          aria-invalid={isInvalid}
+                          placeholder="••••••••"
+                        />
+                        {isInvalid && (
+                          <FieldError errors={field.state.meta.errors} />
+                        )}
+                      </Field>
+                    );
+                  }}
+                </form.Field>
 
-                return (
-                  <Field data-invalid={isInvalid} className="gap-2">
-                    <FieldLabel htmlFor={field.name}>
-                      Confirm Password
-                    </FieldLabel>
-                    <Input
-                      id={field.name}
-                      name={field.name}
-                      value={field.state.value}
-                      onBlur={field.handleBlur}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      type="password"
-                      aria-invalid={isInvalid}
-                      placeholder="••••••••"
-                    />
-                    {isInvalid && (
-                      <FieldError errors={field.state.meta.errors} />
-                    )}
-                  </Field>
-                );
-              }}
-            </form.Field>
-          </FieldGroup>
-        </form>
-      </CardContent>
-      <CardFooter className="pt-4">
-        <Button
-          className="flex flex-1"
-          type="submit"
-          form="sign-up-form"
-          disabled={loading}
-        >
-          Submit
-        </Button>
-      </CardFooter>
-    </Card>
+                <form.Field name="passwordConfirmation">
+                  {(field) => {
+                    const isInvalid =
+                      field.state.meta.isTouched && !field.state.meta.isValid;
+
+                    return (
+                      <Field data-invalid={isInvalid} className="gap-2">
+                        <FieldLabel htmlFor={field.name}>
+                          Confirm Password
+                        </FieldLabel>
+                        <Input
+                          id={field.name}
+                          name={field.name}
+                          value={field.state.value}
+                          onBlur={field.handleBlur}
+                          onChange={(e) => field.handleChange(e.target.value)}
+                          type="password"
+                          aria-invalid={isInvalid}
+                          placeholder="••••••••"
+                        />
+                        {isInvalid && (
+                          <FieldError errors={field.state.meta.errors} />
+                        )}
+                      </Field>
+                    );
+                  }}
+                </form.Field>
+              </FieldGroup>
+            </form>
+          </CardContent>
+          <CardFooter className="pt-4">
+            <Button
+              className="flex flex-1"
+              type="submit"
+              form="sign-up-form"
+              disabled={loading}
+            >
+              {loading ? (
+                <Loader2 size={16} className="animate-spin" />
+              ) : (
+                "Submit"
+              )}
+            </Button>
+          </CardFooter>
+        </Card>
+      ) : (
+        <EmailOtpCard signupEmail={signupEmail} />
+      )}
+    </>
   );
 }
