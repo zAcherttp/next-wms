@@ -1,9 +1,10 @@
 import { REGEXP_ONLY_DIGITS } from "input-otp";
-import { useRouter } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "./button";
+import { useQueryState } from "nuqs";
 import {
   Card,
   CardContent,
@@ -25,6 +26,9 @@ interface EmailOtpCardProps {
 
 export default function EmailOtpCard({ signupEmail }: EmailOtpCardProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const [_, setFrom] = useQueryState("from");
+
   const inputRef = useRef<HTMLInputElement>(null);
   const [otpValue, setOtpValue] = useState("");
   const [loading, startTransition] = useTransition();
@@ -41,7 +45,8 @@ export default function EmailOtpCard({ signupEmail }: EmailOtpCardProps) {
         setOtpValue("");
       } else {
         toast.success("Email verified");
-        router.push("/auth/sign-in");
+        setFrom(pathname?.split("/").filter(Boolean).pop() ?? "");
+        router.refresh();
       }
     });
   };

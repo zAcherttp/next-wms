@@ -24,6 +24,7 @@ import { getCallbackURL } from "@/lib/shared";
 import { cn } from "@/lib/utils";
 import EmailOtpCard from "./ui/email-otp";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field";
+import { useQueryState } from "nuqs";
 
 const SignInFormSchema = z.object({
   email: z.email("Invalid email address"),
@@ -65,24 +66,30 @@ export default function SignInForm() {
               setSigninEmail(value.email);
             },
             onError: (context) => {
-              toast.error(context.error?.message || "Sign in failed", {
-                action: {
-                  label: "Verify now",
-                  onClick: async () => {
-                    await authClient.emailOtp.sendVerificationOtp({
-                      email: signinEmail,
-                      type: "email-verification",
-                    });
-                    setStep("verify");
-                  },
-                },
-              });
+              toast.error(
+                context.error?.message,
+                context.error?.message &&
+                  context.error?.code === "EMAIL_NOT_VERIFIED"
+                  ? {
+                      action: {
+                        label: "Verify now",
+                        onClick: async () => {
+                          await authClient.emailOtp.sendVerificationOtp({
+                            email: signinEmail,
+                            type: "email-verification",
+                          });
+                          setStep("verify");
+                        },
+                      },
+                    }
+                  : {}
+              );
             },
             onSuccess: async () => {
               toast.success("Successfully signed in");
               router.push("/dashboard");
             },
-          },
+          }
         );
       });
     },
@@ -249,7 +256,7 @@ export default function SignInForm() {
             <div
               className={cn(
                 "flex w-full items-center gap-2",
-                "flex-col justify-between",
+                "flex-col justify-between"
               )}
             >
               <Button

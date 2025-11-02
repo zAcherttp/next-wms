@@ -5,6 +5,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { queryClient } from "@/utils/trpc";
 import { ThemeProvider } from "./theme-provider";
 import { Toaster } from "./ui/sonner";
+import { NuqsAdapter } from "nuqs/adapters/next/app";
 
 export default function Providers({ children }: { children: React.ReactNode }) {
   return (
@@ -12,10 +13,10 @@ export default function Providers({ children }: { children: React.ReactNode }) {
       attribute="class"
       defaultTheme="system"
       enableSystem
-      disableTransitionOnChange
+      disableTransitionOnChange={false}
     >
       <QueryClientProvider client={queryClient}>
-        {children}
+        <NuqsAdapter>{children}</NuqsAdapter>
         <ReactQueryDevtools />
       </QueryClientProvider>
       <Toaster richColors />

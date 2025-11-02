@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { ModeToggle } from "./mode-toggle";
+import { ThemeSwitcher } from "./theme-switcher";
 import UserMenu from "./user-menu";
 
 export default function Header() {
@@ -22,7 +22,7 @@ export default function Header() {
           })}
         </nav>
         <div className="flex items-center gap-2">
-          <ModeToggle />
+          <ThemeSwitcher />
           <UserMenu />
         </div>
       </div>
