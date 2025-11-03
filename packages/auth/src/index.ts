@@ -30,12 +30,14 @@ export const auth = betterAuth<BetterAuthOptions>({
     requireEmailVerification: true,
     resetPasswordTokenExpiresIn: 300, // 5 minutes
     sendResetPassword: async ({ user, url }) => {
-      await resend.emails.send({
+      const response = await resend.emails.send({
         to: user.email,
         from,
         subject: "Reset your password",
         react: ResetPasswordEmail({ username: user.name, resetLink: url }),
       });
+
+      console.log({ response, user });
     },
   },
   account: {
@@ -54,45 +56,49 @@ export const auth = betterAuth<BetterAuthOptions>({
     passkey(),
     emailOTP({
       async sendVerificationOTP({ email, otp, type }) {
+        let response = null;
         if (type === "sign-in") {
-          await resend.emails.send({
+          response = await resend.emails.send({
             to: email,
             from,
             subject: "Your Sign-In OTP Code",
             react: EmailOtp({ verificationCode: otp }),
           });
         } else if (type === "email-verification") {
-          await resend.emails.send({
+          response = await resend.emails.send({
             to: email,
             from,
             subject: "Your Email Verification Code",
             react: EmailOtp({ verificationCode: otp }),
           });
         } else if (type === "forget-password") {
-          await resend.emails.send({
+          response = await resend.emails.send({
             to: email,
             from,
             subject: "Your Password Reset Code",
             react: EmailOtp({ verificationCode: otp }),
           });
         }
+        console.log({ response, email });
       },
     }),
     twoFactor({
       otpOptions: {
         async sendOTP({ user, otp }) {
-          await resend.emails.send({
+          const response = await resend.emails.send({
             to: user.email,
             from,
             subject: "Your OTP",
             react: EmailOtp({ verificationCode: otp }),
           });
+
+          console.log({ response, user });
         },
       },
     }),
     organization({
       async sendInvitationEmail(data) {
-        await resend.emails.send({
+        const response = await resend.emails.send({
           from,
           to: data.email,
           subject: "You've been invited to join an organization",
@@ -105,6 +111,8 @@ export const auth = betterAuth<BetterAuthOptions>({
             inviteLink: `http://localhost:3000/accept-invitation/${data.id}`,
           }),
         });
+
+        console.log({ response, data });
       },
     }),
   ],
