@@ -1,7 +1,7 @@
 "use client";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { Key, Loader2 } from "lucide-react";
+import { Key } from "lucide-react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, useTransition } from "react";
@@ -24,7 +24,7 @@ import { getCallbackURL } from "@/lib/shared";
 import { cn } from "@/lib/utils";
 import EmailOtpCard from "./ui/email-otp";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field";
-import { useQueryState } from "nuqs";
+import { Spinner } from "./ui/spinner";
 
 const SignInFormSchema = z.object({
   email: z.email("Invalid email address"),
@@ -82,14 +82,14 @@ export default function SignInForm() {
                         },
                       },
                     }
-                  : {}
+                  : {},
               );
             },
             onSuccess: async () => {
               toast.success("Successfully signed in");
               router.push("/dashboard");
             },
-          }
+          },
         );
       });
     },
@@ -236,11 +236,7 @@ export default function SignInForm() {
               className="w-full"
               disabled={loading}
             >
-              {loading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                "Login"
-              )}
+              {loading ? <Spinner /> : "Login"}
             </Button>
 
             <Button
@@ -256,7 +252,7 @@ export default function SignInForm() {
             <div
               className={cn(
                 "flex w-full items-center gap-2",
-                "flex-col justify-between"
+                "flex-col justify-between",
               )}
             >
               <Button

@@ -10,14 +10,18 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { signOut, useSession } from "@/lib/auth-client";
 import { Button } from "./ui/button";
-import { Skeleton } from "./ui/skeleton";
+import { Spinner } from "./ui/spinner";
 
 export default function UserMenu() {
   const router = useRouter();
   const { data: session, isPending } = useSession();
 
   if (isPending) {
-    return <Skeleton className="h-9 w-24" />;
+    return (
+      <Button variant="outline" disabled>
+        <Spinner className="h-4 w-4" />
+      </Button>
+    );
   }
 
   return (

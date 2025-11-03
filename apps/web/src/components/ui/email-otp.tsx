@@ -1,10 +1,10 @@
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { usePathname, useRouter } from "next/navigation";
+import { useQueryState } from "nuqs";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { toast } from "sonner";
 import { authClient } from "@/lib/auth-client";
 import { Button } from "./button";
-import { useQueryState } from "nuqs";
 import {
   Card,
   CardContent,

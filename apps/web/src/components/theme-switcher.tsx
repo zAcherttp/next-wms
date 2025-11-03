@@ -1,11 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { Moon, Sun } from "lucide-react";
 import { motion } from "motion/react";
 import { useTheme } from "next-themes";
-
+import { useCallback, useEffect, useState } from "react";
 import { Button } from "./ui/button";
-import { Moon, Sun } from "lucide-react";
 import { Label } from "./ui/label";
 
 export function ThemeSwitcher() {
@@ -17,26 +16,26 @@ export function ThemeSwitcher() {
     setMounted(true);
   }, []);
 
+  const toggleTheme = useCallback(() => {
+    setTheme(resolvedTheme === "dark" ? "light" : "dark");
+  }, [resolvedTheme, setTheme]);
+
   if (!mounted) {
     return (
       <Button
         variant={"secondary"}
         size="icon"
-        className="group/toggle extend-touch-target size-8 relative overflow-hidden"
+        className="group/toggle extend-touch-target relative size-8 overflow-hidden"
         title="Toggle theme"
-      ></Button>
+      />
     );
   }
-
-  const toggleTheme = useCallback(() => {
-    setTheme(resolvedTheme === "dark" ? "light" : "dark");
-  }, [resolvedTheme, setTheme]);
 
   return (
     <Button
       variant={"outline"}
       size="icon"
-      className="group/toggle extend-touch-target size-8 relative overflow-hidden"
+      className="group/toggle extend-touch-target relative size-8 overflow-hidden"
       onClick={toggleTheme}
       title="Toggle theme"
     >

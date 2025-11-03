@@ -1,7 +1,6 @@
 "use client";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { Loader2 } from "lucide-react";
 import Link from "next/link";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
@@ -19,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { authClient, signUp } from "@/lib/auth-client";
 import EmailOtpCard from "./ui/email-otp";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field";
+import { Spinner } from "./ui/spinner";
 
 const SignUpFormSchema = z
   .object({
@@ -222,11 +222,7 @@ export default function SignUpForm() {
               form="sign-up-form"
               disabled={loading}
             >
-              {loading ? (
-                <Loader2 size={16} className="animate-spin" />
-              ) : (
-                "Submit"
-              )}
+              {loading ? <Spinner /> : "Submit"}
             </Button>
           </CardFooter>
         </Card>
