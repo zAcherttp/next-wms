@@ -11,9 +11,5 @@ export default async function DashboardPage() {
     redirect("/auth/sign-in");
   }
 
-  return (
-    <div>
-      <pre>{JSON.stringify(session, null, 2)}</pre>
-    </div>
-  );
+  return <div>{/* <Dashboard /> */}</div>;
 }

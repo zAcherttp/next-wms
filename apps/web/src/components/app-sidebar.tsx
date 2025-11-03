@@ -19,6 +19,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
+import { ScrollArea } from "./ui/scroll-area";
 
 const data = {
   user: {
@@ -134,12 +135,14 @@ const data = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
-    <Sidebar collapsible="icon" {...props}>
+    <Sidebar collapsible={"icon"} {...props}>
       <SidebarHeader>
         <TeamSwitcher teams={data.teams} />
       </SidebarHeader>
       <SidebarContent>
-        <NavMain items={data.navMain} />
+        <ScrollArea className="h-full">
+          <NavMain items={data.navMain} />
+        </ScrollArea>
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={data.user} />

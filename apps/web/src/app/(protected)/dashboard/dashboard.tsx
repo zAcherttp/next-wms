@@ -1,19 +1,16 @@
 "use client";
 import { useQuery } from "@tanstack/react-query";
-import type { authClient } from "@/lib/auth-client";
+import { Skeleton } from "@/components/ui/skeleton";
 import { trpc } from "@/utils/trpc";
 
-export default function Dashboard({
-  session,
-}: {
-  session: typeof authClient.$Infer.Session;
-}) {
-  const privateData = useQuery(trpc.privateData.queryOptions());
+export default function Dashboard() {
+  const { data: privateData, isLoading } = useQuery(
+    trpc.privateData.queryOptions(),
+  );
 
-  return (
-    <>
-      <p>API: {privateData.data?.message}</p>
-      <p>Session User: {session.user.name}</p>
-    </>
+  return isLoading ? (
+    <Skeleton className="h-8 w-full" />
+  ) : (
+    <pre>{JSON.stringify(privateData, null, 2)}</pre>
   );
 }
