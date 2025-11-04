@@ -13,12 +13,14 @@ import {
   CardHeader,
   CardTitle,
 } from "./card";
+import { Field, FieldDescription, FieldGroup, FieldLabel } from "./field";
 import {
   InputOTP,
   InputOTPGroup,
   InputOTPSeparator,
   InputOTPSlot,
 } from "./input-otp";
+import { Label } from "./label";
 
 interface EmailOtpCardProps {
   signupEmail: string;
@@ -79,48 +81,48 @@ export default function EmailOtpCard({ signupEmail }: EmailOtpCardProps) {
   }, [countdown]);
 
   return (
-    <Card>
+    <Card className="max-w-xs">
       <CardHeader>
-        <CardTitle className="text-lg md:text-xl">
-          We’ve emailed you a verification code
-        </CardTitle>
-        <CardDescription className="text-xs md:text-sm">
-          Enter the code sent to {signupEmail}
-        </CardDescription>
+        <CardTitle>Enter verification code</CardTitle>
+        <CardDescription>We sent a 6-digit code to your email.</CardDescription>
       </CardHeader>
-      <CardContent className="flex h-25 justify-center">
-        <InputOTP
-          ref={inputRef}
-          pattern={REGEXP_ONLY_DIGITS}
-          value={otpValue}
-          onChange={(v) => setOtpValue(v)}
-          onComplete={handleOtpComplete}
-          maxLength={6}
-          disabled={loading}
-          autoFocus
-        >
-          <InputOTPGroup className="gap-2 *:data-[slot=input-otp-slot]:rounded-md *:data-[slot=input-otp-slot]:border">
-            <InputOTPSlot index={0} />
-            <InputOTPSlot index={1} />
-            <InputOTPSlot index={2} />
-          </InputOTPGroup>
-          <InputOTPSeparator />
-          <InputOTPGroup className="gap-2 *:data-[slot=input-otp-slot]:rounded-md *:data-[slot=input-otp-slot]:border">
-            <InputOTPSlot index={3} />
-            <InputOTPSlot index={4} />
-            <InputOTPSlot index={5} />
-          </InputOTPGroup>
-        </InputOTP>
+      <CardContent>
+        <FieldGroup>
+          <Field>
+            <FieldLabel htmlFor="otp">Verification code</FieldLabel>
+            <InputOTP
+              ref={inputRef}
+              pattern={REGEXP_ONLY_DIGITS}
+              value={otpValue}
+              onChange={(v) => setOtpValue(v)}
+              onComplete={handleOtpComplete}
+              maxLength={6}
+              disabled={loading}
+              autoFocus
+            >
+              <InputOTPGroup className="gap-2 *:data-[slot=input-otp-slot]:rounded-md *:data-[slot=input-otp-slot]:border">
+                <InputOTPSlot index={0} />
+                <InputOTPSlot index={1} />
+                <InputOTPSlot index={2} />
+                <InputOTPSlot index={3} />
+                <InputOTPSlot index={4} />
+                <InputOTPSlot index={5} />
+              </InputOTPGroup>
+            </InputOTP>
+            <FieldDescription className="text-center">
+              Didn&apos;t receive the code?{" "}
+              <Button
+                onClick={handleOtpResend}
+                className="p-0 text-muted-foreground"
+                variant={"link"}
+                disabled={loading || countdown > 0}
+              >
+                {countdown > 0 ? `Resend (${countdown}s)` : "Resend"}
+              </Button>
+            </FieldDescription>
+          </Field>
+        </FieldGroup>
       </CardContent>
-      <CardFooter className="flex flex-col gap-2 pt-4">
-        <Button
-          className="w-full"
-          onClick={handleOtpResend}
-          disabled={loading || countdown > 0}
-        >
-          {countdown > 0 ? `Resend Code (${countdown}s)` : "Resend Code"}
-        </Button>
-      </CardFooter>
     </Card>
   );
 }
