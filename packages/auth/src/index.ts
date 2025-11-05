@@ -79,7 +79,9 @@ export const auth = betterAuth<BetterAuthOptions>({
             react: EmailOtp({ verificationCode: otp }),
           });
         }
-        console.log({ response, email });
+        console.log(
+          `${new Date().toISOString()} - sendVerificationOTP : response=${JSON.stringify(response)} email=${JSON.stringify(email)}`,
+        );
       },
     }),
     twoFactor({
@@ -92,7 +94,9 @@ export const auth = betterAuth<BetterAuthOptions>({
             react: EmailOtp({ verificationCode: otp }),
           });
 
-          console.log({ response, user });
+          console.log(
+            `${new Date().toISOString()} - twoFactor : response=${JSON.stringify(response)} user=${JSON.stringify(user)}`,
+          );
         },
       },
     }),
@@ -112,7 +116,9 @@ export const auth = betterAuth<BetterAuthOptions>({
           }),
         });
 
-        console.log({ response, data });
+        console.log(
+          `${new Date().toISOString()} - sendInvitationEmail : response=${JSON.stringify(response)} data=${JSON.stringify(data)}`,
+        );
       },
     }),
   ],

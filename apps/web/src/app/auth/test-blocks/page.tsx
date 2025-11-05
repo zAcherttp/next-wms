@@ -2,6 +2,6 @@
 
 import EmailOTP from "@/components/email-otp";
 
-export default function VerifyEmailPage() {
+export default function Page() {
   return <EmailOTP />;
 }

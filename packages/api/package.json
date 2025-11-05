@@ -25,6 +25,7 @@
   "dependencies": {
     "@trpc/server": "catalog:",
     "@trpc/client": "catalog:",
+    "drizzle-orm": "^0.44.2",
     "next": "catalog:",
     "dotenv": "catalog:",
     "zod": "catalog:",

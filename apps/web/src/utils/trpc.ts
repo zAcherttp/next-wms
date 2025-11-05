@@ -6,7 +6,12 @@ import { toast } from "sonner";
 
 export const queryClient = new QueryClient({
   queryCache: new QueryCache({
-    onError: (error) => {
+    onError: (error, query) => {
+      // Skip toast if query has meta flag to disable it
+      if (query.meta?.disableGlobalErrorToast) {
+        return;
+      }
+
       toast.error(error.message, {
         action: {
           label: "retry",
