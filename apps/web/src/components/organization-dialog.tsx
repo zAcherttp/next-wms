@@ -1,4 +1,6 @@
+import { useForm } from "@tanstack/react-form";
 import { Building2, ChevronRight, QrCode, UserRoundPlus } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import AvatarUpload from "./avatar-upload";
+import { springTransition } from "./easing";
+import { Field, FieldError, FieldLabel } from "./ui/field";
+import { Input } from "./ui/input";
 import {
   Item,
   ItemActions,
@@ -18,8 +24,6 @@ import {
   ItemMedia,
   ItemTitle,
 } from "./ui/item";
-import { Input } from "./ui/input";
-import { Field, FieldLabel, FieldError } from "./ui/field";
 
 interface OrganizationDialogProps {
   open?: boolean;
@@ -42,6 +46,14 @@ export function OrganizationDialog({
   const [orgSlug, setOrgSlug] = useState("");
   const [orgLogo, setOrgLogo] = useState<File | null>(null);
   const [inviteCode, setInviteCode] = useState("");
+
+  const createOrgForm = useForm({
+    defaultValues: {
+      orgName: "",
+      orgSlug: "",
+      orgLogo: null as File | null,
+    },
+  });
 
   const handleClose = () => {
     // Reset state when dialog closes
@@ -97,186 +109,238 @@ export function OrganizationDialog({
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent showCloseButton={false} className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle>{dialogConfig[view].title}</DialogTitle>
-          <DialogDescription>
-            {dialogConfig[view].description}
-          </DialogDescription>
-        </DialogHeader>
-
-        {/* Selection View */}
-        {view === "selection" && (
-          <div className="flex flex-col gap-2">
-            <Item
-              variant="outline"
-              className={ItemStyle}
-              onClick={() => setView("create")}
-            >
-              <ItemMedia>
-                <UserRoundPlus className="size-5" />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle>Create organization</ItemTitle>
-                <ItemDescription>
-                  Once created, you&apos;ll become organization administrator
-                  who can invite members to join.
-                </ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <ChevronRight className="size-4" />
-              </ItemActions>
-            </Item>
-            <Item
-              variant="outline"
-              className={ItemStyle}
-              onClick={() => setView("join-method")}
-            >
-              <ItemMedia>
-                <Building2 className="size-5" />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle>Join organization</ItemTitle>
-                <ItemDescription>
-                  Join organization through Invite QR Code or Invite Code, and
-                  start collaborating with others.
-                </ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <ChevronRight className="size-4" />
-              </ItemActions>
-            </Item>
-          </div>
-        )}
-
-        {/* Create Organization Form */}
-        {view === "create" && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleCreateOrg();
-            }}
-            className="flex flex-col gap-4"
-          >
-            <Field>
-              <FieldLabel htmlFor="org-name">Organization Name</FieldLabel>
-              <Input
-                id="org-name"
-                value={orgName}
-                onChange={(e) => setOrgName(e.target.value)}
-                placeholder="Acme Corp"
-                required
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="org-slug">Organization Slug</FieldLabel>
-              <Input
-                id="org-slug"
-                value={orgSlug}
-                onChange={(e) => setOrgSlug(e.target.value)}
-                placeholder="acme-corp"
-                required
-              />
-            </Field>
-            <Field>
-              <FieldLabel htmlFor="org-logo">Logo (Optional)</FieldLabel>
-              <Input
-                id="org-logo"
-                type="file"
-                accept="image/*"
-                onChange={(e) => setOrgLogo(e.target.files?.[0] || null)}
-              />
-            </Field>
-          </form>
-        )}
-
-        {/* Join Method Selection */}
-        {view === "join-method" && (
-          <div className="flex flex-col gap-2">
-            <Item
-              variant="outline"
-              className={ItemStyle}
-              onClick={() => setView("join-code")}
-            >
-              <ItemMedia>
-                <Building2 className="size-5" />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle>Enter Invite Code</ItemTitle>
-                <ItemDescription>
-                  Manually enter the invite code provided by your administrator.
-                </ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <ChevronRight className="size-4" />
-              </ItemActions>
-            </Item>
-            <Item
-              variant="outline"
-              className={ItemStyle}
-              onClick={() => {
-                // TODO: Open QR scanner
-                setView("join-code");
-              }}
-            >
-              <ItemMedia>
-                <QrCode className="size-5" />
-              </ItemMedia>
-              <ItemContent>
-                <ItemTitle>Scan QR Code</ItemTitle>
-                <ItemDescription>
-                  Use your camera to scan the invite QR code.
-                </ItemDescription>
-              </ItemContent>
-              <ItemActions>
-                <ChevronRight className="size-4" />
-              </ItemActions>
-            </Item>
-          </div>
-        )}
-
-        {/* Join Code Input */}
-        {view === "join-code" && (
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              handleJoinOrg();
-            }}
-            className="flex flex-col gap-4"
-          >
-            <Field>
-              <FieldLabel htmlFor="invite-code">Invite Code</FieldLabel>
-              <Input
-                id="invite-code"
-                value={inviteCode}
-                onChange={(e) => setInviteCode(e.target.value)}
-                placeholder="ABC-DEF-GHI"
-                required
-              />
-            </Field>
-          </form>
-        )}
-
-        <DialogFooter className="flex-row gap-2">
-          {view !== "selection" && (
-            <Button variant="outline" onClick={handleBack}>
-              Back
-            </Button>
+        {/* Header */}
+        <motion.div
+          key={`${view}-dialog-header`}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          transition={{
+            opacity: { duration: 0.2, ease: "easeInOut" },
+          }}
+        >
+          <DialogHeader>
+            <DialogTitle>{dialogConfig[view].title}</DialogTitle>
+            <DialogDescription>
+              {dialogConfig[view].description}
+            </DialogDescription>
+          </DialogHeader>
+        </motion.div>
+        <motion.div
+          key={`${view}-dialog-content`}
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: 1, x: 0 }}
+          exit={{ opacity: 0, x: -20 }}
+          transition={{
+            opacity: { duration: 0.2, ease: "easeInOut" },
+            x: springTransition,
+          }}
+          className="min-h-72"
+        >
+          {/* Selection View */}
+          {view === "selection" && (
+            <div className="flex flex-col gap-2">
+              <Item
+                variant="outline"
+                className={ItemStyle}
+                onClick={() => setView("create")}
+              >
+                <ItemMedia>
+                  <UserRoundPlus className="size-5" />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>Create organization</ItemTitle>
+                  <ItemDescription>
+                    Once created, you&apos;ll become organization administrator
+                    who can invite members to join.
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <ChevronRight className="size-4" />
+                </ItemActions>
+              </Item>
+              <Item
+                variant="outline"
+                className={ItemStyle}
+                onClick={() => setView("join-method")}
+              >
+                <ItemMedia>
+                  <Building2 className="size-5" />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>Join organization</ItemTitle>
+                  <ItemDescription>
+                    Join organization through Invite QR Code or Invite Code, and
+                    start collaborating with others.
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <ChevronRight className="size-4" />
+                </ItemActions>
+              </Item>
+            </div>
           )}
-          <DialogClose asChild>
-            <Button variant="outline">Cancel</Button>
-          </DialogClose>
+
+          {/* Create Organization Form */}
           {view === "create" && (
-            <Button onClick={handleCreateOrg} disabled={!orgName || !orgSlug}>
-              Create
-            </Button>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleCreateOrg();
+              }}
+              className="flex flex-col gap-4"
+            >
+              <Field>
+                <FieldLabel>Organization Name</FieldLabel>
+                <Input
+                  id="org-name"
+                  value={orgName}
+                  onChange={(e) => setOrgName(e.target.value)}
+                  placeholder="Acme Corp"
+                  required
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Organization Slug</FieldLabel>
+                <Input
+                  id="org-slug"
+                  value={orgSlug}
+                  onChange={(e) => setOrgSlug(e.target.value)}
+                  placeholder="acme-corp"
+                  required
+                />
+              </Field>
+              <Field>
+                <FieldLabel>Logo (Optional)</FieldLabel>
+                <AvatarUpload />
+              </Field>
+            </form>
           )}
+
+          {/* Join Method Selection */}
+          {view === "join-method" && (
+            <div className="flex flex-col gap-2">
+              <Item
+                variant="outline"
+                className={ItemStyle}
+                onClick={() => setView("join-code")}
+              >
+                <ItemMedia>
+                  <Building2 className="size-5" />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>Enter Invite Code</ItemTitle>
+                  <ItemDescription>
+                    Manually enter the invite code provided by your
+                    administrator.
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <ChevronRight className="size-4" />
+                </ItemActions>
+              </Item>
+              <Item
+                variant="outline"
+                className={ItemStyle}
+                onClick={() => {
+                  // TODO: Open QR scanner
+                  setView("join-code");
+                }}
+              >
+                <ItemMedia>
+                  <QrCode className="size-5" />
+                </ItemMedia>
+                <ItemContent>
+                  <ItemTitle>Scan QR Code</ItemTitle>
+                  <ItemDescription>
+                    Use your camera to scan the invite QR code.
+                  </ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  <ChevronRight className="size-4" />
+                </ItemActions>
+              </Item>
+            </div>
+          )}
+
+          {/* Join Code Input */}
           {view === "join-code" && (
-            <Button onClick={handleJoinOrg} disabled={!inviteCode}>
-              Join
-            </Button>
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleJoinOrg();
+              }}
+              className="flex flex-col gap-4"
+            >
+              <Field>
+                <FieldLabel htmlFor="invite-code">Invite Code</FieldLabel>
+                <Input
+                  id="invite-code"
+                  value={inviteCode}
+                  onChange={(e) => setInviteCode(e.target.value)}
+                  placeholder="ABC-DEF-GHI"
+                  required
+                />
+              </Field>
+            </form>
           )}
+        </motion.div>
+        <DialogFooter className="flex flex-row gap-2">
+          <AnimatePresence mode={"popLayout"}>
+            {view !== "selection" && (
+              <BtnWrapper key="back">
+                <Button variant="outline" onClick={handleBack}>
+                  Back
+                </Button>
+              </BtnWrapper>
+            )}
+
+            {/* ---------- CANCEL ---------- */}
+            <BtnWrapper key="cancel">
+              <DialogClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DialogClose>
+            </BtnWrapper>
+
+            {/* ---------- CREATE / JOIN ---------- */}
+            {view === "create" && (
+              <BtnWrapper key="create">
+                <Button
+                  onClick={handleCreateOrg}
+                  disabled={!orgName || !orgSlug}
+                >
+                  Create
+                </Button>
+              </BtnWrapper>
+            )}
+
+            {view === "join-code" && (
+              <BtnWrapper key="join">
+                <Button onClick={handleJoinOrg} disabled={!inviteCode}>
+                  Join
+                </Button>
+              </BtnWrapper>
+            )}
+          </AnimatePresence>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
+const BtnWrapper = ({ children }: { children: React.ReactNode }) => (
+  <motion.div
+    layout
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    exit={{ opacity: 0, scale: 0.9 }}
+    transition={{
+      layout: { duration: 0.1, ease: "easeOut" },
+      opacity: { duration: 0.15 },
+      scale: { duration: 0.15 },
+    }}
+    className="flex"
+  >
+    {children}
+  </motion.div>
+);
