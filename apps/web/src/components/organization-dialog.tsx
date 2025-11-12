@@ -1,4 +1,3 @@
-import { useForm } from "@tanstack/react-form";
 import { Building2, ChevronRight, QrCode, UserRoundPlus } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -12,9 +11,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import AvatarUpload from "./avatar-upload";
 import { springTransition } from "./easing";
-import { Field, FieldError, FieldLabel } from "./ui/field";
+import { Field, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
 import {
   Item,
@@ -24,6 +22,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from "./ui/item";
+import { CreateOrganizationForm } from "./create-organization-form";
 
 interface OrganizationDialogProps {
   open?: boolean;
@@ -42,25 +41,11 @@ export function OrganizationDialog({
   const [view, setView] = useState<DialogView>("selection");
 
   // Form states
-  const [orgName, setOrgName] = useState("");
-  const [orgSlug, setOrgSlug] = useState("");
-  const [orgLogo, setOrgLogo] = useState<File | null>(null);
   const [inviteCode, setInviteCode] = useState("");
-
-  const createOrgForm = useForm({
-    defaultValues: {
-      orgName: "",
-      orgSlug: "",
-      orgLogo: null as File | null,
-    },
-  });
 
   const handleClose = () => {
     // Reset state when dialog closes
     setView("selection");
-    setOrgName("");
-    setOrgSlug("");
-    setOrgLogo(null);
     setInviteCode("");
     onOpenChange?.(false);
   };
@@ -71,12 +56,6 @@ export function OrganizationDialog({
     } else if (view === "join-code") {
       setView("join-method");
     }
-  };
-
-  const handleCreateOrg = async () => {
-    // TODO: Implement organization creation logic
-    console.log({ orgName, orgSlug, orgLogo });
-    handleClose();
   };
 
   const handleJoinOrg = async () => {
@@ -183,38 +162,11 @@ export function OrganizationDialog({
 
           {/* Create Organization Form */}
           {view === "create" && (
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                handleCreateOrg();
-              }}
-              className="flex flex-col gap-4"
-            >
-              <Field>
-                <FieldLabel>Organization Name</FieldLabel>
-                <Input
-                  id="org-name"
-                  value={orgName}
-                  onChange={(e) => setOrgName(e.target.value)}
-                  placeholder="Acme Corp"
-                  required
-                />
-              </Field>
-              <Field>
-                <FieldLabel>Organization Slug</FieldLabel>
-                <Input
-                  id="org-slug"
-                  value={orgSlug}
-                  onChange={(e) => setOrgSlug(e.target.value)}
-                  placeholder="acme-corp"
-                  required
-                />
-              </Field>
-              <Field>
-                <FieldLabel>Logo (Optional)</FieldLabel>
-                <AvatarUpload />
-              </Field>
-            </form>
+            <CreateOrganizationForm
+              formId="org-create-form"
+              onSuccess={handleClose}
+              showActions={false}
+            />
           )}
 
           {/* Join Method Selection */}
@@ -305,10 +257,7 @@ export function OrganizationDialog({
             {/* ---------- CREATE / JOIN ---------- */}
             {view === "create" && (
               <BtnWrapper key="create">
-                <Button
-                  onClick={handleCreateOrg}
-                  disabled={!orgName || !orgSlug}
-                >
+                <Button type="submit" form="org-create-form">
                   Create
                 </Button>
               </BtnWrapper>

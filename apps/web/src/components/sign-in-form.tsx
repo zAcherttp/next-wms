@@ -55,6 +55,7 @@ export default function SignInForm() {
             email: value.email,
             password: value.password,
             rememberMe: value.rememberMe,
+            callbackURL: "/dashboard",
           },
           {
             onError: (context) => {
@@ -76,9 +77,8 @@ export default function SignInForm() {
                   : {},
               );
             },
-            onSuccess: async () => {
+            onSuccess: () => {
               toast.success("Successfully signed in");
-              router.push("/dashboard");
             },
           },
         );
