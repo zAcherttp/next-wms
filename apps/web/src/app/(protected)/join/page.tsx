@@ -14,15 +14,13 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
-import { Spinner } from "@/components/ui/spinner";
-import { authClient, organization } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
 
 export default function Page() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: userOrganizations } = authClient.useListOrganizations();
   const [showCreateForm, setShowCreateForm] = useState(false);
-  const [joiningOrgId, setJoiningOrgId] = useState<string | null>(null);
 
   // Handle error messages from middleware redirects
   useEffect(() => {
@@ -41,26 +39,10 @@ export default function Page() {
     return letters.slice(0, 2).join("").toUpperCase();
   }
 
-  const handleJoinOrg = async (orgId: string, orgSlug: string) => {
-    setJoiningOrgId(orgId);
-    try {
-      const { error } = await organization.setActive({
-        organizationId: orgId,
-      });
-
-      if (error) {
-        toast.error(error.message || "Failed to join organization");
-        return;
-      }
-
-      toast.success("Successfully joined organization");
-      router.push(`/${orgSlug}/dashboard`);
-    } catch (err) {
-      toast.error("An unexpected error occurred");
-      console.error("Join organization error:", err);
-    } finally {
-      setJoiningOrgId(null);
-    }
+  const handleJoinOrg = (orgSlug: string) => {
+    // Just navigate - WorkspaceSync will handle setting active org
+    toast.success("Joining organization...");
+    router.push(`/${orgSlug}/dashboard`);
   };
 
   return (
@@ -91,10 +73,9 @@ export default function Page() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleJoinOrg(org.id, org.slug)}
-                      disabled={joiningOrgId === org.id}
+                      onClick={() => handleJoinOrg(org.slug)}
                     >
-                      {joiningOrgId === org.id ? <Spinner /> : "Join"}
+                      Join
                     </Button>
                   </ItemActions>
                 </Item>

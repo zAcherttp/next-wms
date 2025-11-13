@@ -8,10 +8,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuPortal,
   DropdownMenuSeparator,
   DropdownMenuShortcut,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -20,15 +25,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  organization,
-  useActiveOrganization,
-  useListOrganizations,
-} from "@/lib/auth-client";
+import { useActiveOrganization, useListOrganizations } from "@/lib/auth-client";
 import { OrganizationDialog } from "./organization-dialog";
 import { Skeleton } from "./ui/skeleton";
+import { Kbd } from "./ui/kbd";
+import { ScrollArea } from "./ui/scroll-area";
 
-export function TeamSwitcher() {
+export function NavWorkspace() {
   const router = useRouter();
   const { isMobile } = useSidebar();
   const { data: organizations, isPending } = useListOrganizations();
@@ -36,20 +39,17 @@ export function TeamSwitcher() {
 
   const [open, setOpen] = useState(false);
 
-  const handleOrgSwitch = async (orgId: string, orgSlug: string) => {
-    try {
-      const { error } = await organization.setActive({ organizationId: orgId });
+  const handleOrgSwitch = (orgSlug: string) => {
+    // Just navigate - WorkspaceSync will handle setting active org
+    router.push(`/${orgSlug}/dashboard`);
+  };
 
-      if (error) {
-        toast.error(error.message || "Failed to switch organization");
-        return;
-      }
-
-      toast.success("Switched organization successfully");
-      router.push(`/${orgSlug}/dashboard`);
-    } catch (err) {
-      toast.error("An unexpected error occurred");
-      console.error("Switch organization error:", err);
+  const handleSettingsClick = () => {
+    if (activeOrganization) {
+      router.push(`/${activeOrganization.slug}/settings`);
+    } else {
+      // this should not happen, but just in case
+      toast.error("No active organization to view settings for.");
     }
   };
 
@@ -114,46 +114,63 @@ export function TeamSwitcher() {
                 side={isMobile ? "bottom" : "right"}
                 sideOffset={4}
               >
-                <DropdownMenuLabel className="text-muted-foreground text-xs">
-                  Organizations
-                </DropdownMenuLabel>
-                {organizations.map((org, index) => (
-                  <DropdownMenuItem
-                    key={org.id}
-                    onClick={() => handleOrgSwitch(org.id, org.slug)}
-                    className="gap-2 p-2"
-                  >
-                    <div className="flex size-6 items-center justify-center rounded-md border">
-                      {org.logo ? (
-                        <Avatar className="h-3.5 w-3.5 shrink-0 rounded">
-                          <AvatarImage src={org.logo} alt={org.name} />
-                          <AvatarFallback>
-                            <Building2 className="size-2.5" />
-                          </AvatarFallback>
-                        </Avatar>
-                      ) : (
-                        <Building2 className="size-3.5 shrink-0" />
-                      )}
-                    </div>
-                    {org.name}
-                    <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
-                  </DropdownMenuItem>
-                ))}
-                <DropdownMenuSeparator />
-                <DropdownMenuItem
-                  onClick={() => {
-                    setOpen(true);
-                    console.log("clicked");
-                  }}
-                  className="gap-2 p-2"
-                >
-                  <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
-                    <Plus className="size-4" />
-                  </div>
-                  <div className="font-medium text-muted-foreground">
-                    Add organization
-                  </div>
+                <DropdownMenuItem onClick={handleSettingsClick}>
+                  Settings
+                  <DropdownMenuShortcut>
+                    <Kbd>S</Kbd>
+                  </DropdownMenuShortcut>
                 </DropdownMenuItem>
+                <DropdownMenuItem>Invite and manage members</DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuSub>
+                  <DropdownMenuSubTrigger>
+                    Switch organization
+                  </DropdownMenuSubTrigger>
+                  <DropdownMenuPortal>
+                    <DropdownMenuSubContent>
+                      <ScrollArea className="h-32">
+                        {organizations.map((org, index) => (
+                          <DropdownMenuItem
+                            key={org.id}
+                            onClick={() => handleOrgSwitch(org.slug)}
+                            className="gap-2 p-2"
+                          >
+                            <div className="flex size-6 items-center justify-center rounded-md border">
+                              {org.logo ? (
+                                <Avatar className="h-3.5 w-3.5 shrink-0 rounded">
+                                  <AvatarImage src={org.logo} alt={org.name} />
+                                  <AvatarFallback>
+                                    <Building2 className="size-2.5" />
+                                  </AvatarFallback>
+                                </Avatar>
+                              ) : (
+                                <Building2 className="size-3.5 shrink-0" />
+                              )}
+                            </div>
+                            {org.name}
+                            <DropdownMenuShortcut>
+                              <Kbd>{index + 1}</Kbd>
+                            </DropdownMenuShortcut>
+                          </DropdownMenuItem>
+                        ))}
+                      </ScrollArea>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem
+                        onClick={() => {
+                          setOpen(true);
+                        }}
+                        className="gap-2 p-2"
+                      >
+                        <div className="flex size-6 items-center justify-center rounded-md border bg-transparent">
+                          <Plus className="size-4" />
+                        </div>
+                        <div className="font-medium text-muted-foreground">
+                          Add organization
+                        </div>
+                      </DropdownMenuItem>
+                    </DropdownMenuSubContent>
+                  </DropdownMenuPortal>
+                </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
           ) : isPending ? (

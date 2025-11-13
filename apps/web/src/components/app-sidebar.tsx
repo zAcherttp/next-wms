@@ -3,7 +3,7 @@
 import { BookOpen, Bot, Settings2, SquareTerminal } from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
-import { TeamSwitcher } from "@/components/team-switcher";
+import { NavWorkspace } from "@/components/nav-workspace";
 import {
   Sidebar,
   SidebarContent,
@@ -107,7 +107,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   return (
     <Sidebar collapsible={"icon"} {...props}>
       <SidebarHeader>
-        <TeamSwitcher />
+        <NavWorkspace />
       </SidebarHeader>
       <SidebarContent>
         <ScrollArea className="h-full">

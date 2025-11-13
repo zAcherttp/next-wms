@@ -55,7 +55,7 @@ export default function SignInForm() {
             email: value.email,
             password: value.password,
             rememberMe: value.rememberMe,
-            callbackURL: "/dashboard",
+            callbackURL: "/auth/onboarding",
           },
           {
             onError: (context) => {
@@ -92,7 +92,7 @@ export default function SignInForm() {
         fetchOptions: {
           onSuccess() {
             toast.success("Successfully signed in");
-            router.push("/dashboard");
+            router.push("/auth/onboarding");
           },
           onError(context) {
             toast.error(`Authentication failed: ${context.error.message}`);
@@ -106,7 +106,7 @@ export default function SignInForm() {
     startTransition(async () => {
       await signIn.social({
         provider,
-        callbackURL: "/dashboard",
+        callbackURL: "/auth/onboarding",
       });
     });
   };

@@ -1,7 +1,8 @@
 "use client";
 
 import { useParams } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
+import { toast } from "sonner";
 import {
   organization,
   useActiveOrganization,
@@ -9,24 +10,73 @@ import {
 } from "@/lib/auth-client";
 
 /**
- * Client component that syncs the active organization based on the current workspace slug
+ * Syncs the active organization based on the current workspace URL.
+ * Handles all navigation scenarios: team switcher, join, create org, direct URL, browser controls.
  */
 export function WorkspaceSync() {
   const params = useParams();
   const workspace = params.workspace as string;
-  const { data: organizations } = useListOrganizations();
-  const { data: activeOrganization } = useActiveOrganization();
+  const { data: organizations, isPending: orgsLoading } =
+    useListOrganizations();
+  const { data: activeOrganization, isPending: activeLoading } =
+    useActiveOrganization();
+
+  const isSettingActive = useRef(false);
+  const lastWorkspace = useRef<string | null>(null);
+  const toastIdRef = useRef<string | number | null>(null);
 
   useEffect(() => {
-    if (!organizations || !workspace) return;
+    // Wait for data to load
+    if (orgsLoading || activeLoading || !organizations || !workspace) return;
 
     const org = organizations.find((o) => o.slug === workspace);
 
-    // If workspace org is different from active org, set it as active
-    if (org && activeOrganization?.id !== org.id) {
-      organization.setActive({ organizationId: org.id });
+    // If workspace org doesn't exist, do nothing (proxy should handle this)
+    if (!org) return;
+
+    // Check if we need to sync
+    const needsSync = !activeOrganization || activeOrganization.id !== org.id;
+    const workspaceChanged = lastWorkspace.current !== workspace;
+
+    // Only sync if needed and not already in progress
+    if (needsSync && workspaceChanged && !isSettingActive.current) {
+      isSettingActive.current = true;
+      lastWorkspace.current = workspace;
+
+      // Show loading toast with spinner
+      toastIdRef.current = toast.loading("Switching workspace...");
+
+      organization
+        .setActive({ organizationId: org.id })
+        .then(({ error }) => {
+          if (error) {
+            toast.error(error.message || "Failed to set active organization", {
+              id: toastIdRef.current ?? undefined,
+            });
+          } else {
+            toast.success(`Switched to ${org.name}`, {
+              id: toastIdRef.current ?? undefined,
+            });
+          }
+        })
+        .catch((err) => {
+          console.error("WorkspaceSync error:", err);
+          toast.error("Failed to sync workspace", {
+            id: toastIdRef.current ?? undefined,
+          });
+        })
+        .finally(() => {
+          isSettingActive.current = false;
+          toastIdRef.current = null;
+        });
     }
-  }, [workspace, organizations, activeOrganization]);
+  }, [
+    workspace,
+    organizations,
+    activeOrganization,
+    orgsLoading,
+    activeLoading,
+  ]);
 
   return null;
 }
