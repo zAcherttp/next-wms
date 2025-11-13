@@ -4,7 +4,7 @@ import { member, organization } from "@next-wms/db/schema/auth";
 import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Only run middleware for workspace routes (e.g., /acme-corp/dashboard)
