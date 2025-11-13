@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { CreateOrganizationForm } from "./create-organization-form";
 import { springTransition } from "./easing";
 import { Field, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
@@ -22,7 +23,6 @@ import {
   ItemMedia,
   ItemTitle,
 } from "./ui/item";
-import { CreateOrganizationForm } from "./create-organization-form";
 
 interface OrganizationDialogProps {
   open?: boolean;

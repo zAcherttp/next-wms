@@ -1,6 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { toast } from "sonner";
+import { CreateOrganizationForm } from "@/components/create-organization-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,17 +14,54 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
-import { authClient } from "@/lib/auth-client";
-import { CreateOrganizationForm } from "@/components/create-organization-form";
+import { Spinner } from "@/components/ui/spinner";
+import { authClient, organization } from "@/lib/auth-client";
 
 export default function Page() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { data: userOrganizations } = authClient.useListOrganizations();
   const [showCreateForm, setShowCreateForm] = useState(false);
+  const [joiningOrgId, setJoiningOrgId] = useState<string | null>(null);
+
+  // Handle error messages from middleware redirects
+  useEffect(() => {
+    const error = searchParams.get("error");
+    if (error) {
+      toast.error(error);
+      // Clean up URL by removing the error param
+      const url = new URL(window.location.href);
+      url.searchParams.delete("error");
+      window.history.replaceState({}, "", url.pathname);
+    }
+  }, [searchParams]);
 
   function getInitials(str: string) {
     const letters = str.match(/[A-Za-z]/g) || [];
     return letters.slice(0, 2).join("").toUpperCase();
   }
+
+  const handleJoinOrg = async (orgId: string, orgSlug: string) => {
+    setJoiningOrgId(orgId);
+    try {
+      const { error } = await organization.setActive({
+        organizationId: orgId,
+      });
+
+      if (error) {
+        toast.error(error.message || "Failed to join organization");
+        return;
+      }
+
+      toast.success("Successfully joined organization");
+      router.push(`/${orgSlug}/dashboard`);
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+      console.error("Join organization error:", err);
+    } finally {
+      setJoiningOrgId(null);
+    }
+  };
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center">
@@ -48,8 +88,13 @@ export default function Page() {
                     <ItemTitle>{org.name}</ItemTitle>
                   </ItemContent>
                   <ItemActions>
-                    <Button variant="outline" size="sm">
-                      Join
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleJoinOrg(org.id, org.slug)}
+                      disabled={joiningOrgId === org.id}
+                    >
+                      {joiningOrgId === org.id ? <Spinner /> : "Join"}
                     </Button>
                   </ItemActions>
                 </Item>
@@ -71,7 +116,10 @@ export default function Page() {
               Create New Organization
             </span>
             <CreateOrganizationForm
-              onSuccess={() => setShowCreateForm(false)}
+              onSuccess={(orgSlug) => {
+                setShowCreateForm(false);
+                router.push(`/${orgSlug}/dashboard`);
+              }}
               onCancel={() => setShowCreateForm(false)}
             />
           </>

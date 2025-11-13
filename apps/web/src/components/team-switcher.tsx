@@ -1,7 +1,9 @@
 "use client";
 
 import { Building2, ChevronsUpDown, Plus } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -27,14 +29,28 @@ import { OrganizationDialog } from "./organization-dialog";
 import { Skeleton } from "./ui/skeleton";
 
 export function TeamSwitcher() {
+  const router = useRouter();
   const { isMobile } = useSidebar();
   const { data: organizations, isPending } = useListOrganizations();
   const { data: activeOrganization } = useActiveOrganization();
 
   const [open, setOpen] = useState(false);
 
-  const handleOrgSwitch = async (orgId: string) => {
-    await organization.setActive({ organizationId: orgId });
+  const handleOrgSwitch = async (orgId: string, orgSlug: string) => {
+    try {
+      const { error } = await organization.setActive({ organizationId: orgId });
+
+      if (error) {
+        toast.error(error.message || "Failed to switch organization");
+        return;
+      }
+
+      toast.success("Switched organization successfully");
+      router.push(`/${orgSlug}/dashboard`);
+    } catch (err) {
+      toast.error("An unexpected error occurred");
+      console.error("Switch organization error:", err);
+    }
   };
 
   return (
@@ -104,7 +120,7 @@ export function TeamSwitcher() {
                 {organizations.map((org, index) => (
                   <DropdownMenuItem
                     key={org.id}
-                    onClick={() => handleOrgSwitch(org.id)}
+                    onClick={() => handleOrgSwitch(org.id, org.slug)}
                     className="gap-2 p-2"
                   >
                     <div className="flex size-6 items-center justify-center rounded-md border">

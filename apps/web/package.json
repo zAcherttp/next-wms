@@ -10,6 +10,8 @@
   "dependencies": {
     "@next-wms/api": "workspace:*",
     "@next-wms/auth": "workspace:*",
+    "@next-wms/db": "workspace:*",
+    "drizzle-orm": "^0.44.2",
     "@radix-ui/react-avatar": "^1.1.10",
     "@radix-ui/react-collapsible": "^1.1.12",
     "@radix-ui/react-dialog": "^1.1.15",

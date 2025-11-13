@@ -82,7 +82,7 @@ export default function Page() {
 
   return (
     <div className="flex min-h-screen items-center justify-center">
-      <div className="text-center animate-pulse text-lg">Finishing up...</div>
+      <div className="animate-pulse text-center text-lg">Finishing up...</div>
     </div>
   );
 }

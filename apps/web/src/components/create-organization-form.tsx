@@ -2,12 +2,12 @@ import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useCallback, useTransition } from "react";
 import { toast } from "sonner";
 import z from "zod";
-import { authClient } from "@/lib/auth-client";
+import { authClient, organization } from "@/lib/auth-client";
 import AvatarUpload from "./avatar-upload";
+import { Button } from "./ui/button";
 import { Field, FieldError, FieldLabel } from "./ui/field";
 import { Input } from "./ui/input";
 import { Spinner } from "./ui/spinner";
-import { Button } from "./ui/button";
 
 const ORG_CREATE_SCHEMA = z.object({
   orgName: z
@@ -29,7 +29,7 @@ const ORG_CREATE_SCHEMA = z.object({
 type OrgCreateForm = z.infer<typeof ORG_CREATE_SCHEMA>;
 
 interface CreateOrganizationFormProps {
-  onSuccess?: () => void;
+  onSuccess?: (orgSlug: string) => void;
   onCancel?: () => void;
   showActions?: boolean;
   formId?: string;
@@ -99,7 +99,7 @@ export function CreateOrganizationForm({
     }),
     onSubmit: async ({ value }) => {
       startTransition(async () => {
-        const { data: _data, error } = await authClient.organization.create({
+        const { data, error } = await authClient.organization.create({
           name: value.orgName,
           slug: value.orgSlug,
         });
@@ -107,8 +107,26 @@ export function CreateOrganizationForm({
           toast.error(error.message || "Failed to create organization");
           return;
         }
+
+        if (!data) {
+          toast.error("Failed to create organization");
+          return;
+        }
+
+        // Set the newly created organization as active
+        const { error: setActiveError } = await organization.setActive({
+          organizationId: data.id,
+        });
+
+        if (setActiveError) {
+          toast.error(
+            setActiveError.message || "Failed to set active organization",
+          );
+          return;
+        }
+
         toast.success("Organization created successfully");
-        onSuccess?.();
+        onSuccess?.(value.orgSlug);
       });
     },
   });
