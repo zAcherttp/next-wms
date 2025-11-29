@@ -49,9 +49,6 @@ importers:
       '@types/node':
         specifier: ^22.18.13
         version: 22.18.13
-      prettier:
-        specifier: ^3.4.2
-        version: 3.6.2
       tsdown:
         specifier: ^0.15.12
         version: 0.15.12(typescript@5.9.3)
@@ -89,7 +86,7 @@ importers:
         specifier: ^1.2.8
         version: 1.2.8(@types/react-dom@19.2.2(@types/react@19.2.2))(@types/react@19.2.2)(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@tanstack/react-form':
-        specifier: ^1.12.3
+        specifier: ^1.23.8
         version: 1.23.8(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@tss-wms/backend':
         specifier: workspace:*
@@ -140,7 +137,7 @@ importers:
         specifier: 19.2.0
         version: 19.2.0(react@19.2.0)
       sonner:
-        specifier: ^2.0.5
+        specifier: ^2.0.7
         version: 2.0.7(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       tailwind-merge:
         specifier: ^3.3.1

@@ -1,4 +1,9 @@
 import { type NextRequest, NextResponse } from "next/server";
+import {
+  createCacheCookieHeader,
+  createClearCacheCookieHeader,
+  getCachedVerification,
+} from "@/lib/middleware-cache";
 
 const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL || "";
 
@@ -26,8 +31,15 @@ export async function proxy(request: NextRequest) {
 
   const workspaceSlug = workspaceMatch[1];
 
+  // Check for cached verification result first
+  const cachedResult = getCachedVerification(request, workspaceSlug);
+  if (cachedResult) {
+    // Cache hit - skip HTTP call to Convex
+    return NextResponse.next();
+  }
+
   try {
-    // Call Convex HTTP action to verify access
+    // Cache miss - call Convex HTTP action to verify access
     const verifyUrl = new URL("/api/middleware/verify", CONVEX_SITE_URL);
     verifyUrl.searchParams.set("workspace", workspaceSlug);
 
@@ -54,18 +66,46 @@ export async function proxy(request: NextRequest) {
       if (result.error) {
         url.searchParams.set("error", result.error);
       }
-      return NextResponse.redirect(url);
+
+      // Clear any stale cache on auth failure
+      const redirectResponse = NextResponse.redirect(url);
+      redirectResponse.headers.set(
+        "Set-Cookie",
+        createClearCacheCookieHeader(workspaceSlug),
+      );
+      return redirectResponse;
     }
 
-    // User has access, continue to the route
-    return NextResponse.next();
+    // User has access - cache the result and continue
+    const nextResponse = NextResponse.next();
+
+    // Set cache cookie for subsequent requests
+    if (result.userId && result.orgId && result.orgName) {
+      nextResponse.headers.set(
+        "Set-Cookie",
+        createCacheCookieHeader(
+          workspaceSlug,
+          result.userId,
+          result.orgId,
+          result.orgName,
+        ),
+      );
+    }
+
+    return nextResponse;
   } catch (error) {
     console.error("Middleware error:", error);
 
-    // On error, redirect to join page
+    // On error, clear cache and redirect to join page
     const url = new URL("/join", request.url);
     url.searchParams.set("error", "An error occurred while validating access");
-    return NextResponse.redirect(url);
+
+    const redirectResponse = NextResponse.redirect(url);
+    redirectResponse.headers.set(
+      "Set-Cookie",
+      createClearCacheCookieHeader(workspaceSlug),
+    );
+    return redirectResponse;
   }
 }
 
