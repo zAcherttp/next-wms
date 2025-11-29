@@ -3,7 +3,7 @@
     "*.css": "tailwindcss"
   },
   "editor.codeActionsOnSave": {
-    "source.organizeImports.biome": "explicit",
+    "source.organizeImports.biome": "explicit"
   },
   "typescript.preferences.importModuleSpecifier": "non-relative",
   "javascript.preferences.importModuleSpecifier": "non-relative",
