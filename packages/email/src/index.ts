@@ -1,1 +1,0 @@
-export { resend } from "./client";

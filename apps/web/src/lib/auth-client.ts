@@ -1,27 +1,10 @@
-import type { auth } from "@next-wms/auth";
-import {
-  emailOTPClient,
-  inferAdditionalFields,
-  organizationClient,
-  passkeyClient,
-  twoFactorClient,
-} from "better-auth/client/plugins";
+import { convexClient } from "@convex-dev/better-auth/client/plugins";
+import { emailOTPClient, organizationClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import { toast } from "sonner";
 
 export const authClient = createAuthClient({
-  baseURL: process.env.NEXT_PUBLIC_APP_URL || "",
-  plugins: [
-    organizationClient(),
-    twoFactorClient({
-      onTwoFactorRedirect() {
-        window.location.href = "/two-factor";
-      },
-    }),
-    passkeyClient(),
-    emailOTPClient(),
-    inferAdditionalFields<typeof auth>(),
-  ],
+  plugins: [convexClient(), organizationClient(), emailOTPClient()],
   fetchOptions: {
     onError(e) {
       if (e.error.status === 429) {

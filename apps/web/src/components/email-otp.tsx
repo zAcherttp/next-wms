@@ -1,5 +1,4 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { useQuery } from "@tanstack/react-query";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
@@ -13,9 +12,10 @@ import {
 } from "react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useQuery } from "convex/react";
+import { api } from "@tss-wms/backend/convex/_generated/api";
 
 import { authClient } from "@/lib/auth-client";
-import { trpc } from "@/utils/trpc";
 
 import { easeInOutTransition } from "./easing";
 import { Button } from "./ui/button";
@@ -50,15 +50,11 @@ export default function EmailOTP() {
   // Refs
   const otpInputRef = useRef<HTMLInputElement>(null);
 
-  // Queries
-  const { refetch: fetchVerifyEmailStatus } = useQuery({
-    ...trpc.auth.verifyEmailStatus.queryOptions({ email }),
-    enabled: false,
-    retry: false,
-    meta: {
-      disableGlobalErrorToast: true,
-    },
-  });
+  // Queries - use Convex query with skip pattern
+  const emailVerificationStatus = useQuery(
+    api.auth.getEmailVerificationStatus,
+    email ? { email } : "skip",
+  );
 
   // Handlers
   const sendOtp = useCallback(
@@ -94,17 +90,18 @@ export default function EmailOTP() {
         };
       }
 
-      const { data, isError } = await fetchVerifyEmailStatus();
-
-      if (isError) {
+      // emailVerificationStatus is reactively updated when email changes
+      // Check the current status
+      if (emailVerificationStatus === undefined) {
+        // Query is still loading or skipped
         return {
           fields: {
-            email: { message: "Internal server error" },
+            email: { message: "Validating email..." },
           },
         };
       }
 
-      if (!data?.valid) {
+      if (!emailVerificationStatus?.valid) {
         return {
           fields: {
             email: { message: "Account doesn't exist" },
@@ -112,7 +109,7 @@ export default function EmailOTP() {
         };
       }
 
-      if (data.verified) {
+      if (emailVerificationStatus.verified) {
         return {
           fields: {
             email: { message: "Email already verified" },
@@ -122,7 +119,7 @@ export default function EmailOTP() {
 
       return null;
     },
-    [fetchVerifyEmailStatus],
+    [emailVerificationStatus],
   );
 
   const handleEmailSubmit = useCallback(async () => {

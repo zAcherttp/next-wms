@@ -11,14 +11,10 @@
     "build": "turbo build",
     "check": "biome check --write .",
     "check-types": "turbo check-types",
-    "dev": "turbo dev --filter=!@next-wms/transactional",
+    "dev": "turbo dev",
     "dev:native": "turbo -F native dev",
     "dev:web": "turbo -F web dev",
-    "dev:email": "turbo -F @next-wms/transactional dev",
-    "db:push": "turbo -F @next-wms/db db:push",
-    "db:studio": "turbo -F @next-wms/db db:studio",
-    "db:generate": "turbo -F @next-wms/db db:generate",
-    "db:migrate": "turbo -F @next-wms/db db:migrate"
+    "dev:backend": "turbo -F @tss-wms/backend dev"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
@@ -31,7 +27,7 @@
     "tsdown": "^0.15.12",
     "turbo": "^2.6.1"
   },
-  "packageManager": "pnpm@10.22.0+sha512.bf049efe995b28f527fd2b41ae0474ce29186f7edcb3bf545087bd61fbbebb2bf75362d1307fda09c2d288e1e499787ac12d4fcb617a974718a6051f2eee741c",
+  "packageManager": "pnpm@10.24.0",
   "pnpm": {
     "overrides": {
       "@types/react": "19.2.2",

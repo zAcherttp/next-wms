@@ -2,8 +2,9 @@
   "files.associations": {
     "*.css": "tailwindcss"
   },
-  "editor.quickSuggestions": {
-    "strings": "on"
+  "editor.codeActionsOnSave": {
+    "source.organizeImports.biome": "explicit",
   },
-  "postman.settings.dotenv-detection-notification-visibility": false
+  "typescript.preferences.importModuleSpecifier": "non-relative",
+  "javascript.preferences.importModuleSpecifier": "non-relative"
 }

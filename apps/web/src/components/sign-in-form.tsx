@@ -1,7 +1,6 @@
 "use client";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { Key } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
@@ -20,7 +19,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { signIn } from "@/lib/auth-client";
-import { cn } from "@/lib/utils";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field";
 import { Spinner } from "./ui/spinner";
 
@@ -85,31 +83,6 @@ export default function SignInForm() {
       });
     },
   });
-
-  const handlePasskeySignIn = async () => {
-    startTransition(async () => {
-      await signIn.passkey({
-        fetchOptions: {
-          onSuccess() {
-            toast.success("Successfully signed in");
-            router.push("/auth/onboarding");
-          },
-          onError(context) {
-            toast.error(`Authentication failed: ${context.error.message}`);
-          },
-        },
-      });
-    });
-  };
-
-  const handleSocialSignIn = async (provider: string) => {
-    startTransition(async () => {
-      await signIn.social({
-        provider,
-        callbackURL: "/auth/onboarding",
-      });
-    });
-  };
 
   return (
     <Card className="min-w-md">
@@ -218,55 +191,16 @@ export default function SignInForm() {
         </form>
       </CardContent>
 
-      <CardFooter className="mt-4 grid gap-4">
+      <CardFooter className="mt-4">
         <Button
           type="submit"
           form="sign-in-form"
           className="w-full"
           disabled={loading}
         >
-          {loading ? <Spinner /> : "Login"}
+          {loading ?? <Spinner />}
+          <Label>Login</Label>
         </Button>
-
-        <Button
-          variant="secondary"
-          disabled={loading}
-          className="gap-2"
-          onClick={handlePasskeySignIn}
-        >
-          <Key size={16} />
-          Sign-in with Passkey
-        </Button>
-
-        <div
-          className={cn(
-            "flex w-full items-center gap-2",
-            "flex-col justify-between",
-          )}
-        >
-          <Button
-            variant="outline"
-            className={cn("w-full gap-2")}
-            disabled={loading}
-            onClick={() => handleSocialSignIn("github")}
-          >
-            <svg
-              role="img"
-              aria-labelledby="github-icon-title"
-              xmlns="http://www.w3.org/2000/svg"
-              width="1em"
-              height="1em"
-              viewBox="0 0 24 24"
-            >
-              <title>GitHub</title>
-              <path
-                fill="currentColor"
-                d="M12 2A10 10 0 0 0 2 12c0 4.42 2.87 8.17 6.84 9.5c.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34c-.46-1.16-1.11-1.47-1.11-1.47c-.91-.62.07-.6.07-.6c1 .07 1.53 1.03 1.53 1.03c.87 1.52 2.34 1.07 2.91.83c.09-.65.35-1.09.63-1.34c-2.22-.25-4.55-1.11-4.55-4.92c0-1.11.38-2 1.03-2.71c-.1-.25-.45-1.29.1-2.64c0 0 .84-.27 2.75 1.02c.79-.22 1.65-.33 2.5-.33s1.71.11 2.5.33c1.91-1.29 2.75-1.02 2.75-1.02c.55 1.35.2 2.39.1 2.64c.65.71 1.03 1.6 1.03 2.71c0 3.82-2.34 4.66-4.57 4.91c.36.31.69.92.69 1.85V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12A10 10 0 0 0 12 2"
-              />
-            </svg>
-            Sign in with Github
-          </Button>
-        </div>
       </CardFooter>
     </Card>
   );

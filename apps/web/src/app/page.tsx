@@ -1,11 +1,11 @@
 "use client";
 
-import { useQuery } from "@tanstack/react-query";
+import { useQuery } from "convex/react";
+import { api } from "@tss-wms/backend/convex/_generated/api";
 import SignIn from "@/components/sign-in";
-import { trpc } from "@/utils/trpc";
 
 export default function Home() {
-  const healthCheck = useQuery(trpc.healthCheck.queryOptions());
+  const healthCheck = useQuery(api.healthCheck.get);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-xl flex-col content-center p-4">
@@ -16,17 +16,17 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <div
                 className={`h-2 w-2 rounded-full ${
-                  healthCheck.isLoading
+                  healthCheck === undefined
                     ? "bg-yellow-500"
-                    : healthCheck.data
+                    : healthCheck
                       ? "bg-green-500"
                       : "bg-red-500"
                 }`}
               />
               <span className="text-muted-foreground text-sm">
-                {healthCheck.isLoading
+                {healthCheck === undefined
                   ? "Checking..."
-                  : healthCheck.data
+                  : healthCheck
                     ? "Connected"
                     : "Disconnected"}
               </span>

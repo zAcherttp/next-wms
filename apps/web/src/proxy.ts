@@ -1,8 +1,6 @@
-import { auth } from "@next-wms/auth";
-import { db } from "@next-wms/db";
-import { member, organization } from "@next-wms/db/schema/auth";
-import { and, eq } from "drizzle-orm";
 import { type NextRequest, NextResponse } from "next/server";
+
+const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL || "";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -29,49 +27,33 @@ export async function proxy(request: NextRequest) {
   const workspaceSlug = workspaceMatch[1];
 
   try {
-    // Get session using Better Auth's native server function
-    const session = await auth.api.getSession({
-      headers: request.headers,
+    // Call Convex HTTP action to verify access
+    const verifyUrl = new URL("/api/middleware/verify", CONVEX_SITE_URL);
+    verifyUrl.searchParams.set("workspace", workspaceSlug);
+
+    const response = await fetch(verifyUrl.toString(), {
+      method: "GET",
+      headers: {
+        // Forward cookies for session validation
+        cookie: request.headers.get("cookie") || "",
+      },
     });
 
-    // If no session, redirect to sign-in
-    if (!session) {
-      const url = new URL("/auth/sign-in", request.url);
-      return NextResponse.redirect(url);
-    }
+    const result = (await response.json()) as {
+      valid: boolean;
+      error?: string;
+      redirect?: string;
+      userId?: string;
+      orgId?: string;
+      orgName?: string;
+    };
 
-    const userId = session.user.id;
-
-    // Check if organization exists and user is a member
-    const [org] = await db
-      .select({
-        id: organization.id,
-        name: organization.name,
-        slug: organization.slug,
-      })
-      .from(organization)
-      .where(eq(organization.slug, workspaceSlug))
-      .limit(1);
-
-    if (!org) {
-      const url = new URL("/join", request.url);
-      url.searchParams.set("error", "Organization not found");
-      return NextResponse.redirect(url);
-    }
-
-    // Check if user is a member of this organization
-    const [membership] = await db
-      .select()
-      .from(member)
-      .where(and(eq(member.userId, userId), eq(member.organizationId, org.id)))
-      .limit(1);
-
-    if (!membership) {
-      const url = new URL("/join", request.url);
-      url.searchParams.set(
-        "error",
-        "You don't have access to this organization",
-      );
+    if (!result.valid) {
+      const redirectPath = result.redirect || "/auth/sign-in";
+      const url = new URL(redirectPath, request.url);
+      if (result.error) {
+        url.searchParams.set("error", result.error);
+      }
       return NextResponse.redirect(url);
     }
 
