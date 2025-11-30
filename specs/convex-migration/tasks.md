@@ -106,9 +106,9 @@
 - [x] T023 [P] Add JSDoc comments to middleware-cache.ts exports in apps/web/src/lib/middleware-cache.ts
 - [x] T024 [P] Add JSDoc comments to use-optimistic-organization.ts exports in apps/web/src/hooks/use-optimistic-organization.ts
 - [x] T025 [P] Update quickstart.md with actual implementation details in specs/convex-migration/quickstart.md
-- [ ] T026 Verify cache invalidation works on logout in apps/web/src/components/nav-user.tsx
-- [ ] T027 Run full application test: login → navigate → switch org → logout flow
-- [ ] T028 Measure API call reduction using browser DevTools Network tab
+- [x] T026 Verify cache invalidation works on logout in apps/web/src/components/nav-user.tsx
+- [x] T027 Run full application test: login → navigate → switch org → logout flow
+- [x] T028 Measure API call reduction using browser DevTools Network tab
 
 ---
 

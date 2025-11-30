@@ -99,7 +99,7 @@ Create a higher-order provider that fetches session, organizations, and active o
 - Convex React client (`convex/react`)
 - Better Auth client (`better-auth/react`)
 - @convex-dev/better-auth integration
-- Next.js 15 App Router
+- Next.js 16 App Router
 
 ## Risks & Mitigations
 

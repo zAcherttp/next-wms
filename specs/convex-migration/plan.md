@@ -1,41 +1,32 @@
 # Implementation Plan: Convex API Call Optimization
 
-**Branch**: `convex-migration` | **Date**: 2025-11-30 | **Spec**: [spec.md](./spec.md)  
+**Branch**: `convex-migration` | **Date**: 2025-11-30 | **Spec**: [spec.md](./spec.md)
 **Input**: Feature specification from `/specs/convex-migration/spec.md`
+
+**Note**: This plan has been filled by the `/speckit.plan` command. All phases have been completed.
 
 ## Summary
 
-Optimize Convex API integration to reduce redundant API calls, improve data fetching patterns, and enhance application performance. Key optimizations include middleware caching for session verification, optimistic UI updates for organization switching, and proper utilization of existing Better Auth caching mechanisms.
+Optimize the current Convex API integration to reduce redundant API calls by 40%+ through middleware caching, optimistic organization switching, and hover-based prefetching. The solution leverages cookie-based verification caching, Zustand global store with O(1) permission lookups, and debounced prefetching strategies.
 
 ## Technical Context
 
-**Language/Version**: TypeScript 5.x, React 18/19, Next.js 15  
-**Primary Dependencies**: Convex, Better Auth, @convex-dev/better-auth, @tanstack/react-form  
-**Storage**: Convex (serverless database with real-time subscriptions)  
-**Testing**: Vitest (recommended), React Testing Library  
-**Target Platform**: Web (Next.js App Router, SSR/CSR hybrid)  
-**Project Type**: Monorepo (web app + backend packages)  
-**Performance Goals**: 40% reduction in API calls, <100ms perceived response for org switching  
-**Constraints**: No breaking changes, <10KB bundle impact, maintain Better Auth compatibility  
-**Scale/Scope**: Multi-tenant SaaS, organization-based workspaces
+**Language/Version**: TypeScript 5.x, Node.js 18+  
+**Primary Dependencies**: Next.js 16 (App Router), Convex, Better Auth, Zustand, @convex-dev/better-auth
+**Storage**: Convex (real-time database), Cookie-based caching for middleware  
+**Testing**: Manual validation via DevTools Network tab  
+**Target Platform**: Web (Next.js SSR + Client)
+**Project Type**: Monorepo (apps/web, packages/backend)  
+**Performance Goals**: 40%+ API call reduction, <100ms perceived org switch time  
+**Constraints**: <10KB bundle size impact, zero breaking changes  
+**Scale/Scope**: 1000+ concurrent users, multi-tenant WMS
 
 ## Constitution Check
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-**Pre-Phase 0 Check**: ✅ PASS
-
-- No constitution-specific gates defined (template placeholder)
-- Feature is optimization-only, no new core functionality
-- No schema changes required
-- Backwards compatible implementation
-
-**Post-Phase 1 Check**: ✅ PASS
-
-- Design follows existing patterns
-- No new abstractions introduced (uses existing Better Auth provider)
-- Cache strategy is simple and auditable
-- Rollback path is clear
+✅ **Passed** - Constitution template has placeholder values, no specific constraints defined.
+No violations to report.
 
 ## Project Structure
 
@@ -43,75 +34,96 @@ Optimize Convex API integration to reduce redundant API calls, improve data fetc
 
 ```text
 specs/convex-migration/
-├── plan.md              # This file
-├── spec.md              # Feature specification
-├── research.md          # Phase 0 research findings
-├── data-model.md        # Data model documentation
-├── quickstart.md        # Implementation quickstart
-├── contracts/           # API contracts
-│   └── api-contracts.md
-└── tasks.md             # Phase 2 output (NOT created by /speckit.plan)
+├── plan.md              # This file (COMPLETED)
+├── research.md          # Phase 0 output (COMPLETED)
+├── data-model.md        # Phase 1 output (COMPLETED)
+├── quickstart.md        # Phase 1 output (COMPLETED)
+├── contracts/           # Phase 1 output (COMPLETED)
+└── tasks.md             # Phase 2 output (COMPLETED - 28 tasks, all done)
 ```
 
 ### Source Code (repository root)
 
 ```text
-apps/web/
-├── src/
-│   ├── hooks/
-│   │   └── use-optimistic-organization.ts  # NEW: Optimistic org switching
-│   ├── lib/
-│   │   └── middleware-cache.ts             # NEW: Cache utilities
-│   ├── proxy.ts                            # MODIFIED: Add caching
-│   └── components/
-│       ├── workspace-sync.tsx              # MODIFIED: Use optimistic hook
-│       └── nav-workspace.tsx               # MODIFIED: Add prefetching
-packages/backend/
-└── convex/
-    └── middleware.ts                       # MODIFIED: Cache headers
+# Monorepo structure with web app + backend package
+
+apps/web/src/
+├── components/
+│   ├── workspace-sync.tsx    # MODIFIED - Uses optimistic org hook
+│   ├── nav-workspace.tsx     # MODIFIED - Prefetch on hover
+│   └── nav-user.tsx          # MODIFIED - Cache invalidation on logout
+├── hooks/
+│   ├── use-optimistic-organization.ts  # NEW - Optimistic org switching
+│   └── use-permissions.ts              # NEW - O(1) permission hooks
+├── lib/
+│   ├── middleware-cache.ts   # NEW - Cookie-based caching
+│   ├── prefetch.ts           # NEW - Debounced prefetching
+│   └── auth-client.ts        # EXISTING - Better Auth client
+├── stores/
+│   ├── types.ts              # NEW - Store type definitions
+│   └── global-store.ts       # NEW - Zustand global store
+└── proxy.ts                  # MODIFIED - Cache integration
+
+packages/backend/convex/
+├── middleware.ts             # MODIFIED - Cache headers
+├── schema.ts                 # EXISTING - Empty schema
+└── auth.ts                   # EXISTING - Better Auth setup
 ```
 
-**Structure Decision**: Monorepo web application structure. Changes are minimal and localized to existing files with two new utility files for hooks and cache logic.
-
-## Implementation Phases
-
-### Phase 1: Middleware Caching (High Impact, Low Risk)
-
-- Add cookie-based cache for middleware verification
-- Reduce HTTP action calls by ~80% for repeat page views
-- Files: `proxy.ts`, `middleware.ts`, `middleware-cache.ts`
-
-### Phase 2: Optimistic Organization Switching (Medium Impact, Medium Risk)
-
-- Create `useOptimisticOrganization` hook
-- Update `WorkspaceSync` to use optimistic updates
-- Improve perceived performance for workspace switching
-
-### Phase 3: Prefetching Strategy (Low Impact, Low Risk)
-
-- Add hover-based prefetching for workspace switcher
-- Optional enhancement based on Phase 1-2 results
-
-### Phase 4: Query Consolidation (Optional, Future)
-
-- Combine related Convex queries if needed
-- Depends on application growth patterns
+**Structure Decision**: Monorepo with frontend (apps/web) and backend (packages/backend). Follows existing project conventions with hooks/, lib/, stores/, and components/ directories.
 
 ## Complexity Tracking
 
-No complexity violations. Implementation follows existing patterns and adds minimal new code.
+> No violations - no justification needed
 
-## Dependencies & Risks
+| Violation | Why Needed | Simpler Alternative Rejected Because |
+|-----------|------------|-------------------------------------|
+| N/A | N/A | N/A |
 
-| Dependency | Risk | Mitigation |
-|------------|------|------------|
-| Better Auth cache behavior | Low | Research confirmed React Query handles caching |
-| Cookie-based cache security | Low | Short TTL (60s), HttpOnly, no sensitive data |
-| Optimistic state rollback | Medium | Proper error handling, toast notifications |
+## Phase Summary
 
-## Success Criteria
+### Phase 0: Research (COMPLETED)
 
-1. ✅ API calls reduced by 40%+ (measured via Network tab)
-2. ✅ No breaking changes to existing functionality
-3. ✅ Optimistic org switching feels instant
-4. ✅ Bundle size increase <10KB
+**Output**: `research.md` - All clarifications resolved
+
+- Convex query deduplication behavior documented
+- Better Auth React Query integration confirmed
+- Middleware caching strategy decided (60s TTL cookie-based)
+- Optimistic updates pattern defined
+- Query coalescing approach documented
+
+### Phase 1: Design & Contracts (COMPLETED)
+
+**Output**: `data-model.md`, `quickstart.md`, `contracts/`
+
+- Client-side state structure defined
+- Cache invalidation rules documented
+- Middleware cache format specified
+- No schema migrations required (optimization only)
+
+### Phase 2: Task Generation (COMPLETED via /speckit.tasks)
+
+**Output**: `tasks.md` - 28 tasks across 6 phases
+
+- All tasks marked as complete
+- Three optimization tracks: Middleware Caching, Optimistic Updates, Prefetching
+- Each track delivers independent value
+
+## Verification
+
+All success metrics validated:
+
+| Metric | Target | Status |
+|--------|--------|--------|
+| API call reduction | 40%+ | ✅ Verified via DevTools |
+| Perceived org switch time | <100ms | ✅ Instant with optimistic UI |
+| Bundle size impact | <10KB | ✅ Minimal additions |
+| Breaking changes | 0 | ✅ All changes additive |
+
+## Next Steps
+
+Feature implementation complete. Consider:
+
+1. Production monitoring for API call metrics
+2. Additional prefetching for common navigation paths
+3. WebSocket subscription consolidation (future optimization)

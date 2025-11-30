@@ -4,8 +4,11 @@ import { requireActionCtx } from "@convex-dev/better-auth/utils";
 import { type BetterAuthOptions, betterAuth } from "better-auth";
 import { emailOTP, organization } from "better-auth/plugins";
 import { v } from "convex/values";
-import { sendOTPVerification } from "../email/resend/client";
-import { ac } from "../lib/permissions";
+import {
+  sendOrganizationInvitation,
+  sendOTPVerification,
+} from "../email/resend/client";
+import { ac, admin, member, owner } from "../lib/permissions";
 import { components } from "./_generated/api";
 import type { DataModel } from "./_generated/dataModel";
 import { query } from "./_generated/server";
@@ -104,8 +107,24 @@ function getBetterAuthOptions({
       convex(),
       organization({
         ac,
+        roles: {
+          owner,
+          admin,
+          member,
+        },
         dynamicAccessControl: {
           enabled: true,
+        },
+        async sendInvitationEmail(data) {
+          // Build the invitation acceptance URL
+          const invitationUrl = `${siteUrl}/auth/accept-invitation/${data.invitation.id}`;
+          await sendOrganizationInvitation(requireActionCtx(ctx), {
+            to: data.email,
+            url: invitationUrl,
+            organizationName: data.organization.name,
+            inviterName: data.inviter.user?.name ?? undefined,
+            role: data.role,
+          });
         },
       }),
       emailOTP({

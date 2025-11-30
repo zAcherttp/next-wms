@@ -1,8 +1,263 @@
 import { createAccessControl } from "better-auth/plugins/access";
+import {
+  adminAc,
+  defaultStatements,
+  memberAc,
+  ownerAc,
+} from "better-auth/plugins/organization/access";
 
+/**
+ * Permission statements for the WMS application.
+ * Each key is a resource, and the value is an array of allowed actions.
+ *
+ * Use `as const` so TypeScript can infer the type correctly.
+ */
 const statement = {
-  member: ["invite", "kick"],
-} as const;
-// as const so typescript can infer the type correctly
+  // Include default Better Auth statements for organization management
+  ...defaultStatements,
 
+  // Member management (extends defaults)
+  member: ["create", "read", "update", "delete", "invite", "kick"],
+
+  // Role management (for dynamic access control)
+  role: ["create", "read", "update", "delete"],
+
+  // Invitation management
+  invitation: ["create", "read", "cancel"],
+
+  // Settings access control
+  settings: ["profile", "security", "admin", "members", "roles"],
+
+  // Domain-specific: Inventory management
+  inventory: ["create", "read", "update", "delete"],
+
+  // Domain-specific: Warehouse/Branch management
+  warehouse: ["create", "read", "update", "delete"],
+
+  // Domain-specific: Reports
+  reports: ["view", "export"],
+} as const;
+
+/**
+ * Access control instance with all permission statements.
+ */
 export const ac = createAccessControl(statement);
+
+/**
+ * Owner role - Full access to everything
+ */
+export const owner = ac.newRole({
+  // Full role management
+  role: ["create", "read", "update", "delete"],
+  // All settings access
+  settings: ["profile", "security", "admin", "members", "roles"],
+  // Full inventory access
+  inventory: ["create", "read", "update", "delete"],
+  // Full warehouse access
+  warehouse: ["create", "read", "update", "delete"],
+  // Full reports access
+  reports: ["view", "export"],
+  // Include default owner permissions
+  ...ownerAc.statements,
+});
+
+/**
+ * Admin role - Most access except dangerous operations
+ */
+export const admin = ac.newRole({
+  // Can manage roles
+  role: ["create", "read", "update", "delete"],
+  // All settings except some admin functions
+  settings: ["profile", "security", "admin", "members", "roles"],
+  // Full inventory access
+  inventory: ["create", "read", "update", "delete"],
+  // Full warehouse access
+  warehouse: ["create", "read", "update", "delete"],
+  // Full reports access
+  reports: ["view", "export"],
+  // Include default admin permissions
+  ...adminAc.statements,
+});
+
+/**
+ * Member role - Basic access for regular users
+ */
+export const member = ac.newRole({
+  // Can view roles
+  role: ["read"],
+  // Basic settings access
+  settings: ["profile", "security"],
+  // Can read inventory
+  inventory: ["read"],
+  // Can read warehouses
+  warehouse: ["read"],
+  // Can view reports
+  reports: ["view"],
+  // Include default member permissions
+  ...memberAc.statements,
+});
+
+/**
+ * Permission display configuration for UI
+ * Maps raw permissions to user-friendly display names and groups
+ */
+export const permissionDisplayConfig = {
+  organization: {
+    label: "Organization",
+    permissions: {
+      update: {
+        label: "Update workspace settings",
+        description: "Modify workspace name, logo, and settings",
+      },
+      delete: {
+        label: "Delete workspace",
+        description: "Permanently delete the workspace",
+        dangerous: true,
+      },
+    },
+  },
+  member: {
+    label: "Members",
+    permissions: {
+      create: { label: "Add members", description: "Add new members directly" },
+      read: {
+        label: "View members",
+        description: "See member list and profiles",
+      },
+      update: {
+        label: "Update members",
+        description: "Modify member information",
+      },
+      delete: {
+        label: "Remove members",
+        description: "Remove members from workspace",
+      },
+      invite: {
+        label: "Invite members",
+        description: "Send invitation emails",
+      },
+      kick: {
+        label: "Kick members",
+        description: "Force remove members",
+        dangerous: true,
+      },
+    },
+    groups: {
+      manage: ["create", "read", "update", "delete"],
+    },
+  },
+  role: {
+    label: "Roles",
+    permissions: {
+      create: { label: "Create roles", description: "Create new custom roles" },
+      read: {
+        label: "View roles",
+        description: "See role list and permissions",
+      },
+      update: { label: "Update roles", description: "Modify role permissions" },
+      delete: { label: "Delete roles", description: "Remove custom roles" },
+    },
+    groups: {
+      manage: ["create", "update", "delete"],
+    },
+  },
+  invitation: {
+    label: "Invitations",
+    permissions: {
+      create: {
+        label: "Create invitations",
+        description: "Send new invitations",
+      },
+      read: {
+        label: "View invitations",
+        description: "See pending invitations",
+      },
+      cancel: {
+        label: "Cancel invitations",
+        description: "Revoke pending invitations",
+      },
+    },
+  },
+  settings: {
+    label: "Settings Access",
+    permissions: {
+      profile: {
+        label: "Profile settings",
+        description: "Access profile settings page",
+      },
+      security: {
+        label: "Security settings",
+        description: "Access security settings page",
+      },
+      admin: {
+        label: "Admin settings",
+        description: "Access admin settings pages",
+      },
+      members: {
+        label: "Members settings",
+        description: "Access members management page",
+      },
+      roles: {
+        label: "Roles settings",
+        description: "Access roles management page",
+      },
+    },
+  },
+  inventory: {
+    label: "Inventory",
+    permissions: {
+      create: {
+        label: "Create inventory",
+        description: "Add new inventory items",
+      },
+      read: { label: "View inventory", description: "See inventory list" },
+      update: {
+        label: "Update inventory",
+        description: "Modify inventory items",
+      },
+      delete: {
+        label: "Delete inventory",
+        description: "Remove inventory items",
+      },
+    },
+    groups: {
+      manage: ["create", "read", "update", "delete"],
+    },
+  },
+  warehouse: {
+    label: "Warehouses",
+    permissions: {
+      create: {
+        label: "Create warehouses",
+        description: "Add new warehouse/branch",
+      },
+      read: { label: "View warehouses", description: "See warehouse list" },
+      update: {
+        label: "Update warehouses",
+        description: "Modify warehouse details",
+      },
+      delete: { label: "Delete warehouses", description: "Remove warehouses" },
+    },
+    groups: {
+      manage: ["create", "read", "update", "delete"],
+    },
+  },
+  reports: {
+    label: "Reports",
+    permissions: {
+      view: { label: "View reports", description: "Access report dashboards" },
+      export: { label: "Export reports", description: "Download report data" },
+    },
+  },
+} as const;
+
+/**
+ * Type for permission statement keys
+ */
+export type PermissionResource = keyof typeof statement;
+
+/**
+ * Type for permission actions per resource
+ */
+export type PermissionAction<R extends PermissionResource> =
+  (typeof statement)[R][number];

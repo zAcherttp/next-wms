@@ -1,6 +1,11 @@
+"use client";
+
+import { ProfileForm } from "@/components/settings/profile-form";
+import { WorkspaceMembership } from "@/components/settings/workspace-membership";
+
 export default function ProfilePage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 px-4">
       <div>
         <h1 className="font-semibold text-3xl">Profile</h1>
         <p className="text-muted-foreground">
@@ -16,9 +21,8 @@ export default function ProfilePage() {
             Update your profile picture and personal details
           </p>
         </div>
-        {/* Profile fields will be implemented in next task */}
-        <div className="rounded-lg border p-4">
-          <p className="text-sm">Profile information will be displayed here</p>
+        <div className="rounded-lg border p-6">
+          <ProfileForm />
         </div>
       </div>
 
@@ -27,15 +31,10 @@ export default function ProfilePage() {
         <div>
           <h2 className="font-medium text-xl">Workspace Access</h2>
           <p className="text-muted-foreground text-sm">
-            Manage your workspace membership
+            Your membership in the current workspace
           </p>
         </div>
-        {/* Workspace access controls will be implemented in next task */}
-        <div className="rounded-lg border p-4">
-          <p className="text-sm">
-            Workspace access controls will be displayed here
-          </p>
-        </div>
+        <WorkspaceMembership />
       </div>
     </div>
   );
