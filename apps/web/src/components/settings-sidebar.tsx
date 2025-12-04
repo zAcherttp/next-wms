@@ -13,7 +13,7 @@ import {
 } from "lucide-react";
 
 import { useParams } from "next/navigation";
-import { useCallback, useEffect, useState } from "react";
+import { useMemo } from "react";
 import {
   Sidebar,
   SidebarContent,
@@ -21,7 +21,7 @@ import {
   SidebarRail,
 } from "@/components/ui/sidebar";
 import type { Permissions } from "@/hooks/use-has-permission";
-import { organization, useActiveMemberRole } from "@/lib/auth-client";
+import { selectMembership, selectStatus, useGlobalStore } from "@/stores";
 import { SettingsNavMain } from "./settings-nav-main";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
@@ -105,31 +105,47 @@ const settingsNavigation: SettingNavGroup[] = [
   },
 ];
 
+/**
+ * Check if user has all permissions for an item using O(1) store lookup
+ */
+function checkItemPermissions(
+  item: SettingNavItem,
+  hasPermission: (resource: string, action: string) => boolean,
+): boolean {
+  for (const [resource, actions] of Object.entries(item.permissions)) {
+    for (const action of actions) {
+      if (!hasPermission(resource, action)) {
+        return false;
+      }
+    }
+  }
+  return true;
+}
+
 export function SettingsSidebar({
   isMobile,
   ...props
 }: React.ComponentProps<typeof Sidebar> & { isMobile: boolean }) {
   const params = useParams<{ workspace: string }>();
   const workspace = params.workspace;
-  const { data: roleData, isPending: roleLoading } = useActiveMemberRole();
 
-  const [filteredNav, setFilteredNav] = useState<SettingNavGroup[]>([]);
-  const [isFiltering, setIsFiltering] = useState(true);
+  // Use Zustand store instead of Better Auth hook
+  const membership = useGlobalStore(selectMembership);
+  const status = useGlobalStore(selectStatus);
+  const storeHasPermission = useGlobalStore((state) => state.hasPermission);
 
-  // Check permissions and filter navigation
-  const filterNavigation = useCallback(async () => {
-    if (!roleData?.role) {
+  const isLoading = status === "loading" || status === "idle";
+
+  // O(1) permission filtering - no async, no API calls
+  const filteredNav = useMemo(() => {
+    if (!membership?.role) {
       // No role - only show personal settings (everyone has access)
-      setFilteredNav(
-        settingsNavigation
-          .map((group) => ({
-            ...group,
-            items: group.items.filter((item) => !item.isAdmin),
-          }))
-          .filter((group) => group.items.length > 0),
-      );
-      setIsFiltering(false);
-      return;
+      return settingsNavigation
+        .map((group) => ({
+          ...group,
+          items: group.items.filter((item) => !item.isAdmin),
+        }))
+        .filter((group) => group.items.length > 0);
     }
 
     const results: SettingNavGroup[] = [];
@@ -138,15 +154,9 @@ export function SettingsSidebar({
       const allowedItems: SettingNavItem[] = [];
 
       for (const item of group.items) {
-        try {
-          const result = await organization.hasPermission({
-            permissions: item.permissions,
-          });
-          if (result.data?.success) {
-            allowedItems.push(item);
-          }
-        } catch {
-          // If permission check fails, don't show the item
+        // O(1) permission check using store
+        if (checkItemPermissions(item, storeHasPermission)) {
+          allowedItems.push(item);
         }
       }
 
@@ -158,15 +168,8 @@ export function SettingsSidebar({
       }
     }
 
-    setFilteredNav(results);
-    setIsFiltering(false);
-  }, [roleData?.role]);
-
-  useEffect(() => {
-    if (!roleLoading) {
-      filterNavigation();
-    }
-  }, [roleLoading, filterNavigation]);
+    return results;
+  }, [membership?.role, storeHasPermission]);
 
   // Build full URLs with workspace
   const navWithUrls = filteredNav.map((group) => ({
@@ -189,7 +192,7 @@ export function SettingsSidebar({
       </SidebarHeader>
       <SidebarContent>
         <ScrollArea className="h-full">
-          {isFiltering || roleLoading ? (
+          {isLoading ? (
             <div className="space-y-4 p-4">
               <Skeleton className="h-4 w-20" />
               <div className="space-y-2">

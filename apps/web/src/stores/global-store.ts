@@ -33,6 +33,10 @@ interface GlobalState {
 
   // --- Switching Lock (prevent race conditions) ---
   isSwitching: boolean;
+
+  // --- Refetch Control ---
+  /** Counter incremented to trigger refetch in GlobalStateProvider */
+  refetchCounter: number;
 }
 
 interface GlobalActions {
@@ -57,6 +61,12 @@ interface GlobalActions {
   // --- Initialization ---
   initialize: (data: InitializeData) => void;
   reset: () => void;
+
+  // --- Refetch Controls ---
+  /** Request a refetch of auth data from GlobalStateProvider */
+  requestRefetch: () => void;
+  /** Internal: Acknowledge that refetch has been processed */
+  _acknowledgeRefetch: () => void;
 
   // --- Helpers ---
   getCurrentTenant: () => Tenant | null;
@@ -93,6 +103,7 @@ const initialState: GlobalState = {
   error: null,
   lastSyncAt: null,
   isSwitching: false,
+  refetchCounter: 0,
 };
 
 // ============================================================================
@@ -313,6 +324,26 @@ export const useGlobalStore = create<GlobalStore>()(
           },
 
           // ----------------------------------------------------------------
+          // REFETCH CONTROLS
+          // ----------------------------------------------------------------
+
+          requestRefetch: () => {
+            set(
+              (state) => {
+                state.refetchCounter += 1;
+                state.status = "loading";
+              },
+              false,
+              "requestRefetch",
+            );
+          },
+
+          _acknowledgeRefetch: () => {
+            // Called by GlobalStateProvider after processing refetch
+            // No state change needed, just for DevTools visibility
+          },
+
+          // ----------------------------------------------------------------
           // HELPERS
           // ----------------------------------------------------------------
 
@@ -419,6 +450,8 @@ export const selectMembership = (state: GlobalStore) => state.membership;
 export const selectStatus = (state: GlobalStore) => state.status;
 export const selectError = (state: GlobalStore) => state.error;
 export const selectIsSwitching = (state: GlobalStore) => state.isSwitching;
+export const selectRefetchCounter = (state: GlobalStore) =>
+  state.refetchCounter;
 
 /** Selector for current tenant (derived) */
 export const selectCurrentTenant = (state: GlobalStore) =>

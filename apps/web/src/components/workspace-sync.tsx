@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useOptimisticOrganization } from "@/hooks/use-optimistic-organization";
-import { useListOrganizations } from "@/lib/auth-client";
+import { selectStatus, selectTenants, useGlobalStore } from "@/stores";
 
 /**
  * Syncs the active organization based on the current workspace URL.
@@ -14,8 +14,12 @@ import { useListOrganizations } from "@/lib/auth-client";
 export function WorkspaceSync() {
   const params = useParams();
   const workspace = params.workspace as string;
-  const { data: organizations, isPending: orgsLoading } =
-    useListOrganizations();
+
+  // Use Zustand store instead of Better Auth hook
+  const tenants = useGlobalStore(selectTenants);
+  const status = useGlobalStore(selectStatus);
+  const orgsLoading = status === "loading" || status === "idle";
+
   const {
     organization: activeOrganization,
     switchOrganization,
@@ -26,14 +30,12 @@ export function WorkspaceSync() {
 
   useEffect(() => {
     // Wait for organizations to load
-    if (orgsLoading || !organizations || !workspace) return;
+    if (orgsLoading || tenants.length === 0 || !workspace) return;
 
     // Don't sync while a switch is in progress
     if (isSwitching) return;
 
-    const org = organizations.find(
-      (o: { slug: string }) => o.slug === workspace,
-    );
+    const org = tenants.find((t) => t.slug === workspace);
 
     // If workspace org doesn't exist, do nothing (proxy should handle this)
     if (!org) return;
@@ -47,11 +49,19 @@ export function WorkspaceSync() {
       lastWorkspace.current = workspace;
 
       // Use optimistic switch - provides instant UI feedback
-      switchOrganization(org);
+      // Convert Tenant to the expected Organization format
+      switchOrganization({
+        id: org.id,
+        name: org.name,
+        slug: org.slug,
+        logo: org.logo ?? null,
+        createdAt: new Date(), // Placeholder - not used for switching
+        metadata: null,
+      });
     }
   }, [
     workspace,
-    organizations,
+    tenants,
     activeOrganization,
     orgsLoading,
     isSwitching,

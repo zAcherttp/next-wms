@@ -7,11 +7,11 @@
 
 **Purpose**: Add TanStack Query with Convex adapter without breaking existing code
 
-- [ ] T001 Install @tanstack/react-query and @convex-dev/react-query in apps/web
-- [ ] T002 Create TanStack Query provider with Convex adapter in apps/web/src/providers/query-provider.tsx
-- [ ] T003 Add QueryProvider to provider tree in apps/web/src/providers/providers.tsx
-- [ ] T004 Migrate app/page.tsx from convex/react useQuery to TanStack convexQuery
-- [ ] T005 Migrate email-otp.tsx from convex/react useQuery to TanStack convexQuery
+- [x] T001 Install @tanstack/react-query and @convex-dev/react-query in apps/web
+- [x] T002 Create TanStack Query provider with Convex adapter in apps/web/src/providers/query-provider.tsx
+- [x] T003 Add QueryProvider to provider tree in apps/web/src/providers/providers.tsx
+- [x] T004 Migrate app/page.tsx from convex/react useQuery to TanStack convexQuery
+- [x] T005 Migrate email-otp.tsx from convex/react useQuery to TanStack convexQuery
 
 **Checkpoint**: TanStack Query working with Convex, existing functionality preserved
 
@@ -21,14 +21,14 @@
 
 **Purpose**: Create single fetch point for Better Auth data, sync to Zustand
 
-- [ ] T006 Create GlobalStateProvider component in apps/web/src/providers/global-state-provider.tsx
-- [ ] T007 Add Better Auth hook calls (useSession, useListOrganizations, useActiveOrganization, useActiveMemberRole) to GlobalStateProvider
-- [ ] T008 Create data mapping functions (session→user, orgs→tenants, memberRole→membership) in GlobalStateProvider
-- [ ] T009 Implement sync effect calling store.initialize() when all data ready
-- [ ] T010 Handle loading state (set store status to "loading")
-- [ ] T011 Handle error state (set store status to "error")
-- [ ] T012 Add GlobalStateProvider to provider tree (after ConvexBetterAuthProvider) in apps/web/src/providers/providers.tsx
-- [ ] T013 Create stores/index.ts barrel export in apps/web/src/stores/index.ts
+- [x] T006 Create GlobalStateProvider component in apps/web/src/providers/global-state-provider.tsx
+- [x] T007 Add Better Auth hook calls (useSession, useListOrganizations, useActiveOrganization, useActiveMemberRole) to GlobalStateProvider
+- [x] T008 Create data mapping functions (session→user, orgs→tenants, memberRole→membership) in GlobalStateProvider
+- [x] T009 Implement sync effect calling store.initialize() when all data ready
+- [x] T010 Handle loading state (set store status to "loading")
+- [x] T011 Handle error state (set store status to "error")
+- [x] T012 Add GlobalStateProvider to provider tree (after ConvexBetterAuthProvider) in apps/web/src/providers/providers.tsx
+- [x] T013 Create stores/index.ts barrel export in apps/web/src/stores/index.ts
 
 **Checkpoint**: Store initializes on app load, DevTools shows populated state
 
@@ -38,11 +38,11 @@
 
 **Purpose**: Replace async API permission checks with O(1) store lookups
 
-- [ ] T014 Update useHasPermission to use Zustand hasPermission instead of organization.hasPermission() in apps/web/src/hooks/use-has-permission.ts
-- [ ] T015 Remove async logic from useHasPermission (no more await, no checkPermission effect)
-- [ ] T016 Update usePermissions (multi-check) to use Zustand in apps/web/src/hooks/use-has-permission.ts
-- [ ] T017 Verify permission-gate.tsx works with updated useHasPermission in apps/web/src/components/permission-gate.tsx
-- [ ] T018 Verify settings layout route guard works in apps/web/src/app/(protected)/[workspace]/(settings)/settings/layout.tsx
+- [x] T014 Update useHasPermission to use Zustand hasPermission instead of organization.hasPermission() in apps/web/src/hooks/use-has-permission.ts
+- [x] T015 Remove async logic from useHasPermission (no more await, no checkPermission effect)
+- [x] T016 Update usePermissions (multi-check) to use Zustand in apps/web/src/hooks/use-has-permission.ts
+- [x] T017 Verify permission-gate.tsx works with updated useHasPermission in apps/web/src/components/permission-gate.tsx
+- [x] T018 Verify settings layout route guard works in apps/web/src/app/(protected)/[workspace]/(settings)/settings/layout.tsx
 
 **Checkpoint**: Permission checks are instant (no network calls)
 
@@ -54,21 +54,21 @@
 
 ### Core Navigation
 
-- [ ] T019 Migrate nav-user.tsx: Remove useSession, use useGlobalStore(selectUser) in apps/web/src/components/nav-user.tsx
-- [ ] T020 Migrate nav-workspace.tsx: Remove useListOrganizations/useActiveOrganization, use useGlobalStore in apps/web/src/components/nav-workspace.tsx
-- [ ] T021 Migrate workspace-sync.tsx: Remove useListOrganizations, use useGlobalStore in apps/web/src/components/workspace-sync.tsx
-- [ ] T022 Migrate sign-in.tsx: Remove useSession, use useGlobalStore in apps/web/src/components/sign-in.tsx
+- [x] T019 Migrate nav-user.tsx: Remove useSession, use useGlobalStore(selectUser) in apps/web/src/components/nav-user.tsx
+- [x] T020 Migrate nav-workspace.tsx: Remove useListOrganizations/useActiveOrganization, use useGlobalStore in apps/web/src/components/nav-workspace.tsx
+- [x] T021 Migrate workspace-sync.tsx: Remove useListOrganizations, use useGlobalStore in apps/web/src/components/workspace-sync.tsx
+- [x] T022 Migrate sign-in.tsx: Remove useSession, use useGlobalStore in apps/web/src/components/sign-in.tsx
 
 ### Settings Components
 
-- [ ] T023 Migrate settings-sidebar.tsx: Remove useActiveMemberRole, use O(1 permission filtering in apps/web/src/components/settings-sidebar.tsx
-- [ ] T024 Migrate profile-form.tsx: Remove useSession, use useGlobalStore in apps/web/src/components/settings/profile-form.tsx
-- [ ] T025 Migrate members-table.tsx: Remove useSession, use useGlobalStore in apps/web/src/components/settings/members-table.tsx
-- [ ] T026 Migrate workspace-membership.tsx: Remove useActiveMemberRole/useActiveOrganization in apps/web/src/components/settings/workspace-membership.tsx
+- [x] T023 Migrate settings-sidebar.tsx: Remove useActiveMemberRole, use O(1 permission filtering in apps/web/src/components/settings-sidebar.tsx
+- [x] T024 Migrate profile-form.tsx: Remove useSession, use useGlobalStore in apps/web/src/components/settings/profile-form.tsx
+- [x] T025 Migrate members-table.tsx: Remove useSession, use useGlobalStore in apps/web/src/components/settings/members-table.tsx
+- [x] T026 Migrate workspace-membership.tsx: Remove useActiveMemberRole/useActiveOrganization in apps/web/src/components/settings/workspace-membership.tsx
 
 ### Hooks
 
-- [ ] T027 Migrate use-optimistic-organization.ts: Remove useActiveOrganization, use useGlobalStore in apps/web/src/hooks/use-optimistic-organization.ts
+- [x] T027 Migrate use-optimistic-organization.ts: Remove useActiveOrganization, use useGlobalStore in apps/web/src/hooks/use-optimistic-organization.ts
 
 **Checkpoint**: No Better Auth hooks called outside GlobalStateProvider
 
@@ -78,12 +78,12 @@
 
 **Purpose**: Validate permissions server-side before sensitive mutations
 
-- [ ] T028 Create withPermission middleware wrapper in packages/backend/convex/lib/withPermission.ts
-- [ ] T029 Implement permission check logic (get session, lookup member role, check permission) in withPermission
-- [ ] T030 Create helper function to get user permissions from member record in packages/backend/convex/lib/permissions.ts
-- [ ] T031 Apply withPermission to member management mutations (invite, kick, updateRole) in packages/backend/convex/
-- [ ] T032 Apply withPermission to role management mutations (create, update, delete role) in packages/backend/convex/
-- [ ] T033 Add error handling for permission denied (consistent error format)
+- [x] T028 Create withPermission middleware wrapper in packages/backend/convex/lib/withPermission.ts
+- [x] T029 Implement permission check logic (get session, lookup member role, check permission) in withPermission
+- [x] T030 Create helper function to get user permissions from member record in packages/backend/convex/lib/permissions.ts
+- [x] T031 Apply withPermission to member management mutations (invite, kick, updateRole) in packages/backend/convex/
+- [x] T032 Apply withPermission to role management mutations (create, update, delete role) in packages/backend/convex/
+- [x] T033 Add error handling for permission denied (consistent error format)
 
 **Checkpoint**: Mutations reject unauthorized requests server-side
 
@@ -93,11 +93,11 @@
 
 **Purpose**: Handle org switches, refetch triggers, and state consistency
 
-- [ ] T034 Add refetch trigger on organization switch in GlobalStateProvider
-- [ ] T035 Add refetch function to store actions in apps/web/src/stores/global-store.ts
-- [ ] T036 Update useOptimisticOrganization to trigger store refetch after switch in apps/web/src/hooks/use-optimistic-organization.ts
-- [ ] T037 Add window focus refetch (optional, configurable) in apps/web/src/providers/global-state-provider.tsx
-- [ ] T038 Handle logout: call store.reset() on signOut in apps/web/src/components/nav-user.tsx
+- [x] T034 Add refetch trigger on organization switch in GlobalStateProvider
+- [x] T035 Add refetch function to store actions in apps/web/src/stores/global-store.ts
+- [x] T036 Update useOptimisticOrganization to trigger store refetch after switch in apps/web/src/hooks/use-optimistic-organization.ts
+- [x] T037 Add window focus refetch (optional, configurable) in apps/web/src/providers/global-state-provider.tsx
+- [x] T038 Handle logout: call store.reset() on signOut in apps/web/src/components/nav-user.tsx
 
 **Checkpoint**: Store stays in sync with auth state changes
 
@@ -107,11 +107,11 @@
 
 **Purpose**: Remove dead code, verify no regressions
 
-- [ ] T039 Audit: grep for direct useSession/useListOrganizations/useActiveOrganization/useActiveMemberRole usage
-- [ ] T040 Audit: grep for organization.hasPermission() usage (should be 0)
-- [ ] T041 Remove unused imports from auth-client.ts exports if possible
-- [ ] T042 Add JSDoc documentation to GlobalStateProvider
-- [ ] T043 Add JSDoc documentation to updated useHasPermission
+- [x] T039 Audit: grep for direct useSession/useListOrganizations/useActiveOrganization/useActiveMemberRole usage
+- [x] T040 Audit: grep for organization.hasPermission() usage (should be 0)
+- [x] T041 Remove unused imports from auth-client.ts exports if possible
+- [x] T042 Add JSDoc documentation to GlobalStateProvider
+- [x] T043 Add JSDoc documentation to updated useHasPermission
 - [ ] T044 Test full flow: login → dashboard → switch org → settings → all admin pages → logout
 - [ ] T045 Verify DevTools: check Network tab for API call reduction
 - [ ] T046 Verify DevTools: check Zustand store populates correctly

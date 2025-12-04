@@ -14,8 +14,9 @@
 
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
-import { organization, useActiveOrganization } from "@/lib/auth-client";
+import { organization } from "@/lib/auth-client";
 import type { Organization } from "@/lib/auth-types";
+import { selectCurrentTenant, selectStatus, useGlobalStore } from "@/stores";
 
 /**
  * State for tracking optimistic updates
@@ -75,8 +76,22 @@ export interface UseOptimisticOrganizationReturn {
  * ```
  */
 export function useOptimisticOrganization(): UseOptimisticOrganizationReturn {
-  // Server state from Better Auth
-  const { data: activeOrganization, isPending } = useActiveOrganization();
+  // Use Zustand store instead of Better Auth hook
+  const currentTenant = useGlobalStore(selectCurrentTenant);
+  const status = useGlobalStore(selectStatus);
+  const isPending = status === "loading" || status === "idle";
+
+  // Convert Tenant to Organization for compatibility
+  const activeOrganization: Organization | null = currentTenant
+    ? {
+        id: currentTenant.id,
+        name: currentTenant.name,
+        slug: currentTenant.slug,
+        logo: currentTenant.logo ?? null,
+        createdAt: new Date(), // Placeholder
+        metadata: null,
+      }
+    : null;
 
   // Local optimistic state
   const [optimisticState, setOptimisticState] = useState<OptimisticState>({
@@ -116,6 +131,9 @@ export function useOptimisticOrganization(): UseOptimisticOrganizationReturn {
 
       switchInProgressRef.current = true;
 
+      // Get store's requestRefetch action for triggering data refresh
+      const { requestRefetch } = useGlobalStore.getState();
+
       // Capture previous state for rollback
       const previousOrg = activeOrganization ?? null;
 
@@ -143,7 +161,10 @@ export function useOptimisticOrganization(): UseOptimisticOrganizationReturn {
           return;
         }
 
-        // Success - clear optimistic state (server state will take over)
+        // Success - trigger store refetch to get new membership/permissions
+        requestRefetch();
+
+        // Clear optimistic state (server state will take over after refetch)
         setOptimisticState({
           pendingOrg: null,
           previousOrg: null,
@@ -165,9 +186,7 @@ export function useOptimisticOrganization(): UseOptimisticOrganizationReturn {
       }
     },
     [activeOrganization, optimisticState.pendingOrg],
-  );
-
-  // Determine the current organization to display
+  ); // Determine the current organization to display
   // Prefer optimistic state if we're in a switching operation
   const currentOrganization =
     optimisticState.pendingOrg ?? activeOrganization ?? null;

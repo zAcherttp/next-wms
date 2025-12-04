@@ -13,7 +13,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useHasPermission } from "@/hooks/use-has-permission";
-import { organization, useSession } from "@/lib/auth-client";
+import { organization } from "@/lib/auth-client";
+import { selectUser, useGlobalStore } from "@/stores";
 import { MemberActions, type MemberData } from "./member-actions";
 
 interface MembersTableProps {
@@ -26,7 +27,8 @@ interface MembersTableProps {
  * Includes actions for managing members based on permissions.
  */
 export function MembersTable({ onMemberUpdated }: MembersTableProps) {
-  const { data: session } = useSession();
+  // Use Zustand store instead of Better Auth hook
+  const user = useGlobalStore(selectUser);
   const [members, setMembers] = useState<MemberData[]>([]);
   const [isPending, setIsPending] = useState(true);
   const [refreshKey, setRefreshKey] = useState(0);
@@ -124,7 +126,7 @@ export function MembersTable({ onMemberUpdated }: MembersTableProps) {
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">
                       {member.user.name ?? "Unnamed"}
-                      {member.userId === session?.user?.id && (
+                      {member.userId === user?.id && (
                         <span className="ml-2 text-muted-foreground text-xs">
                           (You)
                         </span>
@@ -144,7 +146,7 @@ export function MembersTable({ onMemberUpdated }: MembersTableProps) {
               <TableCell className="text-right">
                 <MemberActions
                   member={member}
-                  currentUserId={session?.user?.id}
+                  currentUserId={user?.id}
                   canChangeRole={canUpdateRole}
                   canKick={canKick}
                   onMemberUpdated={handleMemberUpdated}

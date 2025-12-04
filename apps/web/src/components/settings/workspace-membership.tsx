@@ -4,7 +4,12 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useActiveMemberRole, useActiveOrganization } from "@/lib/auth-client";
+import {
+  selectCurrentTenant,
+  selectMembership,
+  selectStatus,
+  useGlobalStore,
+} from "@/stores";
 
 interface WorkspaceMembershipProps {
   /** Additional class name */
@@ -16,10 +21,12 @@ interface WorkspaceMembershipProps {
  * including their role and membership status.
  */
 export function WorkspaceMembership({ className }: WorkspaceMembershipProps) {
-  const { data: org, isPending: orgLoading } = useActiveOrganization();
-  const { data: roleData, isPending: roleLoading } = useActiveMemberRole();
+  // Use Zustand store instead of Better Auth hooks
+  const currentTenant = useGlobalStore(selectCurrentTenant);
+  const membership = useGlobalStore(selectMembership);
+  const status = useGlobalStore(selectStatus);
 
-  const isLoading = orgLoading || roleLoading;
+  const isLoading = status === "loading" || status === "idle";
 
   if (isLoading) {
     return (
@@ -37,7 +44,7 @@ export function WorkspaceMembership({ className }: WorkspaceMembershipProps) {
     );
   }
 
-  if (!org) {
+  if (!currentTenant) {
     return (
       <Card className={className}>
         <CardContent className="p-4">
@@ -49,7 +56,7 @@ export function WorkspaceMembership({ className }: WorkspaceMembershipProps) {
     );
   }
 
-  const roleName = roleData?.role ?? "member";
+  const roleName = membership?.role?.role ?? "member";
   const roleColor = getRoleColor(roleName);
 
   return (
@@ -57,13 +64,16 @@ export function WorkspaceMembership({ className }: WorkspaceMembershipProps) {
       <CardContent className="p-4">
         <div className="flex items-center gap-4">
           <Avatar className="size-12">
-            <AvatarImage src={org.logo ?? undefined} alt={org.name} />
+            <AvatarImage
+              src={currentTenant.logo ?? undefined}
+              alt={currentTenant.name}
+            />
             <AvatarFallback className="text-lg">
-              {org.name.slice(0, 2).toUpperCase()}
+              {currentTenant.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate font-medium">{org.name}</h3>
+            <h3 className="truncate font-medium">{currentTenant.name}</h3>
             <div className="mt-1 flex items-center gap-2">
               <Badge variant={roleColor as "default" | "secondary" | "outline"}>
                 {formatRoleName(roleName)}

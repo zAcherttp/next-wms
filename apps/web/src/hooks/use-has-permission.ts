@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
-import { organization, useActiveMemberRole } from "@/lib/auth-client";
+import { useMemo } from "react";
+import { organization } from "@/lib/auth-client";
+import { selectMembership, selectStatus, useGlobalStore } from "@/stores";
 
 /**
  * Permission check structure matching Better Auth's hasPermission API.
@@ -23,19 +24,19 @@ export type Permissions = Record<string, string[]>;
 export interface UseHasPermissionReturn {
   /** Whether the user has the specified permission(s) */
   hasPermission: boolean;
-  /** Whether the permission check is in progress */
+  /** Whether the permission check is in progress (store not ready) */
   isLoading: boolean;
-  /** Error that occurred during permission check */
+  /** Error that occurred during permission check (always null with O(1) lookup) */
   error: Error | null;
-  /** Manually refetch the permission check */
+  /** Manually refetch - no-op for O(1) lookup, kept for API compatibility */
   refetch: () => Promise<void>;
 }
 
 /**
- * Hook to check if the current user has specific permissions in their active organization.
+ * Hook to check if the current user has specific permissions.
  *
- * Uses Better Auth's `hasPermission` API for server-side validation.
- * For client-side checks without server round-trip, use `checkRolePermission` directly.
+ * Uses O(1) Zustand store lookup instead of async API calls.
+ * The GlobalStateProvider initializes the permission set on app load.
  *
  * @param permissions - Object mapping resources to required actions
  * @param options - Additional options
@@ -60,49 +61,39 @@ export function useHasPermission(
   options: { enabled?: boolean } = {},
 ): UseHasPermissionReturn {
   const { enabled = true } = options;
-  const { data: roleData, isPending: roleLoading } = useActiveMemberRole();
 
-  const [hasPermission, setHasPermission] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
+  // Get O(1) permission check function from store
+  const storeHasPermission = useGlobalStore((state) => state.hasPermission);
+  const status = useGlobalStore(selectStatus);
+  const membership = useGlobalStore(selectMembership);
 
-  const checkPermission = useCallback(async () => {
-    if (!enabled || !roleData?.role) {
-      setIsLoading(false);
-      setHasPermission(false);
-      return;
+  const isLoading = status === "loading" || status === "idle";
+
+  // O(1) permission check - no async, no API calls
+  const hasPermission = useMemo(() => {
+    if (!enabled || isLoading || !membership) {
+      return false;
     }
 
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await organization.hasPermission({
-        permissions,
-      });
-
-      setHasPermission(result.data?.success ?? false);
-    } catch (err) {
-      setError(
-        err instanceof Error ? err : new Error("Permission check failed"),
-      );
-      setHasPermission(false);
-    } finally {
-      setIsLoading(false);
+    // Check all required permissions
+    for (const [resource, actions] of Object.entries(permissions)) {
+      for (const action of actions) {
+        if (!storeHasPermission(resource, action)) {
+          return false;
+        }
+      }
     }
-  }, [enabled, roleData?.role, permissions]);
-
-  useEffect(() => {
-    if (!roleLoading) {
-      checkPermission();
-    }
-  }, [roleLoading, checkPermission]);
+    return true;
+  }, [enabled, isLoading, membership, permissions, storeHasPermission]);
 
   return {
     hasPermission,
-    isLoading: isLoading || roleLoading,
-    error,
-    refetch: checkPermission,
+    isLoading,
+    error: null, // O(1) lookup never throws
+    refetch: async () => {
+      // No-op - O(1) lookup doesn't need refetch
+      // Store is automatically updated by GlobalStateProvider
+    },
   };
 }
 
@@ -132,6 +123,8 @@ export function checkRolePermission(
 /**
  * Hook for checking multiple permissions and getting a permission map.
  *
+ * Uses O(1) Zustand store lookup for instant permission checks.
+ *
  * @param permissionChecks - Object with named permission checks
  * @returns Object with same keys but boolean values indicating permission status
  *
@@ -151,39 +144,42 @@ export function checkRolePermission(
 export function usePermissions<T extends Record<string, Permissions>>(
   permissionChecks: T,
 ): { [K in keyof T]: boolean } & { isLoading: boolean } {
-  const { data: roleData, isPending: roleLoading } = useActiveMemberRole();
-  const [permissions, setPermissions] = useState<Record<string, boolean>>({});
-  const [isLoading, setIsLoading] = useState(true);
+  // Get O(1) permission check function from store
+  const storeHasPermission = useGlobalStore((state) => state.hasPermission);
+  const status = useGlobalStore(selectStatus);
+  const membership = useGlobalStore(selectMembership);
 
-  useEffect(() => {
-    if (roleLoading || !roleData?.role) {
-      setIsLoading(true);
-      return;
+  const isLoading = status === "loading" || status === "idle";
+
+  // O(1) permission checks - no async, no API calls
+  const permissions = useMemo(() => {
+    const results: Record<string, boolean> = {};
+
+    if (isLoading || !membership) {
+      // Return all false while loading
+      for (const key of Object.keys(permissionChecks)) {
+        results[key] = false;
+      }
+      return results;
     }
 
-    const checkAll = async () => {
-      setIsLoading(true);
-      const results: Record<string, boolean> = {};
-
-      await Promise.all(
-        Object.entries(permissionChecks).map(async ([key, perms]) => {
-          try {
-            const result = await organization.hasPermission({
-              permissions: perms,
-            });
-            results[key] = result.data?.success ?? false;
-          } catch {
-            results[key] = false;
+    for (const [key, perms] of Object.entries(permissionChecks)) {
+      // Check if all permissions for this key are satisfied
+      let hasAll = true;
+      for (const [resource, actions] of Object.entries(perms)) {
+        for (const action of actions) {
+          if (!storeHasPermission(resource, action)) {
+            hasAll = false;
+            break;
           }
-        }),
-      );
+        }
+        if (!hasAll) break;
+      }
+      results[key] = hasAll;
+    }
 
-      setPermissions(results);
-      setIsLoading(false);
-    };
-
-    checkAll();
-  }, [roleData?.role, roleLoading, permissionChecks]);
+    return results;
+  }, [isLoading, membership, permissionChecks, storeHasPermission]);
 
   return {
     ...permissions,

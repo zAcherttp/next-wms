@@ -14,12 +14,13 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
-import { authClient } from "@/lib/auth-client";
+import { selectTenants, useGlobalStore } from "@/stores";
 
 export default function Page() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { data: userOrganizations } = authClient.useListOrganizations();
+  // Use Zustand store instead of Better Auth hook
+  const tenants = useGlobalStore(selectTenants);
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   // Handle error messages from middleware redirects
@@ -54,7 +55,7 @@ export default function Page() {
               Select an Organization to start
             </span>
             <div className="flex flex-col space-y-2 pb-4">
-              {userOrganizations?.map((org) => (
+              {tenants?.map((org) => (
                 <Item key={org.id} variant="outline">
                   <ItemMedia>
                     <Avatar className="h-8 w-8 rounded">

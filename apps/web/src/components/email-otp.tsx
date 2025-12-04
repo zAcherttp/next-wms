@@ -1,6 +1,7 @@
+import { convexQuery } from "@convex-dev/react-query";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@tss-wms/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
@@ -50,11 +51,12 @@ export default function EmailOTP() {
   // Refs
   const otpInputRef = useRef<HTMLInputElement>(null);
 
-  // Queries - use Convex query with skip pattern
-  const emailVerificationStatus = useQuery(
-    api.auth.getEmailVerificationStatus,
-    email ? { email } : "skip",
-  );
+  // Queries - use TanStack Query with Convex adapter
+  // enabled: false when email is empty (skip pattern)
+  const { data: emailVerificationStatus } = useQuery({
+    ...convexQuery(api.auth.getEmailVerificationStatus, { email }),
+    enabled: email.length > 0,
+  });
 
   // Handlers
   const sendOtp = useCallback(

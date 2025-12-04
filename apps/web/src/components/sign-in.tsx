@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "@/lib/auth-client";
+import { selectStatus, selectUser, useGlobalStore } from "@/stores";
 import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
 
@@ -10,7 +10,10 @@ interface SignInProps {
 }
 
 export default function SignIn(props: SignInProps) {
-  const { data: session, isPending } = useSession();
+  // Use Zustand store instead of Better Auth hook
+  const user = useGlobalStore(selectUser);
+  const status = useGlobalStore(selectStatus);
+  const isPending = status === "loading" || status === "idle";
 
   if (isPending) {
     return (
@@ -22,7 +25,7 @@ export default function SignIn(props: SignInProps) {
 
   return (
     <Button className={props.className} variant="outline" asChild>
-      {session ? (
+      {user ? (
         <Link href="/dashboard">Go to Dashboard</Link>
       ) : (
         <Link href="/auth/sign-in">Sign In</Link>

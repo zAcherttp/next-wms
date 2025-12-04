@@ -6,7 +6,8 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { authClient, useSession } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth-client";
+import { selectStatus, selectUser, useGlobalStore } from "@/stores";
 import { AvatarUploadField } from "./avatar-upload-field";
 
 interface ProfileFormValues {
@@ -25,7 +26,11 @@ interface ProfileFormProps {
  * Integrates with Better Auth for profile updates.
  */
 export function ProfileForm({ className }: ProfileFormProps) {
-  const { data: session, isPending: sessionLoading } = useSession();
+  // Use Zustand store instead of Better Auth hook
+  const user = useGlobalStore(selectUser);
+  const status = useGlobalStore(selectStatus);
+  const sessionLoading = status === "loading" || status === "idle";
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValues, setFormValues] = useState<ProfileFormValues>({
     name: "",
@@ -34,25 +39,25 @@ export function ProfileForm({ className }: ProfileFormProps) {
   });
   const [hasChanges, setHasChanges] = useState(false);
 
-  // Initialize form values from session
+  // Initialize form values from store user
   useEffect(() => {
-    if (session?.user) {
+    if (user) {
       setFormValues({
-        name: session.user.name ?? "",
-        email: session.user.email ?? "",
-        image: session.user.image ?? null,
+        name: user.name ?? "",
+        email: user.email ?? "",
+        image: user.image ?? null,
       });
     }
-  }, [session?.user]);
+  }, [user]);
 
   // Track changes
   const handleNameChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const newName = e.target.value;
       setFormValues((prev) => ({ ...prev, name: newName }));
-      setHasChanges(newName !== (session?.user?.name ?? ""));
+      setHasChanges(newName !== (user?.name ?? ""));
     },
-    [session?.user?.name],
+    [user?.name],
   );
 
   const handleAvatarUpdated = useCallback((url: string | null) => {

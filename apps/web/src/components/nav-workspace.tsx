@@ -23,9 +23,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useActiveOrganization, useListOrganizations } from "@/lib/auth-client";
-import type { Organization } from "@/lib/auth-types";
 import { usePrefetchWorkspace } from "@/lib/prefetch";
+import {
+  selectCurrentTenant,
+  selectStatus,
+  selectTenants,
+  useGlobalStore,
+} from "@/stores";
 import { OrganizationDialog } from "./organization-dialog";
 import { Kbd } from "./ui/kbd";
 import { ScrollArea } from "./ui/scroll-area";
@@ -34,11 +38,17 @@ import { Skeleton } from "./ui/skeleton";
 export function NavWorkspace() {
   const router = useRouter();
   const { isMobile } = useSidebar();
-  const { data: organizations, isPending } = useListOrganizations();
-  const { data: activeOrganization } = useActiveOrganization();
+
+  // Use Zustand store instead of Better Auth hooks
+  const tenants = useGlobalStore(selectTenants);
+  const currentTenant = useGlobalStore(selectCurrentTenant);
+  const status = useGlobalStore(selectStatus);
   const prefetch = usePrefetchWorkspace();
 
   const [open, setOpen] = useState(false);
+
+  const isPending = status === "loading" || status === "idle";
+  const hasOrganizations = tenants.length > 0;
 
   const handleOrgSwitch = (orgSlug: string) => {
     // Just navigate - WorkspaceSync will handle setting active org
@@ -51,8 +61,8 @@ export function NavWorkspace() {
   };
 
   const handleSettingsClick = () => {
-    if (activeOrganization) {
-      router.push(`/${activeOrganization.slug}/settings`);
+    if (currentTenant) {
+      router.push(`/${currentTenant.slug}/settings`);
     } else {
       // this should not happen, but just in case
       toast.error("No active organization to view settings for.");
@@ -63,21 +73,21 @@ export function NavWorkspace() {
     <>
       <SidebarMenu>
         <SidebarMenuItem>
-          {organizations ? (
+          {hasOrganizations ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  {activeOrganization ? (
+                  {currentTenant ? (
                     <>
                       <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                        {activeOrganization.logo ? (
+                        {currentTenant.logo ? (
                           <Avatar className="h-4 w-4 rounded">
                             <AvatarImage
-                              src={activeOrganization.logo}
-                              alt={activeOrganization.name}
+                              src={currentTenant.logo}
+                              alt={currentTenant.name}
                             />
                             <AvatarFallback>
                               <Building2 className="size-2.5" />
@@ -89,10 +99,10 @@ export function NavWorkspace() {
                       </div>
                       <div className="grid flex-1 text-left text-sm leading-tight">
                         <span className="truncate font-medium">
-                          {activeOrganization.name}
+                          {currentTenant.name}
                         </span>
                         <span className="truncate text-xs">
-                          {activeOrganization.slug}
+                          {currentTenant.slug}
                         </span>
                       </div>
                     </>
@@ -135,36 +145,34 @@ export function NavWorkspace() {
                   <DropdownMenuPortal>
                     <DropdownMenuSubContent>
                       <ScrollArea className="h-32">
-                        {organizations.map(
-                          (org: Organization, index: number) => (
-                            <DropdownMenuItem
-                              key={org.id}
-                              onClick={() => handleOrgSwitch(org.slug)}
-                              onMouseEnter={() => handleOrgHover(org.slug)}
-                              className="gap-2 p-2"
-                            >
-                              <div className="flex size-6 items-center justify-center rounded-md border">
-                                {org.logo ? (
-                                  <Avatar className="h-3.5 w-3.5 shrink-0 rounded">
-                                    <AvatarImage
-                                      src={org.logo}
-                                      alt={org.name}
-                                    />
-                                    <AvatarFallback>
-                                      <Building2 className="size-2.5" />
-                                    </AvatarFallback>
-                                  </Avatar>
-                                ) : (
-                                  <Building2 className="size-3.5 shrink-0" />
-                                )}
-                              </div>
-                              {org.name}
-                              <DropdownMenuShortcut>
-                                <Kbd>{index + 1}</Kbd>
-                              </DropdownMenuShortcut>
-                            </DropdownMenuItem>
-                          ),
-                        )}
+                        {tenants.map((tenant, index: number) => (
+                          <DropdownMenuItem
+                            key={tenant.id}
+                            onClick={() => handleOrgSwitch(tenant.slug)}
+                            onMouseEnter={() => handleOrgHover(tenant.slug)}
+                            className="gap-2 p-2"
+                          >
+                            <div className="flex size-6 items-center justify-center rounded-md border">
+                              {tenant.logo ? (
+                                <Avatar className="h-3.5 w-3.5 shrink-0 rounded">
+                                  <AvatarImage
+                                    src={tenant.logo}
+                                    alt={tenant.name}
+                                  />
+                                  <AvatarFallback>
+                                    <Building2 className="size-2.5" />
+                                  </AvatarFallback>
+                                </Avatar>
+                              ) : (
+                                <Building2 className="size-3.5 shrink-0" />
+                              )}
+                            </div>
+                            {tenant.name}
+                            <DropdownMenuShortcut>
+                              <Kbd>{index + 1}</Kbd>
+                            </DropdownMenuShortcut>
+                          </DropdownMenuItem>
+                        ))}
                       </ScrollArea>
                       <DropdownMenuSeparator />
                       <DropdownMenuItem

@@ -1,11 +1,14 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@tss-wms/backend/convex/_generated/api";
-import { useQuery } from "convex/react";
 import SignIn from "@/components/sign-in";
 
 export default function Home() {
-  const healthCheck = useQuery(api.healthCheck.get);
+  const { data: healthCheck, isLoading } = useQuery(
+    convexQuery(api.healthCheck.get, {}),
+  );
 
   return (
     <div className="mx-auto flex min-h-screen max-w-xl flex-col content-center p-4">
@@ -16,7 +19,7 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <div
                 className={`h-2 w-2 rounded-full ${
-                  healthCheck === undefined
+                  isLoading
                     ? "bg-yellow-500"
                     : healthCheck
                       ? "bg-green-500"
@@ -24,7 +27,7 @@ export default function Home() {
                 }`}
               />
               <span className="text-muted-foreground text-sm">
-                {healthCheck === undefined
+                {isLoading
                   ? "Checking..."
                   : healthCheck
                     ? "Connected"
