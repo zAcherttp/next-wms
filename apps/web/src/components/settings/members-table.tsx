@@ -31,7 +31,7 @@ export function MembersTable({ onMemberUpdated }: MembersTableProps) {
   const user = useGlobalStore(selectUser);
   const [members, setMembers] = useState<MemberData[]>([]);
   const [isPending, setIsPending] = useState(true);
-  const [refreshKey, setRefreshKey] = useState(0);
+  const [_refreshKey, setRefreshKey] = useState(0);
 
   const { hasPermission: canUpdateRole } = useHasPermission({
     member: ["update"],
@@ -67,7 +67,7 @@ export function MembersTable({ onMemberUpdated }: MembersTableProps) {
     };
 
     fetchMembers();
-  }, [refreshKey]);
+  }, []);
 
   const handleMemberUpdated = () => {
     setRefreshKey((k) => k + 1);

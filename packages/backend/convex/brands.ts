@@ -1,9 +1,18 @@
+import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 
-export const getAllBrands = query({
-  handler: async ({ db }) => {
-    return await db.query("brands").collect();
+export const getPaginatedBrands = query({
+  args: {
+    paginationOtps: paginationOptsValidator,
+  },
+  handler: async ({ db }, args) => {
+    const brands = await db
+      .query("brands")
+      .order("desc")
+      .paginate(args.paginationOtps);
+    return brands;
   },
 });
 
@@ -29,7 +38,7 @@ export const deleteBrand = mutation({
   },
   handler: async (ctx, args) => {
     const { brandId } = args;
-    await ctx.db.delete(brandId);
+    await ctx.db.delete(brandId as Id<"brands">);
     return { success: true };
   },
 });

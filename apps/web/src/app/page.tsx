@@ -6,9 +6,7 @@ import { api } from "@tss-wms/backend/convex/_generated/api";
 import SignIn from "@/components/sign-in";
 
 export default function Home() {
-  const { data: healthCheck, isLoading } = useQuery(
-    convexQuery(api.healthCheck.get, {}),
-  );
+  const { data, isPending } = useQuery(convexQuery(api.healthCheck.get, {}));
 
   return (
     <div className="mx-auto flex min-h-screen max-w-xl flex-col content-center p-4">
@@ -19,17 +17,17 @@ export default function Home() {
             <div className="flex items-center gap-2">
               <div
                 className={`h-2 w-2 rounded-full ${
-                  isLoading
+                  isPending
                     ? "bg-yellow-500"
-                    : healthCheck
+                    : data?.message === "OK"
                       ? "bg-green-500"
                       : "bg-red-500"
                 }`}
               />
               <span className="text-muted-foreground text-sm">
-                {isLoading
+                {isPending
                   ? "Checking..."
-                  : healthCheck
+                  : data?.message === "OK"
                     ? "Connected"
                     : "Disconnected"}
               </span>

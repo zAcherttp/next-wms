@@ -26,7 +26,7 @@ export default function SignIn(props: SignInProps) {
   return (
     <Button className={props.className} variant="outline" asChild>
       {user ? (
-        <Link href="/dashboard">Go to Dashboard</Link>
+        <Link href={"/auth/onboarding"}>Go to Dashboard</Link>
       ) : (
         <Link href="/auth/sign-in">Sign In</Link>
       )}

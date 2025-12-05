@@ -1,6 +1,7 @@
 "use client";
 
 import { Shield, UserCog, Users } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { PermissionGate } from "@/components/permission-gate";
 import { InviteUserDialog } from "@/components/settings/invite-user-dialog";
@@ -46,7 +47,7 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <Button variant="outline" className="w-full" asChild>
-                <Link href="admin/members">Manage Members</Link>
+                <Link href={"admin/members" as Route}>Manage Members</Link>
               </Button>
             </CardContent>
           </Card>
@@ -66,7 +67,7 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <Button variant="outline" className="w-full" asChild>
-                <Link href="admin/roles">Manage Roles</Link>
+                <Link href={"admin/roles" as Route}>Manage Roles</Link>
               </Button>
             </CardContent>
           </Card>
@@ -86,7 +87,9 @@ export default function AdminPage() {
             </CardHeader>
             <CardContent>
               <Button variant="outline" className="w-full" asChild>
-                <Link href="admin/assignments">Manage Assignments</Link>
+                <Link href={"admin/assignments" as Route}>
+                  Manage Assignments
+                </Link>
               </Button>
             </CardContent>
           </Card>

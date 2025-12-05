@@ -1,22 +1,12 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
-import {
-  useActiveMemberRole,
-  useActiveOrganization,
-  useListOrganizations,
-  useSession,
-} from "@/lib/auth-client";
+import { useEffect } from "react";
 import type {
   ActiveOrganization,
   Organization,
   Session,
 } from "@/lib/auth-types";
-import {
-  selectRefetchCounter,
-  selectStatus,
-  useGlobalStore,
-} from "@/stores/global-store";
+import { useGlobalStore } from "@/stores/global-store";
 import type {
   MemberRole,
   Membership,
@@ -90,207 +80,86 @@ function createMembership(
 // GLOBAL STATE PROVIDER
 // ============================================================================
 
+export interface InitialAuthState {
+  authenticated: boolean;
+  session: Session;
+  organizations: Organization[];
+  activeOrg: ActiveOrganization | null;
+  memberRole: {
+    role: string;
+    permissions?: Record<string, string[]>;
+  } | null;
+}
+
 interface GlobalStateProviderProps {
   children: React.ReactNode;
-  /** Enable refetch on window focus (default: true in development) */
-  refetchOnWindowFocus?: boolean;
+  /**  Pre-fetched auth state from server */
+  initialAuthState?: InitialAuthState | null;
 }
 
 /**
- * GlobalStateProvider - Single source of truth for Better Auth data
+ * GlobalStateProvider - Single source of truth for auth data
  *
- * This component:
- * 1. Calls all Better Auth hooks ONCE at the top level
- * 2. Maps the data to our store types
- * 3. Syncs to Zustand store via store.initialize()
- * 4. Watches for refetch triggers from store.requestRefetch()
- * 5. Optionally refetches on window focus
- * 6. All child components use the Zustand store instead of hooks
+ * Changes from previous implementation:
+ * 1. Receives pre-fetched auth state from server (no hooks!)
+ * 2. Initializes store with atomic data
+ * 3. Simplified to <50 lines
+ *
+ * For real-time updates, use useAuthSubscriptions() hook in child components
  */
 export function GlobalStateProvider({
   children,
-  refetchOnWindowFocus = process.env.NODE_ENV === "development",
+  initialAuthState,
 }: GlobalStateProviderProps) {
-  // -------------------------------------------------------------------------
-  // BETTER AUTH HOOKS (called ONCE here)
-  // -------------------------------------------------------------------------
-  const {
-    data: session,
-    isPending: sessionLoading,
-    error: sessionError,
-    refetch: refetchSession,
-  } = useSession();
-  const {
-    data: organizations,
-    isPending: orgsLoading,
-    error: orgsError,
-    refetch: refetchOrgs,
-  } = useListOrganizations();
-  const {
-    data: activeOrg,
-    isPending: activeOrgLoading,
-    error: activeOrgError,
-    refetch: refetchActiveOrg,
-  } = useActiveOrganization();
-  const {
-    data: memberRole,
-    isPending: memberRoleLoading,
-    error: memberRoleError,
-    refetch: refetchMemberRole,
-  } = useActiveMemberRole();
-
   // -------------------------------------------------------------------------
   // STORE ACTIONS
   // -------------------------------------------------------------------------
   const initialize = useGlobalStore((state) => state.initialize);
   const reset = useGlobalStore((state) => state.reset);
-  const _setStatus = useGlobalStore((state) => state._setStatus);
-  const _acknowledgeRefetch = useGlobalStore(
-    (state) => state._acknowledgeRefetch,
-  );
-  const refetchCounter = useGlobalStore(selectRefetchCounter);
-
-  // Track last processed refetch counter
-  const lastRefetchCounterRef = useRef(0);
+  const setStatus = useGlobalStore((state) => state._setStatus);
 
   // -------------------------------------------------------------------------
-  // REFETCH FUNCTION
-  // -------------------------------------------------------------------------
-  const refetchAll = useCallback(async () => {
-    _setStatus("loading");
-    await Promise.all([
-      refetchSession(),
-      refetchOrgs(),
-      refetchActiveOrg(),
-      refetchMemberRole(),
-    ]);
-    _acknowledgeRefetch();
-  }, [
-    refetchSession,
-    refetchOrgs,
-    refetchActiveOrg,
-    refetchMemberRole,
-    _setStatus,
-    _acknowledgeRefetch,
-  ]);
-
-  // -------------------------------------------------------------------------
-  // COMPUTED STATE
-  // -------------------------------------------------------------------------
-  const isLoading =
-    sessionLoading || orgsLoading || activeOrgLoading || memberRoleLoading;
-  const hasError =
-    sessionError || orgsError || activeOrgError || memberRoleError;
-  const isAuthenticated = !!session?.user;
-
-  // -------------------------------------------------------------------------
-  // REFETCH TRIGGER EFFECT - Watch for store.requestRefetch()
+  // INITIALIZATION EFFECT - Initialize store with pre-fetched auth state
   // -------------------------------------------------------------------------
   useEffect(() => {
-    if (refetchCounter > lastRefetchCounterRef.current) {
-      lastRefetchCounterRef.current = refetchCounter;
-      refetchAll();
-    }
-  }, [refetchCounter, refetchAll]);
-
-  // -------------------------------------------------------------------------
-  // WINDOW FOCUS REFETCH EFFECT
-  // -------------------------------------------------------------------------
-  useEffect(() => {
-    if (!refetchOnWindowFocus) return;
-
-    const handleFocus = () => {
-      // Only refetch if authenticated and not already loading
-      if (isAuthenticated && !isLoading) {
-        refetchAll();
-      }
-    };
-
-    window.addEventListener("focus", handleFocus);
-    return () => window.removeEventListener("focus", handleFocus);
-  }, [refetchOnWindowFocus, isAuthenticated, isLoading, refetchAll]);
-
-  // -------------------------------------------------------------------------
-  // SYNC EFFECT - Initialize store when all data is ready
-  // -------------------------------------------------------------------------
-  useEffect(() => {
-    // Handle errors
-    if (hasError) {
-      const errorMessage =
-        sessionError?.message ||
-        orgsError?.message ||
-        activeOrgError?.message ||
-        memberRoleError?.message ||
-        "Failed to load auth state";
-      _setStatus("error", errorMessage);
-      return;
-    }
-
-    // If loading, set status (only if not already loading)
-    if (isLoading) {
-      return;
-    }
-
-    // Not authenticated - reset store
-    if (!isAuthenticated) {
+    if (!initialAuthState) {
       reset();
+      setStatus("ready", null);
       return;
     }
 
-    // All data ready - initialize store
-    if (session) {
-      const user = mapSessionToUser(session);
-      const tenants = organizations
-        ? mapOrganizationsToTenants(organizations)
-        : [];
-
-      // Build membership if we have active org and member role
-      let membership: Membership | undefined;
-      if (activeOrg && memberRole) {
-        // Get permissions and member ID from active org's member data
-        // Better Auth stores this on the organization response
-        type ActiveOrgWithMember = ActiveOrganization & {
-          activeMember?: {
-            id?: string;
-            permissions?: Record<string, string[]>;
-          };
-        };
-
-        const activeMember = (activeOrg as ActiveOrgWithMember)?.activeMember;
-        const permissions = activeMember?.permissions ?? {};
-        const memberId = activeMember?.id ?? session.user.id; // Fallback to user ID
-
-        const role = mapMemberRole(memberRole.role, permissions);
-        membership = createMembership(
-          memberId,
-          role,
-          activeOrg.createdAt ? new Date(activeOrg.createdAt) : undefined,
-        );
-      }
-
-      initialize({
-        user,
-        tenants,
-        currentTenantId: activeOrg?.id,
-        membership,
-      });
+    if (!initialAuthState.authenticated) {
+      reset();
+      setStatus("ready", null);
+      return;
     }
-  }, [
-    isLoading,
-    hasError,
-    isAuthenticated,
-    session,
-    organizations,
-    activeOrg,
-    memberRole,
-    initialize,
-    reset,
-    _setStatus,
-    sessionError,
-    orgsError,
-    activeOrgError,
-    memberRoleError,
-  ]);
+
+    const { session, organizations, activeOrg, memberRole } = initialAuthState;
+    const orgList = Array.isArray(organizations) ? organizations : [];
+
+    // Map data to store types
+    const user = mapSessionToUser(session);
+    const tenants =
+      orgList.length > 0 ? mapOrganizationsToTenants(orgList) : [];
+
+    // Build membership if we have active org and member role
+    let membership: Membership | undefined;
+    if (activeOrg && memberRole) {
+      const permissions = memberRole.permissions ?? {};
+      const memberId = session.user.id;
+
+      const role = mapMemberRole(memberRole.role, permissions);
+      membership = createMembership(memberId, role);
+    }
+
+    // Initialize store with pre-fetched data
+    initialize({
+      user,
+      tenants,
+      currentTenantId: activeOrg?.id,
+      membership,
+    });
+  }, [initialAuthState, initialize, reset, setStatus]);
 
   // -------------------------------------------------------------------------
   // RENDER
@@ -314,7 +183,7 @@ export function GlobalStateLoadingGuard({
   children,
   fallback,
 }: GlobalStateLoadingGuardProps) {
-  const status = useGlobalStore(selectStatus);
+  const status = useGlobalStore((state) => state.status);
 
   if (status === "loading" || status === "idle") {
     return fallback ?? null;
@@ -331,7 +200,7 @@ export function GlobalStateLoadingGuard({
  * Hook to check if the global state is ready
  */
 export function useGlobalStateReady(): boolean {
-  const status = useGlobalStore(selectStatus);
+  const status = useGlobalStore((state) => state.status);
   return status === "ready";
 }
 

@@ -15,6 +15,7 @@ import type * as http from "../http.js";
 import type * as lib_withPermission from "../lib/withPermission.js";
 import type * as members from "../members.js";
 import type * as middleware from "../middleware.js";
+import type * as organizations from "../organizations.js";
 import type * as privateData from "../privateData.js";
 
 import type {
@@ -31,6 +32,7 @@ declare const fullApi: ApiFromModules<{
   "lib/withPermission": typeof lib_withPermission;
   members: typeof members;
   middleware: typeof middleware;
+  organizations: typeof organizations;
   privateData: typeof privateData;
 }>;
 

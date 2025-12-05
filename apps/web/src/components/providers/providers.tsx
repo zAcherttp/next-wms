@@ -2,14 +2,25 @@
 
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ConvexClientProvider } from "@/components/providers/convex-client-providers";
-import { GlobalStateProvider } from "@/components/providers/global-state-provider";
+import {
+  GlobalStateProvider,
+  type InitialAuthState,
+} from "@/components/providers/global-state-provider";
 import { Toaster } from "../ui/sonner";
 import { ThemeProvider } from "./theme-provider";
 
-export default function Providers({ children }: { children: React.ReactNode }) {
+interface ProvidersProps {
+  children: React.ReactNode;
+  initialAuthState?: InitialAuthState | null;
+}
+
+export default function Providers({
+  children,
+  initialAuthState,
+}: ProvidersProps) {
   return (
     <ConvexClientProvider>
-      <GlobalStateProvider>
+      <GlobalStateProvider initialAuthState={initialAuthState}>
         <ThemeProvider
           attribute="class"
           defaultTheme="system"
