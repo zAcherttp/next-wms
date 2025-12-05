@@ -9,4 +9,7 @@ export default defineSchema({
   })
     .index("organizationId", ["organizationId"])
     .index("isActive", ["isActive"]),
+  numbers: defineTable({
+    value: v.number(),
+  }),
 });

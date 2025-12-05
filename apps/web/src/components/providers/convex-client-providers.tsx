@@ -1,17 +1,13 @@
 "use client";
 
-import { ConvexBetterAuthProvider } from "@convex-dev/better-auth/react";
 import { ConvexQueryClient } from "@convex-dev/react-query";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
-import { ConvexReactClient } from "convex/react";
+import { ConvexProvider, ConvexReactClient } from "convex/react";
 import type { ReactNode } from "react";
-import { authClient } from "@/lib/auth-client";
 
 const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL ?? "", {
   verbose: false,
-  // pause queries until the user is authenticated (optional)
-  expectAuth: true,
 });
 
 // Create ConvexQueryClient once at module level
@@ -52,7 +48,7 @@ convexQueryClient.connect(queryClient);
  */
 export function ConvexClientProvider({ children }: { children: ReactNode }) {
   return (
-    <ConvexBetterAuthProvider client={convex} authClient={authClient}>
+    <ConvexProvider client={convex}>
       <QueryClientProvider client={queryClient}>
         {children}
         {process.env.NODE_ENV === "development" && (
@@ -62,6 +58,6 @@ export function ConvexClientProvider({ children }: { children: ReactNode }) {
           />
         )}
       </QueryClientProvider>
-    </ConvexBetterAuthProvider>
+    </ConvexProvider>
   );
 }

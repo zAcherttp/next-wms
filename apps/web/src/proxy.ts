@@ -5,7 +5,7 @@ import {
   getCachedVerification,
 } from "@/lib/middleware-cache";
 
-const CONVEX_SITE_URL = process.env.NEXT_PUBLIC_CONVEX_SITE_URL || "";
+const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -34,40 +34,74 @@ export async function proxy(request: NextRequest) {
   // Check for cached verification result first
   const cachedResult = getCachedVerification(request, workspaceSlug);
   if (cachedResult) {
-    // Cache hit - skip HTTP call to Convex
+    // Cache hit - skip API calls
     return NextResponse.next();
   }
 
-  try {
-    // Cache miss - call Convex HTTP action to verify access
-    const verifyUrl = new URL("/api/middleware/verify", CONVEX_SITE_URL);
-    verifyUrl.searchParams.set("workspace", workspaceSlug);
+  const cookie = request.headers.get("cookie") || "";
 
-    const response = await fetch(verifyUrl.toString(), {
-      method: "GET",
-      headers: {
-        // Forward cookies for session validation
-        cookie: request.headers.get("cookie") || "",
-      },
+  try {
+    // 1. Check session with Better Auth
+    const sessionResponse = await fetch(`${APP_URL}/api/auth/get-session`, {
+      headers: { cookie },
+      cache: "no-store",
     });
 
-    const result = (await response.json()) as {
-      valid: boolean;
-      error?: string;
-      redirect?: string;
-      userId?: string;
-      orgId?: string;
-      orgName?: string;
-    };
+    if (!sessionResponse.ok) {
+      const url = new URL("/auth/sign-in", request.url);
+      url.searchParams.set("error", "Not authenticated");
+      const redirectResponse = NextResponse.redirect(url);
+      redirectResponse.headers.set(
+        "Set-Cookie",
+        createClearCacheCookieHeader(workspaceSlug),
+      );
+      return redirectResponse;
+    }
 
-    if (!result.valid) {
-      const redirectPath = result.redirect || "/auth/sign-in";
-      const url = new URL(redirectPath, request.url);
-      if (result.error) {
-        url.searchParams.set("error", result.error);
-      }
+    const session = await sessionResponse.json();
 
-      // Clear any stale cache on auth failure
+    if (!session || !session.user) {
+      const url = new URL("/auth/sign-in", request.url);
+      const redirectResponse = NextResponse.redirect(url);
+      redirectResponse.headers.set(
+        "Set-Cookie",
+        createClearCacheCookieHeader(workspaceSlug),
+      );
+      return redirectResponse;
+    }
+
+    const userId = session.user.id;
+
+    // 2. Fetch user's organizations
+    const orgsResponse = await fetch(`${APP_URL}/api/auth/organization/list`, {
+      headers: { cookie },
+      cache: "no-store",
+    });
+
+    if (!orgsResponse.ok) {
+      const url = new URL("/join", request.url);
+      url.searchParams.set("error", "Failed to fetch organizations");
+      const redirectResponse = NextResponse.redirect(url);
+      redirectResponse.headers.set(
+        "Set-Cookie",
+        createClearCacheCookieHeader(workspaceSlug),
+      );
+      return redirectResponse;
+    }
+
+    const organizations = await orgsResponse.json();
+
+    // 3. Check if user has access to the requested workspace
+    const org = Array.isArray(organizations)
+      ? organizations.find((o: { slug?: string }) => o.slug === workspaceSlug)
+      : null;
+
+    if (!org) {
+      const url = new URL("/join", request.url);
+      url.searchParams.set(
+        "error",
+        "You don't have access to this organization",
+      );
       const redirectResponse = NextResponse.redirect(url);
       redirectResponse.headers.set(
         "Set-Cookie",
@@ -80,17 +114,10 @@ export async function proxy(request: NextRequest) {
     const nextResponse = NextResponse.next();
 
     // Set cache cookie for subsequent requests
-    if (result.userId && result.orgId && result.orgName) {
-      nextResponse.headers.set(
-        "Set-Cookie",
-        createCacheCookieHeader(
-          workspaceSlug,
-          result.userId,
-          result.orgId,
-          result.orgName,
-        ),
-      );
-    }
+    nextResponse.headers.set(
+      "Set-Cookie",
+      createCacheCookieHeader(workspaceSlug, userId, org.id, org.name),
+    );
 
     return nextResponse;
   } catch (error) {

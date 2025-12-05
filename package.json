@@ -11,10 +11,9 @@
     "build": "turbo build",
     "check": "biome check --write .",
     "check-types": "turbo check-types",
-    "dev": "turbo dev",
-    "dev:native": "turbo -F native dev",
+    "dev": "turbo -F web dev -F @wms/backend db:app:dev",
     "dev:web": "turbo -F web dev",
-    "dev:backend": "turbo -F @tss-wms/backend dev"
+    "dev:backend": "turbo -F @wms/backend db:app:dev"
   },
   "dependencies": {
     "dotenv": "^17.2.3",
@@ -24,7 +23,7 @@
     "@biomejs/biome": "^2.3.8",
     "@types/node": "^22.19.1",
     "tsdown": "^0.15.12",
-    "turbo": "^2.6.2"
+    "turbo": "^2.6.3"
   },
   "packageManager": "pnpm@10.24.0",
   "pnpm": {

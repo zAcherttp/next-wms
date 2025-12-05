@@ -1,7 +1,7 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@tss-wms/backend/convex/_generated/api";
+import { api } from "@wms/backend/convex/_generated/api";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { motion } from "motion/react";
 import { useRouter } from "next/navigation";

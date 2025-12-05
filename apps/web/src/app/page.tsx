@@ -2,7 +2,7 @@
 
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
-import { api } from "@tss-wms/backend/convex/_generated/api";
+import { api } from "@wms/backend/convex/_generated/api";
 import SignIn from "@/components/sign-in";
 
 export default function Home() {
