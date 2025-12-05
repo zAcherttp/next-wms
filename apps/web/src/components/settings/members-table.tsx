@@ -14,7 +14,7 @@ import {
 } from "@/components/ui/table";
 import { useHasPermission } from "@/hooks/use-has-permission";
 import { organization } from "@/lib/auth-client";
-import { selectUser, useGlobalStore } from "@/stores";
+import { useSession } from "@/lib/auth-queries";
 import { MemberActions, type MemberData } from "./member-actions";
 
 interface MembersTableProps {
@@ -27,8 +27,9 @@ interface MembersTableProps {
  * Includes actions for managing members based on permissions.
  */
 export function MembersTable({ onMemberUpdated }: MembersTableProps) {
-  // Use Zustand store instead of Better Auth hook
-  const user = useGlobalStore(selectUser);
+  // Use React Query hooks instead of Zustand store
+  const { data: session } = useSession();
+  const user = session?.user ?? null;
   const [members, setMembers] = useState<MemberData[]>([]);
   const [isPending, setIsPending] = useState(true);
   const [_refreshKey, setRefreshKey] = useState(0);

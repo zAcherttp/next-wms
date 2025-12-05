@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { selectStatus, selectUser, useGlobalStore } from "@/stores";
+import { useSession } from "@/lib/auth-queries";
 import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
 
@@ -10,10 +10,9 @@ interface SignInProps {
 }
 
 export default function SignIn(props: SignInProps) {
-  // Use Zustand store instead of Better Auth hook
-  const user = useGlobalStore(selectUser);
-  const status = useGlobalStore(selectStatus);
-  const isPending = status === "loading" || status === "idle";
+  // Use React Query hooks instead of Zustand store
+  const { data: session, isPending } = useSession();
+  const user = session?.user ?? null;
 
   if (isPending) {
     return (

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient } from "@/lib/auth-client";
-import { selectStatus, selectUser, useGlobalStore } from "@/stores";
+import { useSession } from "@/lib/auth-queries";
 import { AvatarUploadField } from "./avatar-upload-field";
 
 interface ProfileFormValues {
@@ -26,10 +26,10 @@ interface ProfileFormProps {
  * Integrates with Better Auth for profile updates.
  */
 export function ProfileForm({ className }: ProfileFormProps) {
-  // Use Zustand store instead of Better Auth hook
-  const user = useGlobalStore(selectUser);
-  const status = useGlobalStore(selectStatus);
-  const sessionLoading = status === "loading" || status === "idle";
+  // Use React Query hooks instead of Zustand store
+  const { data: session, isPending } = useSession();
+  const user = session?.user ?? null;
+  const sessionLoading = isPending;
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formValues, setFormValues] = useState<ProfileFormValues>({

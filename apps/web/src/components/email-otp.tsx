@@ -1,7 +1,4 @@
-import { convexQuery } from "@convex-dev/react-query";
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@wms/backend/convex/_generated/api";
 import { REGEXP_ONLY_DIGITS } from "input-otp";
 import { motion } from "motion/react";
 import { useRouter } from "next/navigation";
@@ -38,6 +35,12 @@ const INITIAL_COUNTDOWN = 60;
 
 type Step = "email" | "otp";
 
+interface EmailVerificationStatus {
+  valid: boolean;
+  verified?: boolean;
+  message?: string;
+}
+
 export default function EmailOTP() {
   const router = useRouter();
 
@@ -50,13 +53,6 @@ export default function EmailOTP() {
 
   // Refs
   const otpInputRef = useRef<HTMLInputElement>(null);
-
-  // Queries - use TanStack Query with Convex adapter
-  // enabled: false when email is empty (skip pattern)
-  const { data: emailVerificationStatus } = useQuery({
-    ...convexQuery(api.auth.getEmailVerificationStatus, { email }),
-    enabled: email.length > 0,
-  });
 
   // Handlers
   const sendOtp = useCallback(
@@ -81,29 +77,24 @@ export default function EmailOTP() {
     [email],
   );
 
-  const validateEmail = useCallback(
-    async (value: string) => {
-      const parseResult = EMAIL_SCHEMA.safeParse(value);
-      if (!parseResult.success) {
-        return {
-          fields: {
-            email: { message: parseResult.error.issues.at(-1)?.message },
-          },
-        };
-      }
+  const validateEmail = useCallback(async (value: string) => {
+    const parseResult = EMAIL_SCHEMA.safeParse(value);
+    if (!parseResult.success) {
+      return {
+        fields: {
+          email: { message: parseResult.error.issues.at(-1)?.message },
+        },
+      };
+    }
 
-      // emailVerificationStatus is reactively updated when email changes
-      // Check the current status
-      if (emailVerificationStatus === undefined) {
-        // Query is still loading or skipped
-        return {
-          fields: {
-            email: { message: "Validating email..." },
-          },
-        };
-      }
+    // Fetch email status directly to get fresh data
+    try {
+      const res = await fetch(
+        `/api/auth/email-status?email=${encodeURIComponent(value)}`,
+      );
+      const status: EmailVerificationStatus = await res.json();
 
-      if (!emailVerificationStatus?.valid) {
+      if (!status.valid) {
         return {
           fields: {
             email: { message: "Account doesn't exist" },
@@ -111,7 +102,7 @@ export default function EmailOTP() {
         };
       }
 
-      if (emailVerificationStatus.verified) {
+      if (status.verified) {
         return {
           fields: {
             email: { message: "Email already verified" },
@@ -120,9 +111,14 @@ export default function EmailOTP() {
       }
 
       return null;
-    },
-    [emailVerificationStatus],
-  );
+    } catch {
+      return {
+        fields: {
+          email: { message: "Failed to validate email" },
+        },
+      };
+    }
+  }, []);
 
   const handleEmailSubmit = useCallback(async () => {
     startTransition(async () => {

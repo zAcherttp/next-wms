@@ -19,23 +19,21 @@ import {
   useSidebar,
 } from "@/components/ui/sidebar";
 import { signOut } from "@/lib/auth-client";
-import { selectStatus, selectUser, useGlobalStore } from "@/stores";
+import { useAuthActions, useSession } from "@/lib/auth-queries";
 import { Skeleton } from "./ui/skeleton";
 
 export function NavUser() {
-  // Use Zustand store instead of Better Auth hook
-  const user = useGlobalStore(selectUser);
-  const status = useGlobalStore(selectStatus);
-  const reset = useGlobalStore((state) => state.reset);
+  // Use React Query hooks instead of Zustand store
+  const { data: session, isPending } = useSession();
+  const { invalidateAll } = useAuthActions();
+  const user = session?.user ?? null;
 
   const router = useRouter();
   const { isMobile } = useSidebar();
 
-  const isPending = status === "loading" || status === "idle";
-
   const handleLogOut = async () => {
-    // Reset store on logout
-    reset();
+    // Invalidate all auth queries on logout
+    await invalidateAll();
     signOut({
       fetchOptions: {
         onSuccess: () => {

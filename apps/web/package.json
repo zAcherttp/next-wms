@@ -27,6 +27,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "convex": "catalog:",
+    "drizzle-orm": "^0.45.0",
     "immer": "^11.0.1",
     "input-otp": "^1.4.2",
     "js-cookie": "^3.0.5",

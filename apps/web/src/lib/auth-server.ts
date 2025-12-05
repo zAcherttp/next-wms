@@ -1,108 +1,140 @@
-import { headers } from "next/headers";
+import { cookies } from "next/headers";
+
+// ============================================================================
+// TYPES
+// ============================================================================
+
+export interface ServerSession {
+  user: {
+    id: string;
+    name: string;
+    email: string;
+    image: string | null;
+  };
+}
+
+export interface ServerOrganization {
+  id: string;
+  name: string;
+  slug: string | null;
+  logo: string | null;
+  createdAt: string;
+  metadata: unknown;
+}
+
+export interface ServerMember {
+  id: string;
+  userId: string;
+  organizationId: string;
+  role: {
+    role: string;
+    permissions: Record<string, string[]>;
+  };
+}
+
+export interface ServerActiveOrganization extends ServerOrganization {
+  activeMember: ServerMember;
+}
+
+// ============================================================================
+// SERVER-SIDE AUTH FUNCTIONS
+// ============================================================================
+
+const SITE_URL = process.env.SITE_URL || "http://localhost:3000";
 
 /**
- * Server-side function to fetch complete auth state
- * Should be called from layout or server component
- *
- * Fetches:
- * - Current user session
- * - User's organizations
- * - Active organization
- * - Current member role and permissions
- *
- * @returns Auth state object or null if not authenticated
+ * Get session from server-side
  */
-export async function fetchAuthState() {
+export async function getServerSession(): Promise<ServerSession | null> {
   try {
-    const headersList = await headers();
+    const cookieStore = await cookies();
+    const cookieHeader = cookieStore.toString();
 
-    // Build base URL from request headers (fallback to env/localhost)
-    const host = headersList.get("host") ?? "localhost:3000";
-    const proto = headersList.get("x-forwarded-proto") ?? "http";
-    const origin = `${proto}://${host}`;
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || origin;
-
-    const cookie = headersList.get("cookie") || "";
-
-    // Fetch session from Better Auth API
-    // Prefer get-session; fall back to session for compatibility
-    let sessionResponse = await fetch(`${baseUrl}/api/auth/get-session`, {
-      headers: { cookie },
+    const response = await fetch(`${SITE_URL}/api/auth/get-session`, {
+      headers: {
+        cookie: cookieHeader,
+      },
       cache: "no-store",
     });
 
-    if (sessionResponse.status === 404) {
-      sessionResponse = await fetch(`${baseUrl}/api/auth/session`, {
-        headers: { cookie },
-        cache: "no-store",
-      });
-    }
+    if (!response.ok) return null;
 
-    if (!sessionResponse.ok) {
-      return null;
-    }
-
-    const session = await sessionResponse.json();
-
-    // If not authenticated, return null
-    if (!session || !session.user) {
-      return null;
-    }
-
-    // Fetch organizations list (best-effort)
-    let organizations: unknown = [];
-    try {
-      const orgRes = await fetch(`${baseUrl}/api/auth/organization/list`, {
-        headers: { cookie },
-        cache: "no-store",
-      });
-      if (orgRes.ok) {
-        organizations = await orgRes.json();
-      }
-    } catch (error) {
-      console.error("[Auth] Failed to fetch organizations:", error);
-    }
-
-    // Attempt to derive active organization from session or org list
-    const sessionActiveOrg =
-      typeof session === "object" && session && "activeOrganization" in session
-        ? (session as { activeOrganization?: unknown }).activeOrganization
-        : undefined;
-
-    const activeOrg =
-      sessionActiveOrg ??
-      (Array.isArray(organizations) && organizations.length > 0
-        ? organizations[0]
-        : null);
-
-    // Member role not yet available via these endpoints; keep null for now
-    const memberRole = null;
-
-    return {
-      authenticated: true,
-      session,
-      organizations,
-      activeOrg,
-      memberRole,
-    };
+    const data = await response.json();
+    return data?.user ? data : null;
   } catch (error) {
-    console.error("[Auth] Failed to fetch auth state:", error);
+    console.error("Failed to get server session:", error);
     return null;
   }
 }
 
 /**
- * Server action to refresh auth state
- * Can be called from client components when needed
- *
- * Usage:
- * "use client";
- * import { refreshAuthState } from "@/lib/auth-server";
- *
- * const result = await refreshAuthState();
+ * Get active organization with member details from server-side
  */
-export async function refreshAuthState() {
-  "use server";
+export async function getServerActiveOrganization(): Promise<ServerActiveOrganization | null> {
+  try {
+    const cookieStore = await cookies();
+    const cookieHeader = cookieStore.toString();
 
-  return fetchAuthState();
+    const response = await fetch(
+      `${SITE_URL}/api/auth/organization/get-full-organization`,
+      {
+        headers: {
+          cookie: cookieHeader,
+        },
+        cache: "no-store",
+      },
+    );
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    return data;
+  } catch (error) {
+    console.error("Failed to get server active organization:", error);
+    return null;
+  }
+}
+
+/**
+ * Build permission set for O(1) lookup
+ */
+export function buildPermissionSet(
+  permissions: Record<string, string[]> | undefined,
+): Set<string> {
+  const set = new Set<string>();
+  if (!permissions) return set;
+  for (const [resource, actions] of Object.entries(permissions)) {
+    for (const action of actions) {
+      set.add(`${resource}:${action}`);
+    }
+  }
+  return set;
+}
+
+/**
+ * Check if user has permission
+ */
+export function hasPermission(
+  permissionSet: Set<string>,
+  resource: string,
+  action: string,
+): boolean {
+  return permissionSet.has(`${resource}:${action}`);
+}
+
+/**
+ * Check if user has all required permissions
+ */
+export function hasAllPermissions(
+  permissionSet: Set<string>,
+  permissions: Record<string, string[]>,
+): boolean {
+  for (const [resource, actions] of Object.entries(permissions)) {
+    for (const action of actions) {
+      if (!permissionSet.has(`${resource}:${action}`)) {
+        return false;
+      }
+    }
+  }
+  return true;
 }

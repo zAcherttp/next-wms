@@ -2,16 +2,19 @@
 
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { authClient } from "@/lib/auth-client";
+import {
+  useActiveOrganization,
+  useOrganizations,
+  useSession,
+} from "@/lib/auth-queries";
 
 export default function Page() {
   const router = useRouter();
-  const { data: session, isPending: isPendingSession } =
-    authClient.useSession();
+  const { data: session, isPending: isPendingSession } = useSession();
   const { data: userOrganizations, isPending: isPendingOrganizations } =
-    authClient.useListOrganizations();
+    useOrganizations();
   const { data: activeOrganization, isPending: isPendingActiveOrganization } =
-    authClient.useActiveOrganization();
+    useActiveOrganization();
 
   useEffect(() => {
     // Wait for all data to load

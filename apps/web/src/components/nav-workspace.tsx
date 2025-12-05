@@ -23,13 +23,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { useActiveOrganization, useOrganizations } from "@/lib/auth-queries";
 import { usePrefetchWorkspace } from "@/lib/prefetch";
-import {
-  selectCurrentTenant,
-  selectStatus,
-  selectTenants,
-  useGlobalStore,
-} from "@/stores";
 import { OrganizationDialog } from "./organization-dialog";
 import { Kbd } from "./ui/kbd";
 import { ScrollArea } from "./ui/scroll-area";
@@ -39,15 +34,22 @@ export function NavWorkspace() {
   const router = useRouter();
   const { isMobile } = useSidebar();
 
-  // Use Zustand store instead of Better Auth hooks
-  const tenants = useGlobalStore(selectTenants);
-  const currentTenant = useGlobalStore(selectCurrentTenant);
-  const status = useGlobalStore(selectStatus);
+  // Use React Query hooks instead of Zustand store
+  const { data: organizations, isPending } = useOrganizations();
+  const { data: activeOrg } = useActiveOrganization();
+  const tenants = organizations ?? [];
+  const currentTenant = activeOrg
+    ? {
+        id: activeOrg.id,
+        name: activeOrg.name,
+        slug: activeOrg.slug ?? "",
+        logo: activeOrg.logo ?? null,
+      }
+    : null;
   const prefetch = usePrefetchWorkspace();
 
   const [open, setOpen] = useState(false);
 
-  const isPending = status === "loading" || status === "idle";
   const hasOrganizations = tenants.length > 0;
 
   const handleOrgSwitch = (orgSlug: string) => {

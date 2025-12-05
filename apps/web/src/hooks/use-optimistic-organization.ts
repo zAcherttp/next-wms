@@ -7,26 +7,26 @@
  * instant visual feedback while the API call completes in the background.
  *
  * State Transitions:
- * IDLE → SWITCHING → CONFIRMED (success)
- *              ↓
- *           ERROR → IDLE (rollback)
+ * IDLE -> SWITCHING -> CONFIRMED (success)
+ *              |
+ *           ERROR -> IDLE (rollback)
  */
 
 import { useCallback, useRef, useState } from "react";
 import { toast } from "sonner";
 import { organization } from "@/lib/auth-client";
+import { useActiveOrganization, useAuthActions } from "@/lib/auth-queries";
 import type { Organization } from "@/lib/auth-types";
-import { selectCurrentTenant, selectStatus, useGlobalStore } from "@/stores";
 
 /**
  * State for tracking optimistic updates
  */
 interface OptimisticState {
-  /** The organization we're optimistically switching to */
+  /** The organization we are optimistically switching to */
   pendingOrg: Organization | null;
   /** The previous organization for rollback */
   previousOrg: Organization | null;
-  /** Whether we're in the middle of a switch */
+  /** Whether we are in the middle of a switch */
   isSwitching: boolean;
 }
 
@@ -56,40 +56,21 @@ export interface UseOptimisticOrganizationReturn {
  * Provides instant UI updates when switching organizations, with automatic
  * rollback on error. The hook combines the server state from Better Auth
  * with local optimistic state.
- *
- * @example
- * ```tsx
- * function WorkspaceSwitcher() {
- *   const { organization, isOptimistic, switchOrganization } = useOptimisticOrganization();
- *
- *   const handleSwitch = async (org: Organization) => {
- *     await switchOrganization(org);
- *     // UI already updated optimistically
- *   };
- *
- *   return (
- *     <div className={isOptimistic ? "opacity-75" : ""}>
- *       {organization?.name}
- *     </div>
- *   );
- * }
- * ```
  */
 export function useOptimisticOrganization(): UseOptimisticOrganizationReturn {
-  // Use Zustand store instead of Better Auth hook
-  const currentTenant = useGlobalStore(selectCurrentTenant);
-  const status = useGlobalStore(selectStatus);
-  const isPending = status === "loading" || status === "idle";
+  // Use React Query hooks instead of Zustand store
+  const { data: activeOrgData, isPending } = useActiveOrganization();
+  const { invalidateAll } = useAuthActions();
 
-  // Convert Tenant to Organization for compatibility
-  const activeOrganization: Organization | null = currentTenant
+  // Convert full org data to Organization type for compatibility
+  const activeOrganization: Organization | null = activeOrgData
     ? {
-        id: currentTenant.id,
-        name: currentTenant.name,
-        slug: currentTenant.slug,
-        logo: currentTenant.logo ?? null,
-        createdAt: new Date(), // Placeholder
-        metadata: null,
+        id: activeOrgData.id,
+        name: activeOrgData.name,
+        slug: activeOrgData.slug ?? null,
+        logo: activeOrgData.logo ?? null,
+        createdAt: new Date(activeOrgData.createdAt),
+        metadata: activeOrgData.metadata ?? null,
       }
     : null;
 
@@ -124,15 +105,12 @@ export function useOptimisticOrganization(): UseOptimisticOrganizationReturn {
         return;
       }
 
-      // Don't switch if already on this org
+      // Do not switch if already on this org
       if (activeOrganization?.id === org.id && !optimisticState.pendingOrg) {
         return;
       }
 
       switchInProgressRef.current = true;
-
-      // Get store's requestRefetch action for triggering data refresh
-      const { requestRefetch } = useGlobalStore.getState();
 
       // Capture previous state for rollback
       const previousOrg = activeOrganization ?? null;
@@ -161,8 +139,8 @@ export function useOptimisticOrganization(): UseOptimisticOrganizationReturn {
           return;
         }
 
-        // Success - trigger store refetch to get new membership/permissions
-        requestRefetch();
+        // Success - trigger React Query refetch to get new membership/permissions
+        await invalidateAll();
 
         // Clear optimistic state (server state will take over after refetch)
         setOptimisticState({
@@ -185,13 +163,15 @@ export function useOptimisticOrganization(): UseOptimisticOrganizationReturn {
         switchInProgressRef.current = false;
       }
     },
-    [activeOrganization, optimisticState.pendingOrg],
-  ); // Determine the current organization to display
-  // Prefer optimistic state if we're in a switching operation
+    [activeOrganization, optimisticState.pendingOrg, invalidateAll],
+  );
+
+  // Determine the current organization to display
+  // Prefer optimistic state if we are in a switching operation
   const currentOrganization =
     optimisticState.pendingOrg ?? activeOrganization ?? null;
 
-  // We're optimistic if we have a pending org that differs from server state
+  // We are optimistic if we have a pending org that differs from server state
   const isOptimistic =
     optimisticState.pendingOrg !== null &&
     optimisticState.pendingOrg.id !== activeOrganization?.id;

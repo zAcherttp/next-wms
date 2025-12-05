@@ -7,13 +7,7 @@ import * as schema from "./schema";
  * Uses the AUTH_DATABASE_URL environment variable
  */
 function createDb() {
-  const connectionString = process.env.AUTH_DATABASE_URL;
-
-  if (!connectionString) {
-    throw new Error(
-      "AUTH_DATABASE_URL environment variable is required for auth database connection",
-    );
-  }
+  const connectionString = process.env.AUTH_DATABASE_URL || "";
 
   const sql = neon(connectionString);
   return drizzle({ client: sql, schema });

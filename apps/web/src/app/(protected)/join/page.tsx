@@ -14,13 +14,14 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
-import { selectTenants, useGlobalStore } from "@/stores";
+import { useOrganizations } from "@/lib/auth-queries";
 
 export default function Page() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Use Zustand store instead of Better Auth hook
-  const tenants = useGlobalStore(selectTenants);
+  // Use React Query hooks instead of Zustand store
+  const { data: organizations } = useOrganizations();
+  const tenants = organizations ?? [];
   const [showCreateForm, setShowCreateForm] = useState(false);
 
   // Handle error messages from middleware redirects

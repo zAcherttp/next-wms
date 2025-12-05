@@ -3,7 +3,7 @@
 import { useParams } from "next/navigation";
 import { useEffect, useRef } from "react";
 import { useOptimisticOrganization } from "@/hooks/use-optimistic-organization";
-import { selectStatus, selectTenants, useGlobalStore } from "@/stores";
+import { useOrganizations } from "@/lib/auth-queries";
 
 /**
  * Syncs the active organization based on the current workspace URL.
@@ -15,10 +15,9 @@ export function WorkspaceSync() {
   const params = useParams();
   const workspace = params.workspace as string;
 
-  // Use Zustand store instead of Better Auth hook
-  const tenants = useGlobalStore(selectTenants);
-  const status = useGlobalStore(selectStatus);
-  const orgsLoading = status === "loading" || status === "idle";
+  // Use React Query hooks instead of Zustand store
+  const { data: organizations, isPending: orgsLoading } = useOrganizations();
+  const tenants = organizations ?? [];
 
   const {
     organization: activeOrganization,

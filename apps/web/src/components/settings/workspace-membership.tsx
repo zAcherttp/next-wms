@@ -4,12 +4,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  selectCurrentTenant,
-  selectMembership,
-  selectStatus,
-  useGlobalStore,
-} from "@/stores";
+import { useActiveOrganization } from "@/lib/auth-queries";
 
 interface WorkspaceMembershipProps {
   /** Additional class name */
@@ -21,12 +16,12 @@ interface WorkspaceMembershipProps {
  * including their role and membership status.
  */
 export function WorkspaceMembership({ className }: WorkspaceMembershipProps) {
-  // Use Zustand store instead of Better Auth hooks
-  const currentTenant = useGlobalStore(selectCurrentTenant);
-  const membership = useGlobalStore(selectMembership);
-  const status = useGlobalStore(selectStatus);
+  // Use React Query hooks instead of Zustand store
+  const { data: activeOrg, isPending } = useActiveOrganization();
 
-  const isLoading = status === "loading" || status === "idle";
+  // @ts-expect-error - activeMember structure varies
+  const membership = activeOrg?.activeMember;
+  const isLoading = isPending;
 
   if (isLoading) {
     return (
@@ -44,7 +39,7 @@ export function WorkspaceMembership({ className }: WorkspaceMembershipProps) {
     );
   }
 
-  if (!currentTenant) {
+  if (!activeOrg) {
     return (
       <Card className={className}>
         <CardContent className="p-4">
@@ -65,15 +60,15 @@ export function WorkspaceMembership({ className }: WorkspaceMembershipProps) {
         <div className="flex items-center gap-4">
           <Avatar className="size-12">
             <AvatarImage
-              src={currentTenant.logo ?? undefined}
-              alt={currentTenant.name}
+              src={activeOrg.logo ?? undefined}
+              alt={activeOrg.name}
             />
             <AvatarFallback className="text-lg">
-              {currentTenant.name.slice(0, 2).toUpperCase()}
+              {activeOrg.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
           <div className="min-w-0 flex-1">
-            <h3 className="truncate font-medium">{currentTenant.name}</h3>
+            <h3 className="truncate font-medium">{activeOrg.name}</h3>
             <div className="mt-1 flex items-center gap-2">
               <Badge variant={roleColor as "default" | "secondary" | "outline"}>
                 {formatRoleName(roleName)}

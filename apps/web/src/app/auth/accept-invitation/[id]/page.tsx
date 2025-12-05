@@ -11,7 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { organization, useSession } from "@/lib/auth-client";
+import { organization } from "@/lib/auth-client";
+import { useSession } from "@/lib/auth-queries";
 
 type InvitationStatus =
   | "loading"

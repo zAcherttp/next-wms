@@ -20,8 +20,7 @@ import {
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
-import type { Permissions } from "@/hooks/use-has-permission";
-import { selectMembership, selectStatus, useGlobalStore } from "@/stores";
+import type { Permissions } from "@/lib/auth-queries";
 import { SettingsNavMain } from "./settings-nav-main";
 import { Button } from "./ui/button";
 import { ScrollArea } from "./ui/scroll-area";
@@ -106,7 +105,7 @@ const settingsNavigation: SettingNavGroup[] = [
 ];
 
 /**
- * Check if user has all permissions for an item using O(1) store lookup
+ * Check if user has all permissions for an item using O(1) lookup
  */
 function checkItemPermissions(
   item: SettingNavItem,
@@ -122,23 +121,29 @@ function checkItemPermissions(
   return true;
 }
 
+interface SettingsSidebarProps extends React.ComponentProps<typeof Sidebar> {
+  isMobile: boolean;
+  /** Permission check function from context */
+  hasPermission?: (resource: string, action: string) => boolean;
+  /** Whether permission data is loading */
+  isLoading?: boolean;
+  /** Whether user has a role/membership */
+  hasMembership?: boolean;
+}
+
 export function SettingsSidebar({
   isMobile,
+  hasPermission,
+  isLoading = false,
+  hasMembership = false,
   ...props
-}: React.ComponentProps<typeof Sidebar> & { isMobile: boolean }) {
+}: SettingsSidebarProps) {
   const params = useParams<{ workspace: string }>();
   const workspace = params.workspace;
 
-  // Use Zustand store instead of Better Auth hook
-  const membership = useGlobalStore(selectMembership);
-  const status = useGlobalStore(selectStatus);
-  const storeHasPermission = useGlobalStore((state) => state.hasPermission);
-
-  const isLoading = status === "loading" || status === "idle";
-
   // O(1) permission filtering - no async, no API calls
   const filteredNav = useMemo(() => {
-    if (!membership?.role) {
+    if (!hasMembership || !hasPermission) {
       // No role - only show personal settings (everyone has access)
       return settingsNavigation
         .map((group) => ({
@@ -154,8 +159,8 @@ export function SettingsSidebar({
       const allowedItems: SettingNavItem[] = [];
 
       for (const item of group.items) {
-        // O(1) permission check using store
-        if (checkItemPermissions(item, storeHasPermission)) {
+        // O(1) permission check using memoized Set
+        if (checkItemPermissions(item, hasPermission)) {
           allowedItems.push(item);
         }
       }
@@ -169,7 +174,7 @@ export function SettingsSidebar({
     }
 
     return results;
-  }, [membership?.role, storeHasPermission]);
+  }, [hasMembership, hasPermission]);
 
   // Build full URLs with workspace
   const navWithUrls = filteredNav.map((group) => ({
@@ -184,7 +189,7 @@ export function SettingsSidebar({
     <Sidebar collapsible={isMobile ? "offcanvas" : "none"} {...props}>
       <SidebarHeader>
         <Button variant="ghost" className="w-1/2" asChild>
-          <a href={`/${workspace}`}>
+          <a href={`/${workspace}/dashboard`}>
             <ChevronLeft />
             Back to app
           </a>

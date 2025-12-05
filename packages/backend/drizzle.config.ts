@@ -6,6 +6,6 @@ export default defineConfig({
   schema: "./auth/schema.ts",
   dialect: "postgresql",
   dbCredentials: {
-    url: process.env.AUTH_DATABASE_URL || "",
+    url: process.env.AUTH_DATABASE_URL!,
   },
 });
