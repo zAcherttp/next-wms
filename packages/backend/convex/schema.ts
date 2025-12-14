@@ -55,6 +55,66 @@ export default defineSchema({
     .index("statusTypeId", ["statusTypeId"]),
 
   // ================================================================
+  // USER MANAGEMENT & AUTHENTICATION
+  // ================================================================
+
+  users: defineTable({
+    organizationId: v.id("organizations"),
+    username: v.string(),
+    passwordHash: v.string(),
+    fullName: v.string(),
+    email: v.string(),
+    isActive: v.boolean(),
+    preferences: v.optional(v.any()), // jsonb
+    isDeleted: v.boolean(),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("username", ["username"])
+    .index("email", ["email"])
+    .index("isActive", ["isActive"])
+    .index("isDeleted", ["isDeleted"]),
+
+  user_branch_assignments: defineTable({
+    userId: v.id("users"),
+    branchId: v.id("branches"),
+    assignmentStatusTypeId: v.id("system_lookups"),
+    assignedAt: v.number(),
+  })
+    .index("userId", ["userId"])
+    .index("branchId", ["branchId"])
+    .index("userId_branchId", ["userId", "branchId"]),
+
+  roles: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.string(),
+    isSystemDefault: v.boolean(),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("isSystemDefault", ["isSystemDefault"]),
+
+  role_permissions: defineTable({
+    roleId: v.id("roles"),
+    permissionCategory: v.string(),
+    permissionBits: v.number(), // bigint as number
+    scopeType: v.string(),
+  })
+    .index("roleId", ["roleId"])
+    .index("permissionCategory", ["permissionCategory"]),
+
+  user_role_assignments: defineTable({
+    userId: v.id("users"),
+    roleId: v.id("roles"),
+    branchId: v.optional(v.id("branches")),
+    assignedAt: v.number(),
+  })
+    .index("userId", ["userId"])
+    .index("roleId", ["roleId"])
+    .index("branchId", ["branchId"]),
+
+
+  // ================================================================
   // MASTER DATA MANAGEMENT
   // ================================================================
 
