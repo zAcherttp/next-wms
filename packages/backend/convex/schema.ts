@@ -338,7 +338,8 @@ export default defineSchema({
     .index("skuId", ["skuId"])
     .index("zoneId", ["zoneId"])
     .index("batchStatusTypeId", ["batchStatusTypeId"])
-    .index("isDeleted", ["isDeleted"]),
+    .index("isDeleted", ["isDeleted"])
+    .index("expiresAt", ["expiresAt"]),
 
   serial_numbers: defineTable({
     organizationId: v.id("organizations"),
@@ -532,7 +533,7 @@ export default defineSchema({
     priorityTypeId: v.id("system_lookups"),
     actionUrl: v.optional(v.string()),
     relatedEntityType: v.optional(v.string()),
-    relatedEntityId: v.optional(v.number()),
+    relatedEntityId: v.optional(v.string()),
     readAt: v.optional(v.number()),
     dismissedAt: v.optional(v.number()),
   })
@@ -582,7 +583,7 @@ export default defineSchema({
     uploadedByUserId: v.id("users"),
     uploadedAt: v.number(),
     entityType: v.string(),
-    entityId: v.number(),
+    entityId: v.string(),
     notes: v.optional(v.string()),
   })
     .index("organizationId", ["organizationId"])
@@ -598,7 +599,7 @@ export default defineSchema({
     userId: v.optional(v.id("users")),
     actionTypeId: v.id("system_lookups"),
     entityType: v.string(),
-    entityId: v.optional(v.number()),
+    entityId: v.optional(v.string()),
     fieldName: v.optional(v.string()),
     oldValue: v.optional(v.any()), // jsonb
     newValue: v.optional(v.any()), // jsonb
