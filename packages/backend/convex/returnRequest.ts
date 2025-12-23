@@ -17,14 +17,20 @@ import { v } from "convex/values";
 export const getAllReturnRequest = query({
   args: {
     organizationId: v.string(),
+    branchId: v.string(),
   },
   handler: async (ctx, args) => {
     // Step 1: Query return_requests table filtered by organization
     const returnRequests = await ctx.db
       .query("return_requests")
       .withIndex("organizationId", (q) => q.eq("organizationId", args.organizationId))
-      // Step 2: Exclude soft-deleted records
-      .filter((q) => q.eq(q.field("isDeleted"), false))
+      // Step 2: Exclude soft-deleted records and filter by branch
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("branchId"), args.branchId),
+          q.eq(q.field("isDeleted"), false)
+        )
+      )
       .collect();
 
     // Step 3: Return all active return requests
@@ -49,6 +55,7 @@ export const getAllReturnRequest = query({
 export const getFilteredReturnRequestByStatus = query({
   args: {
     organizationId: v.string(),
+    branchId: v.string(),
     returnStatusTypeId: v.string(),
   },
   handler: async (ctx, args) => {
@@ -58,10 +65,11 @@ export const getFilteredReturnRequestByStatus = query({
       .withIndex("returnStatusTypeId", (q) => 
         q.eq("returnStatusTypeId", args.returnStatusTypeId)
       )
-      // Step 2: Filter by organization and exclude soft-deleted records
+      // Step 2: Filter by organization, branch and exclude soft-deleted records
       .filter((q) => 
         q.and(
           q.eq(q.field("organizationId"), args.organizationId),
+          q.eq(q.field("branchId"), args.branchId),
           q.eq(q.field("isDeleted"), false)
         )
       )

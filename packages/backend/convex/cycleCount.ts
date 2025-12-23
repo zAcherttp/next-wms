@@ -21,6 +21,7 @@ import { v } from "convex/values";
 export const getAllCycleCountSession = query({
   args: {
     organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
     sessionTypeId: v.id("system_lookups"),
   },
   handler: async (ctx, args) => {
@@ -30,9 +31,12 @@ export const getAllCycleCountSession = query({
       .withIndex("organizationId", (q) => 
         q.eq("organizationId", args.organizationId)
       )
-      // Step 2: Filter by session type to get only cycle count sessions
+      // Step 2: Filter by session type and branch to get only cycle count sessions
       .filter((q) => 
-        q.eq(q.field("sessionTypeId"), args.sessionTypeId)
+        q.and(
+          q.eq(q.field("sessionTypeId"), args.sessionTypeId),
+          q.eq(q.field("branchId"), args.branchId)
+        )
       )
       .collect();
 
@@ -57,6 +61,7 @@ export const getAllCycleCountSession = query({
 export const getSessionsByStatus = query({
   args: {
     organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
     sessionTypeId: v.id("system_lookups"),
     sessionStatusTypeId: v.id("system_lookups"),
   },
@@ -67,10 +72,11 @@ export const getSessionsByStatus = query({
       .withIndex("sessionStatusTypeId", (q) => 
         q.eq("sessionStatusTypeId", args.sessionStatusTypeId)
       )
-      // Step 2: Filter by organization and session type
+      // Step 2: Filter by organization, branch and session type
       .filter((q) => 
         q.and(
           q.eq(q.field("organizationId"), args.organizationId),
+          q.eq(q.field("branchId"), args.branchId),
           q.eq(q.field("sessionTypeId"), args.sessionTypeId)
         )
       )
@@ -339,6 +345,7 @@ export const updateSessionLineItem = mutation({
 export const getAllAdjustmentRequests = query({
   args: {
     organizationId: v.string(),
+    branchId: v.string(),
   },
   handler: async (ctx, args) => {
     // Step 1: Query adjustment_requests table filtered by organization
@@ -346,6 +353,9 @@ export const getAllAdjustmentRequests = query({
       .query("adjustment_requests")
       .withIndex("organizationId", (q) => 
         q.eq("organizationId", args.organizationId)
+      )
+      .filter((q) => 
+        q.eq(q.field("branchId"), args.branchId)
       )
       .collect();
 
@@ -370,6 +380,7 @@ export const getAllAdjustmentRequests = query({
 export const getAdjustmentsByType = query({
   args: {
     organizationId: v.string(),
+    branchId: v.string(),
     adjustmentTypeId: v.string(), // "quantity" or "location"
   },
   handler: async (ctx, args) => {
@@ -379,9 +390,12 @@ export const getAdjustmentsByType = query({
       .withIndex("adjustmentTypeId", (q) => 
         q.eq("adjustmentTypeId", args.adjustmentTypeId)
       )
-      // Step 2: Filter by organization
+      // Step 2: Filter by organization and branch
       .filter((q) => 
-        q.eq(q.field("organizationId"), args.organizationId)
+        q.and(
+          q.eq(q.field("organizationId"), args.organizationId),
+          q.eq(q.field("branchId"), args.branchId)
+        )
       )
       .collect();
 
@@ -585,6 +599,7 @@ export const setAdjustmentRequestStatus = mutation({
 export const getExpiringBatches = query({
   args: {
     organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
     daysThreshold: v.number(), // Number of days to look ahead for expiry
   },
   handler: async (ctx, args) => {
@@ -598,9 +613,10 @@ export const getExpiringBatches = query({
       .withIndex("organizationId", (q) => 
         q.eq("organizationId", args.organizationId)
       )
-      // Step 3: Filter for non-deleted batches with expiry within threshold
+      // Step 3: Filter for non-deleted batches with expiry within threshold and branch
       .filter((q) => 
         q.and(
+          q.eq(q.field("branchId"), args.branchId),
           q.eq(q.field("isDeleted"), false),
           q.neq(q.field("expiresAt"), undefined),
           q.lte(q.field("expiresAt"), thresholdDate)
@@ -640,6 +656,7 @@ export const getExpiringBatches = query({
 export const getExpiringBatchesByZone = query({
   args: {
     organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
     zoneId: v.id("storage_zones"),
     daysThreshold: v.number(),
   },
@@ -654,10 +671,11 @@ export const getExpiringBatchesByZone = query({
       .withIndex("zoneId", (q) => 
         q.eq("zoneId", args.zoneId)
       )
-      // Step 3: Filter for organization, non-deleted, and expiry within threshold
+      // Step 3: Filter for organization, branch, non-deleted, and expiry within threshold
       .filter((q) => 
         q.and(
           q.eq(q.field("organizationId"), args.organizationId),
+          q.eq(q.field("branchId"), args.branchId),
           q.eq(q.field("isDeleted"), false),
           q.neq(q.field("expiresAt"), undefined),
           q.lte(q.field("expiresAt"), thresholdDate)
