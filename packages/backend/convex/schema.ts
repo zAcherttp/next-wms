@@ -200,6 +200,7 @@ export default defineSchema({
     .index("barcodeValue", ["barcodeValue"]),
 
   suppliers: defineTable({
+    brandId: v.id("brands"),
     organizationId: v.id("organizations"),
     name: v.string(),
     contactPerson: v.string(),
@@ -211,6 +212,7 @@ export default defineSchema({
     deletedAt: v.optional(v.number()),
   })
     .index("organizationId", ["organizationId"])
+    .index("brandId", ["brandId"])
     .index("isActive", ["isActive"])
     .index("isDeleted", ["isDeleted"]),
 
@@ -337,6 +339,7 @@ export default defineSchema({
     skuId: v.id("product_variants"),
     zoneId: v.id("storage_zones"),
     quantity: v.number(),
+    branchId: v.id("branches"),
     supplierBatchNumber: v.optional(v.string()),
     internalBatchNumber: v.optional(v.string()),
     receivedAt: v.optional(v.number()),
@@ -350,7 +353,9 @@ export default defineSchema({
     .index("skuId", ["skuId"])
     .index("zoneId", ["zoneId"])
     .index("batchStatusTypeId", ["batchStatusTypeId"])
-    .index("isDeleted", ["isDeleted"]),
+    .index("isDeleted", ["isDeleted"])
+    .index("branchId", ["branchId"])
+    .index("expiresAt", ["expiresAt"]),
 
   serial_numbers: defineTable({
     organizationId: v.id("organizations"),
@@ -539,7 +544,6 @@ export default defineSchema({
   // ================================================================
   // NOTIFICATIONS & ALERTS
   // ================================================================
-
   notifications: defineTable({
     organizationId: v.id("organizations"),
     notificationCategoryTypeId: v.id("system_lookups"),
@@ -550,7 +554,7 @@ export default defineSchema({
     priorityTypeId: v.id("system_lookups"),
     actionUrl: v.optional(v.string()),
     relatedEntityType: v.optional(v.string()),
-    relatedEntityId: v.optional(v.number()),
+    relatedEntityId: v.optional(v.string()),
     readAt: v.optional(v.number()),
     dismissedAt: v.optional(v.number()),
   })
@@ -558,7 +562,6 @@ export default defineSchema({
     .index("recipientUserId", ["recipientUserId"])
     .index("notificationCategoryTypeId", ["notificationCategoryTypeId"])
     .index("readAt", ["readAt"]),
-
   // ================================================================
   // REPORTING & ANALYTICS
   // ================================================================
@@ -616,7 +619,7 @@ export default defineSchema({
     userId: v.optional(v.id("users")),
     actionTypeId: v.id("system_lookups"),
     entityType: v.string(),
-    entityId: v.optional(v.number()),
+    entityId: v.optional(v.string()),
     fieldName: v.optional(v.string()),
     oldValue: v.optional(v.any()), // jsonb
     newValue: v.optional(v.any()), // jsonb

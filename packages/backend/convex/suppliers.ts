@@ -1,17 +1,17 @@
 /**
  * SUPPLIERS API - UC2
- * 
+ *
  * WHO CAN USE:
  * ✅ Warehouse Manager - full CRUD
  * ✅ Purchasing Manager - full CRUD
  * ✅ Admin - full CRUD
  * ⚠️ Staff - read only
- * 
+ *
  * NOTES:
  * - Suppliers provide products to the warehouse
  * - Track lead time for purchase order planning
  * - Soft delete supported (isDeleted flag)
- * 
+ *
  * BEST PRACTICES:
  * - Email validation on create/update
  * - Phone number formatting
@@ -27,90 +27,101 @@ import { mutation, query } from "./_generated/server";
  * LIST - Get all suppliers with pagination and filters
  */
 export const list = query({
-    args: {
-        organizationId: v.id("organizations"),
-        paginationOpts: paginationOptsValidator,
-        isActive: v.optional(v.boolean()),
-        includeDeleted: v.optional(v.boolean()),
-    },
-    handler: async (ctx, args) => {
-        const { organizationId, paginationOpts, isActive, includeDeleted = false } = args;
+  args: {
+    organizationId: v.id("organizations"),
+    paginationOpts: paginationOptsValidator,
+    isActive: v.optional(v.boolean()),
+    includeDeleted: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const {
+      organizationId,
+      paginationOpts,
+      isActive,
+      includeDeleted = false,
+    } = args;
 
-        let queryBuilder = ctx.db
-            .query("suppliers")
-            .withIndex("organizationId", (q) => q.eq("organizationId", organizationId));
+    let queryBuilder = ctx.db
+      .query("suppliers")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organizationId)
+      );
 
-        // Filter by active status
-        if (isActive !== undefined) {
-            queryBuilder = queryBuilder.filter((q) => q.eq(q.field("isActive"), isActive));
-        }
+    // Filter by active status
+    if (isActive !== undefined) {
+      queryBuilder = queryBuilder.filter((q) =>
+        q.eq(q.field("isActive"), isActive)
+      );
+    }
 
-        // Filter deleted items
-        if (!includeDeleted) {
-            queryBuilder = queryBuilder.filter((q) => q.eq(q.field("isDeleted"), false));
-        }
+    // Filter deleted items
+    if (!includeDeleted) {
+      queryBuilder = queryBuilder.filter((q) =>
+        q.eq(q.field("isDeleted"), false)
+      );
+    }
 
-        const suppliers = await queryBuilder.order("desc").paginate(paginationOpts);
+    const suppliers = await queryBuilder.order("desc").paginate(paginationOpts);
 
-        return suppliers;
-    },
+    return suppliers;
+  },
 });
 
 /**
  * GET - Get a single supplier by ID with full details
  */
 export const get = query({
-    args: {
-        id: v.id("suppliers"),
-    },
-    handler: async (ctx, args) => {
-        const supplier = await ctx.db.get(args.id);
+  args: {
+    id: v.id("suppliers"),
+  },
+  handler: async (ctx, args) => {
+    const supplier = await ctx.db.get(args.id);
 
-        if (!supplier) {
-            throw new Error("Supplier not found");
-        }
+    if (!supplier) {
+      throw new Error("Supplier not found");
+    }
 
-        if (supplier.isDeleted) {
-            throw new Error("Supplier has been deleted");
-        }
+    if (supplier.isDeleted) {
+      throw new Error("Supplier has been deleted");
+    }
 
-        return supplier;
-    },
+    return supplier;
+  },
 });
 
 /**
  * GET WITH STATS - Get supplier with purchase order statistics
  */
 export const getWithStats = query({
-    args: {
-        id: v.id("suppliers"),
-    },
-    handler: async (ctx, args) => {
-        const supplier = await ctx.db.get(args.id);
+  args: {
+    id: v.id("suppliers"),
+  },
+  handler: async (ctx, args) => {
+    const supplier = await ctx.db.get(args.id);
 
-        if (!supplier) {
-            throw new Error("Supplier not found");
-        }
+    if (!supplier) {
+      throw new Error("Supplier not found");
+    }
 
-        if (supplier.isDeleted) {
-            throw new Error("Supplier has been deleted");
-        }
+    if (supplier.isDeleted) {
+      throw new Error("Supplier has been deleted");
+    }
 
-        // Get purchase order count
-        const purchaseOrders = await ctx.db
-            .query("purchase_orders")
-            .withIndex("supplierId", (q) => q.eq("supplierId", args.id))
-            .filter((q) => q.eq(q.field("isDeleted"), false))
-            .collect();
+    // Get purchase order count
+    const purchaseOrders = await ctx.db
+      .query("purchase_orders")
+      .withIndex("supplierId", (q) => q.eq("supplierId", args.id))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .collect();
 
-        return {
-            ...supplier,
-            stats: {
-                totalPurchaseOrders: purchaseOrders.length,
-                // Could add more stats: total amount, average lead time, etc.
-            },
-        };
-    },
+    return {
+      ...supplier,
+      stats: {
+        totalPurchaseOrders: purchaseOrders.length,
+        // Could add more stats: total amount, average lead time, etc.
+      },
+    };
+  },
 });
 
 /**
@@ -118,76 +129,83 @@ export const getWithStats = query({
  * Permission required: suppliers:create
  */
 export const create = mutation({
-    args: {
-        organizationId: v.id("organizations"),
-        name: v.string(),
-        contactPerson: v.string(),
-        email: v.string(),
-        phone: v.string(),
-        defaultLeadTimeDays: v.number(),
-        isActive: v.optional(v.boolean()),
-    },
-    handler: async (ctx, args) => {
-        // TODO: Add permission check
-        // const identity = await ctx.auth.getUserIdentity();
+  args: {
+    brandId: v.id("brands"),
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    contactPerson: v.string(),
+    email: v.string(),
+    phone: v.string(),
+    defaultLeadTimeDays: v.number(),
+    isActive: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    // TODO: Add permission check
+    // const identity = await ctx.auth.getUserIdentity();
 
-        const {
-            organizationId,
-            name,
-            contactPerson,
-            email,
-            phone,
-            defaultLeadTimeDays,
-            isActive = true,
-        } = args;
+    const {
+      brandId,
+      organizationId,
+      name,
+      contactPerson,
+      email,
+      phone,
+      defaultLeadTimeDays,
+      isActive = true,
+    } = args;
 
-        // Basic email validation
-        if (!email.includes("@")) {
-            throw new Error("Invalid email format");
-        }
+    // Basic email validation
+    if (!email.includes("@")) {
+      throw new Error("Invalid email format");
+    }
 
-        // Check if supplier with same name already exists
-        const existing = await ctx.db
-            .query("suppliers")
-            .withIndex("organizationId", (q) => q.eq("organizationId", organizationId))
-            .filter((q) => q.eq(q.field("name"), name))
-            .filter((q) => q.eq(q.field("isDeleted"), false))
-            .first();
+    // Check if supplier with same name already exists
+    const existing = await ctx.db
+      .query("suppliers")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organizationId)
+      )
+      .filter((q) => q.eq(q.field("name"), name))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .first();
 
-        if (existing) {
-            throw new Error("Supplier with this name already exists");
-        }
+    if (existing) {
+      throw new Error("Supplier with this name already exists");
+    }
 
-        // Check if email already exists
-        const existingEmail = await ctx.db
-            .query("suppliers")
-            .withIndex("organizationId", (q) => q.eq("organizationId", organizationId))
-            .filter((q) => q.eq(q.field("email"), email))
-            .filter((q) => q.eq(q.field("isDeleted"), false))
-            .first();
+    // Check if email already exists
+    const existingEmail = await ctx.db
+      .query("suppliers")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organizationId)
+      )
+      .filter((q) => q.eq(q.field("email"), email))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .first();
 
-        if (existingEmail) {
-            throw new Error("Supplier with this email already exists");
-        }
+    if (existingEmail) {
+      throw new Error("Supplier with this email already exists");
+    }
 
-        // Validate lead time
-        if (defaultLeadTimeDays < 0) {
-            throw new Error("Lead time must be a positive number");
-        }
+    // Validate lead time
+    if (defaultLeadTimeDays < 0) {
+      throw new Error("Lead time must be a positive number");
+    }
 
-        const supplierId = await ctx.db.insert("suppliers", {
-            organizationId,
-            name,
-            contactPerson,
-            email,
-            phone,
-            defaultLeadTimeDays,
-            isActive,
-            isDeleted: false,
-        });
+    const supplierId = await ctx.db.insert("suppliers", {
+      brandId,
+      organizationId,
+      name,
+      contactPerson,
+      email,
+      phone,
+      defaultLeadTimeDays,
+      isActive,
+      isDeleted: false,
+    });
 
-        return supplierId;
-    },
+    return supplierId;
+  },
 });
 
 /**
@@ -195,82 +213,86 @@ export const create = mutation({
  * Permission required: suppliers:update
  */
 export const update = mutation({
-    args: {
-        id: v.id("suppliers"),
-        name: v.optional(v.string()),
-        contactPerson: v.optional(v.string()),
-        email: v.optional(v.string()),
-        phone: v.optional(v.string()),
-        defaultLeadTimeDays: v.optional(v.number()),
-        isActive: v.optional(v.boolean()),
-    },
-    handler: async (ctx, args) => {
-        // TODO: Add permission check
+  args: {
+    id: v.id("suppliers"),
+    name: v.optional(v.string()),
+    contactPerson: v.optional(v.string()),
+    email: v.optional(v.string()),
+    phone: v.optional(v.string()),
+    defaultLeadTimeDays: v.optional(v.number()),
+    isActive: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    // TODO: Add permission check
 
-        const { id, email, name, defaultLeadTimeDays, ...otherUpdates } = args;
+    const { id, email, name, defaultLeadTimeDays, ...otherUpdates } = args;
 
-        const supplier = await ctx.db.get(id);
-        if (!supplier) {
-            throw new Error("Supplier not found");
+    const supplier = await ctx.db.get(id);
+    if (!supplier) {
+      throw new Error("Supplier not found");
+    }
+
+    if (supplier.isDeleted) {
+      throw new Error("Cannot update deleted supplier");
+    }
+
+    const updates: any = { ...otherUpdates };
+
+    // Validate email if updating
+    if (email !== undefined) {
+      if (!email.includes("@")) {
+        throw new Error("Invalid email format");
+      }
+
+      // Check email uniqueness
+      if (email !== supplier.email) {
+        const existingEmail = await ctx.db
+          .query("suppliers")
+          .withIndex("organizationId", (q) =>
+            q.eq("organizationId", supplier.organizationId)
+          )
+          .filter((q) => q.eq(q.field("email"), email))
+          .filter((q) => q.eq(q.field("isDeleted"), false))
+          .first();
+
+        if (existingEmail) {
+          throw new Error("Supplier with this email already exists");
         }
+      }
 
-        if (supplier.isDeleted) {
-            throw new Error("Cannot update deleted supplier");
-        }
+      updates.email = email;
+    }
 
-        const updates: any = { ...otherUpdates };
+    // Check name uniqueness if updating
+    if (name !== undefined && name !== supplier.name) {
+      const existingName = await ctx.db
+        .query("suppliers")
+        .withIndex("organizationId", (q) =>
+          q.eq("organizationId", supplier.organizationId)
+        )
+        .filter((q) => q.eq(q.field("name"), name))
+        .filter((q) => q.eq(q.field("isDeleted"), false))
+        .first();
 
-        // Validate email if updating
-        if (email !== undefined) {
-            if (!email.includes("@")) {
-                throw new Error("Invalid email format");
-            }
+      if (existingName) {
+        throw new Error("Supplier with this name already exists");
+      }
 
-            // Check email uniqueness
-            if (email !== supplier.email) {
-                const existingEmail = await ctx.db
-                    .query("suppliers")
-                    .withIndex("organizationId", (q) => q.eq("organizationId", supplier.organizationId))
-                    .filter((q) => q.eq(q.field("email"), email))
-                    .filter((q) => q.eq(q.field("isDeleted"), false))
-                    .first();
+      updates.name = name;
+    }
 
-                if (existingEmail) {
-                    throw new Error("Supplier with this email already exists");
-                }
-            }
+    // Validate lead time if updating
+    if (defaultLeadTimeDays !== undefined) {
+      if (defaultLeadTimeDays < 0) {
+        throw new Error("Lead time must be a positive number");
+      }
+      updates.defaultLeadTimeDays = defaultLeadTimeDays;
+    }
 
-            updates.email = email;
-        }
+    await ctx.db.patch(id, updates);
 
-        // Check name uniqueness if updating
-        if (name !== undefined && name !== supplier.name) {
-            const existingName = await ctx.db
-                .query("suppliers")
-                .withIndex("organizationId", (q) => q.eq("organizationId", supplier.organizationId))
-                .filter((q) => q.eq(q.field("name"), name))
-                .filter((q) => q.eq(q.field("isDeleted"), false))
-                .first();
-
-            if (existingName) {
-                throw new Error("Supplier with this name already exists");
-            }
-
-            updates.name = name;
-        }
-
-        // Validate lead time if updating
-        if (defaultLeadTimeDays !== undefined) {
-            if (defaultLeadTimeDays < 0) {
-                throw new Error("Lead time must be a positive number");
-            }
-            updates.defaultLeadTimeDays = defaultLeadTimeDays;
-        }
-
-        await ctx.db.patch(id, updates);
-
-        return id;
-    },
+    return id;
+  },
 });
 
 /**
@@ -278,88 +300,92 @@ export const update = mutation({
  * Permission required: suppliers:delete
  */
 export const remove = mutation({
-    args: {
-        id: v.id("suppliers"),
-    },
-    handler: async (ctx, args) => {
-        // TODO: Add permission check
+  args: {
+    id: v.id("suppliers"),
+  },
+  handler: async (ctx, args) => {
+    // TODO: Add permission check
 
-        const supplier = await ctx.db.get(args.id);
-        if (!supplier) {
-            throw new Error("Supplier not found");
-        }
+    const supplier = await ctx.db.get(args.id);
+    if (!supplier) {
+      throw new Error("Supplier not found");
+    }
 
-        // Check if supplier has active purchase orders
-        const activePurchaseOrders = await ctx.db
-            .query("purchase_orders")
-            .withIndex("supplierId", (q) => q.eq("supplierId", args.id))
-            .filter((q) => q.eq(q.field("isDeleted"), false))
-            .first();
+    // Check if supplier has active purchase orders
+    const activePurchaseOrders = await ctx.db
+      .query("purchase_orders")
+      .withIndex("supplierId", (q) => q.eq("supplierId", args.id))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .first();
 
-        if (activePurchaseOrders) {
-            throw new Error(
-                "Cannot delete supplier with active purchase orders. Complete or cancel orders first."
-            );
-        }
+    if (activePurchaseOrders) {
+      throw new Error(
+        "Cannot delete supplier with active purchase orders. Complete or cancel orders first."
+      );
+    }
 
-        // Soft delete
-        await ctx.db.patch(args.id, {
-            isDeleted: true,
-            deletedAt: Date.now(),
-        });
+    // Soft delete
+    await ctx.db.patch(args.id, {
+      isDeleted: true,
+      deletedAt: Date.now(),
+    });
 
-        return args.id;
-    },
+    return args.id;
+  },
 });
 
 /**
  * SEARCH - Search suppliers by name, email, or contact person
  */
 export const search = query({
-    args: {
-        organizationId: v.id("organizations"),
-        searchTerm: v.string(),
-        limit: v.optional(v.number()),
-    },
-    handler: async (ctx, args) => {
-        const { organizationId, searchTerm, limit = 20 } = args;
+  args: {
+    organizationId: v.id("organizations"),
+    searchTerm: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId, searchTerm, limit = 20 } = args;
 
-        const suppliers = await ctx.db
-            .query("suppliers")
-            .withIndex("organizationId", (q) => q.eq("organizationId", organizationId))
-            .filter((q) => q.eq(q.field("isDeleted"), false))
-            .collect();
+    const suppliers = await ctx.db
+      .query("suppliers")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organizationId)
+      )
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .collect();
 
-        // Search in name, email, and contact person (case-insensitive)
-        const searchLower = searchTerm.toLowerCase();
-        const filtered = suppliers
-            .filter(
-                (supplier) =>
-                    supplier.name.toLowerCase().includes(searchLower) ||
-                    supplier.email.toLowerCase().includes(searchLower) ||
-                    supplier.contactPerson.toLowerCase().includes(searchLower)
-            )
-            .slice(0, limit);
+    // Search in name, email, and contact person (case-insensitive)
+    const searchLower = searchTerm.toLowerCase();
+    const filtered = suppliers
+      .filter(
+        (supplier) =>
+          supplier.name.toLowerCase().includes(searchLower) ||
+          supplier.email.toLowerCase().includes(searchLower) ||
+          supplier.contactPerson.toLowerCase().includes(searchLower)
+      )
+      .slice(0, limit);
 
-        return filtered;
-    },
+    return filtered;
+  },
 });
 
 /**
  * GET ACTIVE - Get only active suppliers (for dropdowns, etc.)
  */
 export const getActive = query({
-    args: {
-        organizationId: v.id("organizations"),
-    },
-    handler: async (ctx, args) => {
-        const suppliers = await ctx.db
-            .query("suppliers")
-            .withIndex("organizationId", (q) => q.eq("organizationId", args.organizationId))
-            .filter((q) => q.eq(q.field("isActive"), true))
-            .filter((q) => q.eq(q.field("isDeleted"), false))
-            .collect();
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    const suppliers = await ctx.db
+      .query("suppliers")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId)
+      )
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .collect();
 
-        return suppliers;
-    },
+    return suppliers;
+  },
 });

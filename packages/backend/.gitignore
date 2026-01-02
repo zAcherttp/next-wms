@@ -3,4 +3,4 @@
 .env
 
 # Ignore convex generated files
-*/_generated/
+*/_generated/*
