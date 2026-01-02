@@ -8,13 +8,15 @@
  * @module
  */
 
+import type * as audit from "../audit.js";
 import type * as brands from "../brands.js";
-import type * as cycleCount from "../cycleCount.js";
+import type * as crons from "../crons.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
-import type * as lib_withPermission from "../lib/withPermission.js";
-import type * as members from "../members.js";
-import type * as middleware from "../middleware.js";
+import type * as inventory from "../inventory.js";
+import type * as migrations from "../migrations.js";
+import type * as myFunctions from "../myFunctions.js";
+import type * as notifications from "../notifications.js";
 import type * as privateData from "../privateData.js";
 import type * as returnRequest from "../returnRequest.js";
 
@@ -25,13 +27,15 @@ import type {
 } from "convex/server";
 
 declare const fullApi: ApiFromModules<{
+  audit: typeof audit;
   brands: typeof brands;
-  cycleCount: typeof cycleCount;
+  crons: typeof crons;
   healthCheck: typeof healthCheck;
   http: typeof http;
-  "lib/withPermission": typeof lib_withPermission;
-  members: typeof members;
-  middleware: typeof middleware;
+  inventory: typeof inventory;
+  migrations: typeof migrations;
+  myFunctions: typeof myFunctions;
+  notifications: typeof notifications;
   privateData: typeof privateData;
   returnRequest: typeof returnRequest;
 }>;
