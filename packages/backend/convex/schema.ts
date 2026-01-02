@@ -135,6 +135,139 @@ export default defineSchema({
     settingValue: v.any(), // jsonb
   }).index("categoryId_settingKey", ["categoryId", "settingKey"]),
 
+  // ================================================================
+  // ORGANIZATION & WORKSPACE MANAGEMENT
+  // ================================================================
+
+  organizations: defineTable({
+    name: v.string(),
+    address: v.string(),
+    contactInfo: v.optional(v.any()), // jsonb
+    isActive: v.boolean(),
+    isDeleted: v.boolean(),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("name", ["name"])
+    .index("isActive", ["isActive"])
+    .index("isDeleted", ["isDeleted"]),
+
+  organization_settings: defineTable({
+    organizationId: v.id("organizations"),
+    settingKey: v.string(),
+    settingValue: v.any(), // jsonb
+  }).index("organizationId_settingKey", ["organizationId", "settingKey"]),
+
+  branches: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    address: v.string(),
+    phoneNumber: v.string(),
+    isActive: v.boolean(),
+    isDeleted: v.boolean(),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("isActive", ["isActive"])
+    .index("isDeleted", ["isDeleted"]),
+
+  branch_settings: defineTable({
+    branchId: v.id("branches"),
+    settingKey: v.string(),
+    settingValue: v.any(), // jsonb
+  }).index("branchId_settingKey", ["branchId", "settingKey"]),
+
+  workspace_invitations: defineTable({
+    organizationId: v.id("organizations"),
+    invitationCode: v.string(),
+    createdByUserId: v.id("users"),
+    expiresAt: v.number(),
+    statusTypeId: v.id("system_lookups"),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("invitationCode", ["invitationCode"])
+    .index("statusTypeId", ["statusTypeId"]),
+
+  // ================================================================
+  // USER MANAGEMENT & AUTHENTICATION
+  // ================================================================
+
+  users: defineTable({
+    organizationId: v.id("organizations"),
+    username: v.string(),
+    passwordHash: v.string(),
+    fullName: v.string(),
+    email: v.string(),
+    isActive: v.boolean(),
+    preferences: v.optional(v.any()), // jsonb
+    isDeleted: v.boolean(),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("username", ["username"])
+    .index("email", ["email"])
+    .index("isActive", ["isActive"])
+    .index("isDeleted", ["isDeleted"]),
+
+  user_branch_assignments: defineTable({
+    userId: v.id("users"),
+    branchId: v.id("branches"),
+    assignmentStatusTypeId: v.id("system_lookups"),
+    assignedAt: v.number(),
+  })
+    .index("userId", ["userId"])
+    .index("branchId", ["branchId"])
+    .index("userId_branchId", ["userId", "branchId"]),
+
+  roles: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.string(),
+    isSystemDefault: v.boolean(),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("isSystemDefault", ["isSystemDefault"]),
+
+  role_permissions: defineTable({
+    roleId: v.id("roles"),
+    permissionCategory: v.string(),
+    permissionBits: v.number(), // bigint as number
+    scopeType: v.string(),
+  })
+    .index("roleId", ["roleId"])
+    .index("permissionCategory", ["permissionCategory"]),
+
+  user_role_assignments: defineTable({
+    userId: v.id("users"),
+    roleId: v.id("roles"),
+    branchId: v.optional(v.id("branches")),
+    assignedAt: v.number(),
+  })
+    .index("userId", ["userId"])
+    .index("roleId", ["roleId"])
+    .index("branchId", ["branchId"]),
+
+  // ================================================================
+  // MASTER DATA MANAGEMENT
+  // ================================================================
+
+  categories: defineTable({
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    path: v.string(), // ltree as string
+    isActive: v.boolean(),
+    isDeleted: v.boolean(),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("isActive", ["isActive"])
+    .index("isDeleted", ["isDeleted"]),
+
+  category_settings: defineTable({
+    categoryId: v.id("categories"),
+    settingKey: v.string(),
+    settingValue: v.any(), // jsonb
+  }).index("categoryId_settingKey", ["categoryId", "settingKey"]),
+
   brands: defineTable({
     organizationId: v.string(),
     name: v.string(),
