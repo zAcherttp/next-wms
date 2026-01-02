@@ -11,8 +11,9 @@
 import type * as brands from "../brands.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
-import type * as myFunctions from "../myFunctions.js";
 import type * as privateData from "../privateData.js";
+import type * as purchaseOrders from "../purchaseOrders.js";
+import type * as seedPurchaseOrders from "../seedPurchaseOrders.js";
 
 import type {
   ApiFromModules,
@@ -24,8 +25,9 @@ declare const fullApi: ApiFromModules<{
   brands: typeof brands;
   healthCheck: typeof healthCheck;
   http: typeof http;
-  myFunctions: typeof myFunctions;
   privateData: typeof privateData;
+  purchaseOrders: typeof purchaseOrders;
+  seedPurchaseOrders: typeof seedPurchaseOrders;
 }>;
 
 /**
