@@ -9,11 +9,14 @@
  */
 
 import type * as brands from "../brands.js";
+import type * as cycleCount from "../cycleCount.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
+import type * as lib_withPermission from "../lib/withPermission.js";
+import type * as members from "../members.js";
+import type * as middleware from "../middleware.js";
 import type * as privateData from "../privateData.js";
-import type * as purchaseOrders from "../purchaseOrders.js";
-import type * as seedPurchaseOrders from "../seedPurchaseOrders.js";
+import type * as returnRequest from "../returnRequest.js";
 
 import type {
   ApiFromModules,
@@ -23,11 +26,14 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   brands: typeof brands;
+  cycleCount: typeof cycleCount;
   healthCheck: typeof healthCheck;
   http: typeof http;
+  "lib/withPermission": typeof lib_withPermission;
+  members: typeof members;
+  middleware: typeof middleware;
   privateData: typeof privateData;
-  purchaseOrders: typeof purchaseOrders;
-  seedPurchaseOrders: typeof seedPurchaseOrders;
+  returnRequest: typeof returnRequest;
 }>;
 
 /**

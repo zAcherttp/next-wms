@@ -135,139 +135,6 @@ export default defineSchema({
     settingValue: v.any(), // jsonb
   }).index("categoryId_settingKey", ["categoryId", "settingKey"]),
 
-  // ================================================================
-  // ORGANIZATION & WORKSPACE MANAGEMENT
-  // ================================================================
-
-  organizations: defineTable({
-    name: v.string(),
-    address: v.string(),
-    contactInfo: v.optional(v.any()), // jsonb
-    isActive: v.boolean(),
-    isDeleted: v.boolean(),
-    deletedAt: v.optional(v.number()),
-  })
-    .index("name", ["name"])
-    .index("isActive", ["isActive"])
-    .index("isDeleted", ["isDeleted"]),
-
-  organization_settings: defineTable({
-    organizationId: v.id("organizations"),
-    settingKey: v.string(),
-    settingValue: v.any(), // jsonb
-  }).index("organizationId_settingKey", ["organizationId", "settingKey"]),
-
-  branches: defineTable({
-    organizationId: v.id("organizations"),
-    name: v.string(),
-    address: v.string(),
-    phoneNumber: v.string(),
-    isActive: v.boolean(),
-    isDeleted: v.boolean(),
-    deletedAt: v.optional(v.number()),
-  })
-    .index("organizationId", ["organizationId"])
-    .index("isActive", ["isActive"])
-    .index("isDeleted", ["isDeleted"]),
-
-  branch_settings: defineTable({
-    branchId: v.id("branches"),
-    settingKey: v.string(),
-    settingValue: v.any(), // jsonb
-  }).index("branchId_settingKey", ["branchId", "settingKey"]),
-
-  workspace_invitations: defineTable({
-    organizationId: v.id("organizations"),
-    invitationCode: v.string(),
-    createdByUserId: v.id("users"),
-    expiresAt: v.number(),
-    statusTypeId: v.id("system_lookups"),
-  })
-    .index("organizationId", ["organizationId"])
-    .index("invitationCode", ["invitationCode"])
-    .index("statusTypeId", ["statusTypeId"]),
-
-  // ================================================================
-  // USER MANAGEMENT & AUTHENTICATION
-  // ================================================================
-
-  users: defineTable({
-    organizationId: v.id("organizations"),
-    username: v.string(),
-    passwordHash: v.string(),
-    fullName: v.string(),
-    email: v.string(),
-    isActive: v.boolean(),
-    preferences: v.optional(v.any()), // jsonb
-    isDeleted: v.boolean(),
-    deletedAt: v.optional(v.number()),
-  })
-    .index("organizationId", ["organizationId"])
-    .index("username", ["username"])
-    .index("email", ["email"])
-    .index("isActive", ["isActive"])
-    .index("isDeleted", ["isDeleted"]),
-
-  user_branch_assignments: defineTable({
-    userId: v.id("users"),
-    branchId: v.id("branches"),
-    assignmentStatusTypeId: v.id("system_lookups"),
-    assignedAt: v.number(),
-  })
-    .index("userId", ["userId"])
-    .index("branchId", ["branchId"])
-    .index("userId_branchId", ["userId", "branchId"]),
-
-  roles: defineTable({
-    organizationId: v.id("organizations"),
-    name: v.string(),
-    description: v.string(),
-    isSystemDefault: v.boolean(),
-  })
-    .index("organizationId", ["organizationId"])
-    .index("isSystemDefault", ["isSystemDefault"]),
-
-  role_permissions: defineTable({
-    roleId: v.id("roles"),
-    permissionCategory: v.string(),
-    permissionBits: v.number(), // bigint as number
-    scopeType: v.string(),
-  })
-    .index("roleId", ["roleId"])
-    .index("permissionCategory", ["permissionCategory"]),
-
-  user_role_assignments: defineTable({
-    userId: v.id("users"),
-    roleId: v.id("roles"),
-    branchId: v.optional(v.id("branches")),
-    assignedAt: v.number(),
-  })
-    .index("userId", ["userId"])
-    .index("roleId", ["roleId"])
-    .index("branchId", ["branchId"]),
-
-  // ================================================================
-  // MASTER DATA MANAGEMENT
-  // ================================================================
-
-  categories: defineTable({
-    organizationId: v.id("organizations"),
-    name: v.string(),
-    path: v.string(), // ltree as string
-    isActive: v.boolean(),
-    isDeleted: v.boolean(),
-    deletedAt: v.optional(v.number()),
-  })
-    .index("organizationId", ["organizationId"])
-    .index("isActive", ["isActive"])
-    .index("isDeleted", ["isDeleted"]),
-
-  category_settings: defineTable({
-    categoryId: v.id("categories"),
-    settingKey: v.string(),
-    settingValue: v.any(), // jsonb
-  }).index("categoryId_settingKey", ["categoryId", "settingKey"]),
-
   brands: defineTable({
     organizationId: v.string(),
     name: v.string(),
@@ -334,7 +201,6 @@ export default defineSchema({
 
   suppliers: defineTable({
     organizationId: v.id("organizations"),
-    brandId: v.id("brands"),
     name: v.string(),
     contactPerson: v.string(),
     email: v.string(),
@@ -345,7 +211,6 @@ export default defineSchema({
     deletedAt: v.optional(v.number()),
   })
     .index("organizationId", ["organizationId"])
-    .index("brandId", ["brandId"])
     .index("isActive", ["isActive"])
     .index("isDeleted", ["isDeleted"]),
 
@@ -409,6 +274,9 @@ export default defineSchema({
     branchId: v.id("branches"),
     sessionTypeId: v.id("system_lookups"),
     sessionCode: v.string(),
+    name: v.optional(v.string()), // Session display name
+    description: v.optional(v.string()), // Session description
+    cycleCountTypeId: v.optional(v.id("system_lookups")), // Daily/Weekly cycle count type
     assignedUserId: v.id("users"),
     sessionStatusTypeId: v.id("system_lookups"),
     startedAt: v.optional(v.number()),
@@ -450,6 +318,15 @@ export default defineSchema({
     accuracyRate: v.number(),
     calculatedAt: v.number(),
   }).index("sessionId", ["sessionId"]),
+
+  session_zone_assignments: defineTable({
+    sessionId: v.id("work_sessions"),
+    zoneId: v.id("storage_zones"),
+    assignedUserId: v.id("users"),
+  })
+    .index("sessionId", ["sessionId"])
+    .index("zoneId", ["zoneId"])
+    .index("assignedUserId", ["assignedUserId"]),
 
   // ================================================================
   // INVENTORY TRACKING
@@ -553,6 +430,7 @@ export default defineSchema({
     organizationId: v.string(),
     branchId: v.string(),
     requestCode: v.string(),
+    adjustmentTypeId: v.string(), // "quantity" or "location" adjustment type
     requestedByUserId: v.string(),
     requestedAt: v.number(),
     approvedByUserId: v.optional(v.string()),
@@ -563,6 +441,7 @@ export default defineSchema({
     .index("organizationId", ["organizationId"])
     .index("branchId", ["branchId"])
     .index("requestCode", ["requestCode"])
+    .index("adjustmentTypeId", ["adjustmentTypeId"])
     .index("requestedByUserId", ["requestedByUserId"])
     .index("adjustmentStatusTypeId", ["adjustmentStatusTypeId"]),
 
@@ -576,6 +455,10 @@ export default defineSchema({
     costImpact: v.number(),
     reasonTypeId: v.string(),
     customReasonNotes: v.optional(v.string()),
+    // Location adjustment fields
+    fromZoneId: v.optional(v.string()), // Source zone for location adjustments
+    toZoneId: v.optional(v.string()), // Destination zone for location adjustments
+    quantity: v.optional(v.number()), // Quantity to move for location adjustments
   })
     .index("adjustmentRequestId", ["adjustmentRequestId"])
     .index("batchId", ["batchId"])
