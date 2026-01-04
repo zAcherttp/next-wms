@@ -17,6 +17,7 @@ import { useMemo } from "react";
 import {
   Sidebar,
   SidebarContent,
+  SidebarFooter,
   SidebarHeader,
   SidebarRail,
 } from "@/components/ui/sidebar";
@@ -195,7 +196,7 @@ export function SettingsSidebar({
           </a>
         </Button>
       </SidebarHeader>
-      <SidebarContent>
+      <SidebarContent className="h-screen">
         <ScrollArea className="h-full">
           {isLoading ? (
             <div className="space-y-4 p-4">
@@ -211,6 +212,11 @@ export function SettingsSidebar({
           )}
         </ScrollArea>
       </SidebarContent>
+      <SidebarFooter>
+        <div className="p-4 text-muted-foreground text-sm">
+          © {new Date().getFullYear()} Your Company
+        </div>
+      </SidebarFooter>
       <SidebarRail />
     </Sidebar>
   );
