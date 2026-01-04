@@ -23,7 +23,7 @@
     "@biomejs/biome": "^2.3.8",
     "@types/node": "^22.19.1",
     "tsdown": "^0.15.12",
-    "turbo": "^2.6.3"
+    "turbo": "^2.7.2"
   },
   "packageManager": "pnpm@10.24.0",
   "pnpm": {
