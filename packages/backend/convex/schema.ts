@@ -268,6 +268,35 @@ export default defineSchema({
     .index("skuId", ["skuId"]),
 
   // ================================================================
+  // Receive SESSIONS
+  // ================================================================
+  receive_sessions: defineTable({
+    receiveSessionCode: v.string(),
+    purchaseOrderId: v.id("purchase_orders"),
+    branchId: v.id("branches"),
+    receivedAt: v.number(),
+    receiveSessionStatusTypeId: v.id("system_lookups"),
+  })
+    .index("purchaseOrderId", ["purchaseOrderId"])
+    .index("branchId", ["branchId"])
+    .index("receiveSessionCode", ["receiveSessionCode"])
+    .index("receiveSessionStatusTypeId", ["receiveSessionStatusTypeId"]),
+
+  receive_sessions_details: defineTable({
+    receiveSessionId: v.id("receive_sessions"),
+    skuId: v.id("product_variants"),
+    quantityReceived: v.number(),
+    quantityExpected: v.number(),
+    notes: v.optional(v.string()),
+    recommendedZoneId: v.optional(v.id("storage_zones")),
+    receiveSessionItemStatusTypeId: v.id("system_lookups"),
+  })
+    .index("receiveSessionId", ["receiveSessionId"])
+    .index("skuId", ["skuId"])
+    .index("receiveSessionItemStatusTypeId", [
+      "receiveSessionItemStatusTypeId",
+    ]),
+  // ================================================================
   // WORK SESSIONS
   // ================================================================
 
@@ -286,6 +315,7 @@ export default defineSchema({
     verifiedAt: v.optional(v.number()),
     verifiedByUserId: v.optional(v.id("users")),
     rejectionReason: v.optional(v.string()),
+    receiveSessionId: v.optional(v.id("receive_sessions")),
     purchaseOrderId: v.optional(v.id("purchase_orders")),
     outboundOrderId: v.optional(v.id("outbound_orders")),
     transferOrderId: v.optional(v.id("transfer_orders")),
@@ -295,6 +325,7 @@ export default defineSchema({
     .index("sessionCode", ["sessionCode"])
     .index("assignedUserId", ["assignedUserId"])
     .index("sessionStatusTypeId", ["sessionStatusTypeId"])
+    .index("receiveSessionId", ["receiveSessionId"])
     .index("purchaseOrderId", ["purchaseOrderId"])
     .index("outboundOrderId", ["outboundOrderId"])
     .index("transferOrderId", ["transferOrderId"]),

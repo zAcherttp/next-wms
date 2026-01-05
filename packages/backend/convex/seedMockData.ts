@@ -365,6 +365,76 @@ export const seedAllTestData = mutation({
       sortOrder: 2,
     });
 
+    // Receive Session Status types
+    const receiveSessionPendingStatusId = await ctx.db.insert(
+      "system_lookups",
+      {
+        lookupType: "ReceiveSessionStatus",
+        lookupCode: "PENDING",
+        lookupValue: "Pending",
+        description: "Receive session is pending",
+        sortOrder: 1,
+      }
+    );
+
+    const receiveSessionInProgressStatusId = await ctx.db.insert(
+      "system_lookups",
+      {
+        lookupType: "ReceiveSessionStatus",
+        lookupCode: "IN_PROGRESS",
+        lookupValue: "In Progress",
+        description: "Receive session is in progress",
+        sortOrder: 2,
+      }
+    );
+
+    const receiveSessionCompleteStatusId = await ctx.db.insert(
+      "system_lookups",
+      {
+        lookupType: "ReceiveSessionStatus",
+        lookupCode: "COMPLETE",
+        lookupValue: "Complete",
+        description: "Receive session is complete",
+        sortOrder: 3,
+      }
+    );
+
+    // Receive Session Item Status types
+    const receiveItemPendingStatusId = await ctx.db.insert("system_lookups", {
+      lookupType: "ReceiveSessionItemStatus",
+      lookupCode: "PENDING",
+      lookupValue: "Pending",
+      description: "Item is pending receiving",
+      sortOrder: 1,
+    });
+
+    const receiveItemPartialStatusId = await ctx.db.insert("system_lookups", {
+      lookupType: "ReceiveSessionItemStatus",
+      lookupCode: "PARTIAL",
+      lookupValue: "Partial",
+      description: "Item is partially received",
+      sortOrder: 2,
+    });
+
+    const receiveItemCompleteStatusId = await ctx.db.insert("system_lookups", {
+      lookupType: "ReceiveSessionItemStatus",
+      lookupCode: "COMPLETE",
+      lookupValue: "Complete",
+      description: "Item is fully received",
+      sortOrder: 3,
+    });
+
+    const receiveItemReturnRequestedStatusId = await ctx.db.insert(
+      "system_lookups",
+      {
+        lookupType: "ReceiveSessionItemStatus",
+        lookupCode: "RETURN_REQUESTED",
+        lookupValue: "Return Requested",
+        description: "Return has been requested for this item",
+        sortOrder: 4,
+      }
+    );
+
     // Invitation Status types
     const invitationPendingStatusId = await ctx.db.insert("system_lookups", {
       lookupType: "InvitationStatus",
@@ -2306,6 +2376,99 @@ export const seedAllTestData = mutation({
     });
 
     // ================================================================
+    // 17.5 RECEIVE SESSIONS (linked to work_sessions and purchase_orders)
+    // ================================================================
+
+    // Receive session for PO-2026-003 (completed - received status)
+    const receiveSessionRS1Id = await ctx.db.insert("receive_sessions", {
+      receiveSessionCode: "RS-20260101-0001",
+      purchaseOrderId: purchaseOrder3Id,
+      branchId,
+      receivedAt: now - oneDay * 3,
+      receiveSessionStatusTypeId: receiveSessionCompleteStatusId,
+    });
+
+    // Link the work session to the receive session
+    await ctx.db.patch(receiveSession1Id, {
+      receiveSessionId: receiveSessionRS1Id,
+    });
+
+    // Receive session for PO-2026-001 (pending - just created)
+    const receiveSessionRS2Id = await ctx.db.insert("receive_sessions", {
+      receiveSessionCode: "RS-20260104-0001",
+      purchaseOrderId: purchaseOrder1Id,
+      branchId,
+      receivedAt: now,
+      receiveSessionStatusTypeId: receiveSessionPendingStatusId,
+    });
+
+    // Link the pending work session to this receive session
+    await ctx.db.patch(receiveSession2Id, {
+      receiveSessionId: receiveSessionRS2Id,
+    });
+
+    // Receive session for PO-2026-002 (in progress)
+    const receiveSessionRS3Id = await ctx.db.insert("receive_sessions", {
+      receiveSessionCode: "RS-20260103-0001",
+      purchaseOrderId: purchaseOrder2Id,
+      branchId,
+      receivedAt: now - oneDay,
+      receiveSessionStatusTypeId: receiveSessionInProgressStatusId,
+    });
+
+    // ================================================================
+    // 17.6 RECEIVE SESSION DETAILS
+    // ================================================================
+
+    // Details for RS-20260101-0001 (completed receive session for PO-2026-003)
+    await ctx.db.insert("receive_sessions_details", {
+      receiveSessionId: receiveSessionRS1Id,
+      skuId: variant7Id,
+      quantityExpected: 20,
+      quantityReceived: 20,
+      notes: "All items received in good condition",
+      recommendedZoneId: storageZone3Id,
+      receiveSessionItemStatusTypeId: receiveItemCompleteStatusId,
+    });
+
+    await ctx.db.insert("receive_sessions_details", {
+      receiveSessionId: receiveSessionRS1Id,
+      skuId: variant10Id,
+      quantityExpected: 10,
+      quantityReceived: 10,
+      recommendedZoneId: storageZone2Id,
+      receiveSessionItemStatusTypeId: receiveItemCompleteStatusId,
+    });
+
+    // Details for RS-20260104-0001 (pending receive session for PO-2026-001)
+    await ctx.db.insert("receive_sessions_details", {
+      receiveSessionId: receiveSessionRS2Id,
+      skuId: variant1Id,
+      quantityExpected: 100,
+      quantityReceived: 0,
+      receiveSessionItemStatusTypeId: receiveItemPendingStatusId,
+    });
+
+    await ctx.db.insert("receive_sessions_details", {
+      receiveSessionId: receiveSessionRS2Id,
+      skuId: variant3Id,
+      quantityExpected: 50,
+      quantityReceived: 0,
+      receiveSessionItemStatusTypeId: receiveItemPendingStatusId,
+    });
+
+    // Details for RS-20260103-0001 (in progress receive session for PO-2026-002)
+    await ctx.db.insert("receive_sessions_details", {
+      receiveSessionId: receiveSessionRS3Id,
+      skuId: variant5Id,
+      quantityExpected: 75,
+      quantityReceived: 45,
+      notes: "Partial receipt - remaining items expected tomorrow",
+      recommendedZoneId: storageZone2Id,
+      receiveSessionItemStatusTypeId: receiveItemPartialStatusId,
+    });
+
+    // ================================================================
     // 18. INVENTORY TRANSACTIONS
     // ================================================================
 
@@ -3007,6 +3170,10 @@ export const clearAllTestData = mutation({
       "serial_numbers",
       "inventory_batches",
 
+      // Receive Sessions (delete before work_sessions)
+      "receive_sessions_details",
+      "receive_sessions",
+
       // Work Sessions
       "session_metrics",
       "session_zone_assignments",
@@ -3121,6 +3288,10 @@ export const clearAllDatabaseData = mutation({
       "inventory_transactions",
       "serial_numbers",
       "inventory_batches",
+
+      // Receive Sessions (delete before work_sessions)
+      "receive_sessions_details",
+      "receive_sessions",
 
       // Work Sessions
       "session_metrics",
