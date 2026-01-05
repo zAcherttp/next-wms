@@ -42,15 +42,15 @@ const data = {
       items: [
         {
           title: "Purchase Orders",
-          url: "#",
+          url: "/purchase-orders",
         },
         {
           title: "Receiving Sessions",
-          url: "#",
+          url: "/receiving-sessions",
         },
         {
           title: "Return Requests",
-          url: "#",
+          url: "/return-requests",
         },
       ],
     },
@@ -72,7 +72,6 @@ const data = {
     {
       title: "Inventory",
       icon: Package,
-      isActive: true,
       items: [
         {
           title: "Stock",
