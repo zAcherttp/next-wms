@@ -36,16 +36,10 @@ export function NavWorkspace() {
   const { isMobile } = useSidebar();
 
   const { data: organizations } = useListOrganizations();
-  const {
-    data: activeOrg,
-    isPending: isActiveOrgPending,
-    refetch,
-  } = useActiveOrganization();
+  const { data: activeOrg, refetch } = useActiveOrganization();
   const tenants = organizations ?? [];
 
   const [open, setOpen] = useState(false);
-
-  const hasOrganizations = tenants.length > 0;
 
   // Sync with URL workspace param
   // When URL changes (via middleware), refetch to get updated active org
@@ -75,7 +69,7 @@ export function NavWorkspace() {
     <>
       <SidebarMenu>
         <SidebarMenuItem>
-          {hasOrganizations ? (
+          {tenants.length > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
@@ -174,7 +168,7 @@ export function NavWorkspace() {
                 </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : isActiveOrgPending ? (
+          ) : (
             <SidebarMenuButton size="lg" className="pointer-events-none">
               <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
               <div className="grid flex-1 gap-0.5 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
@@ -183,7 +177,7 @@ export function NavWorkspace() {
               </div>
               <Skeleton className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
-          ) : null}
+          )}
         </SidebarMenuItem>
       </SidebarMenu>
       <OrganizationDialog open={open} onOpenChange={setOpen} />

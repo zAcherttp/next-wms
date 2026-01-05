@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight, type LucideIcon } from "lucide-react";
+import { useParams } from "next/navigation";
 
 import {
   Collapsible,
@@ -23,7 +24,6 @@ export function NavMain({
 }: {
   items: {
     title: string;
-    url: string;
     icon?: LucideIcon;
     isActive?: boolean;
     items?: {
@@ -32,6 +32,9 @@ export function NavMain({
     }[];
   }[];
 }) {
+  const params = useParams();
+  const workspace = params.workspace as string;
+
   return (
     <SidebarGroup>
       <SidebarGroupLabel>Platform</SidebarGroupLabel>
@@ -56,7 +59,7 @@ export function NavMain({
                   {item.items?.map((subItem) => (
                     <SidebarMenuSubItem key={subItem.title}>
                       <SidebarMenuSubButton asChild>
-                        <a href={subItem.url}>
+                        <a href={`/${workspace}${subItem.url}`}>
                           <span>{subItem.title}</span>
                         </a>
                       </SidebarMenuSubButton>

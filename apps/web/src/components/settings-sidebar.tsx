@@ -70,7 +70,7 @@ const settingsNavs: SettingNavGroup[] = [
       {
         title: "Workspace",
         icon: Building,
-        url: "admin",
+        url: "admin/workspace",
         isAdmin: true,
       },
       {
@@ -122,15 +122,11 @@ export function SettingsSidebar({ ...props }: SettingsSidebarProps) {
         </Button>
       </SidebarHeader>
       <SidebarContent>
-        <ScrollArea className="h-full">
+        <ScrollArea className="overflow-y-auto">
           <SettingsNavMain items={navWithUrls} />
         </ScrollArea>
       </SidebarContent>
-      <SidebarFooter>
-        <div className="p-4 text-muted-foreground text-sm">
-          © {new Date().getFullYear()} Your Company
-        </div>
-      </SidebarFooter>
+      <SidebarFooter />
       <SidebarRail />
     </Sidebar>
   );
