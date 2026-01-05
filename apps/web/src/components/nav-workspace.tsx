@@ -23,8 +23,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useActiveOrganization, useOrganizations } from "@/lib/auth-queries";
-import { usePrefetchWorkspace } from "@/lib/prefetch";
+import {
+  organization,
+  useActiveOrganization,
+  useListOrganizations,
+} from "@/lib/auth/client";
 import { OrganizationDialog } from "./organization-dialog";
 import { Kbd } from "./ui/kbd";
 import { ScrollArea } from "./ui/scroll-area";
@@ -34,37 +37,28 @@ export function NavWorkspace() {
   const router = useRouter();
   const { isMobile } = useSidebar();
 
-  // Use React Query hooks instead of Zustand store
-  const { data: organizations, isPending } = useOrganizations();
-  const { data: activeOrg } = useActiveOrganization();
+  const { data: organizations } = useListOrganizations();
+  const { data: activeOrg, refetch } = useActiveOrganization();
   const tenants = organizations ?? [];
-  const currentTenant = activeOrg
-    ? {
-        id: activeOrg.id,
-        name: activeOrg.name,
-        slug: activeOrg.slug ?? "",
-        logo: activeOrg.logo ?? null,
-      }
-    : null;
-  const prefetch = usePrefetchWorkspace();
 
   const [open, setOpen] = useState(false);
 
-  const hasOrganizations = tenants.length > 0;
-
-  const handleOrgSwitch = (orgSlug: string) => {
-    // Just navigate - WorkspaceSync will handle setting active org
-    router.push(`/${orgSlug}/dashboard`);
-  };
-
-  const handleOrgHover = (orgSlug: string) => {
-    // Prefetch workspace data on hover for faster navigation
-    prefetch(orgSlug, "low");
+  const handleOrgSwitch = async (orgId: string, orgSlug: string) => {
+    try {
+      await organization.setActive({
+        organizationId: orgId,
+      });
+      router.push(`/${orgSlug}/dashboard`);
+      refetch();
+    } catch (error) {
+      console.error("Failed to switch organization:", error);
+      toast.error("Failed to switch organization");
+    }
   };
 
   const handleSettingsClick = () => {
-    if (currentTenant) {
-      router.push(`/${currentTenant.slug}/settings`);
+    if (activeOrg) {
+      router.push(`/${activeOrg.slug}/settings`);
     } else {
       // this should not happen, but just in case
       toast.error("No active organization to view settings for.");
@@ -75,54 +69,34 @@ export function NavWorkspace() {
     <>
       <SidebarMenu>
         <SidebarMenuItem>
-          {hasOrganizations ? (
+          {tenants.length > 0 ? (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <SidebarMenuButton
                   size="lg"
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
-                  {currentTenant ? (
-                    <>
-                      <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                        {currentTenant.logo ? (
-                          <Avatar className="h-4 w-4 rounded">
-                            <AvatarImage
-                              src={currentTenant.logo}
-                              alt={currentTenant.name}
-                            />
-                            <AvatarFallback>
-                              <Building2 className="size-2.5" />
-                            </AvatarFallback>
-                          </Avatar>
-                        ) : (
-                          <Building2 className="size-4" />
-                        )}
-                      </div>
-                      <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-medium">
-                          {currentTenant.name}
-                        </span>
-                        <span className="truncate text-xs">
-                          {currentTenant.slug}
-                        </span>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                        <Building2 className="size-4" />
-                      </div>
-                      <div className="grid flex-1 text-left text-sm leading-tight">
-                        <span className="truncate font-medium text-muted-foreground">
-                          No organization
-                        </span>
-                        <span className="truncate text-muted-foreground text-xs">
-                          Select one
-                        </span>
-                      </div>
-                    </>
-                  )}
+                  <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                    {activeOrg?.logo ? (
+                      <Avatar className="h-4 w-4 rounded">
+                        <AvatarImage
+                          src={activeOrg.logo}
+                          alt={activeOrg.name}
+                        />
+                        <AvatarFallback>
+                          <Building2 className="size-2.5" />
+                        </AvatarFallback>
+                      </Avatar>
+                    ) : (
+                      <Building2 className="size-4" />
+                    )}
+                  </div>
+                  <div className="grid flex-1 text-left text-sm leading-tight">
+                    <span className="truncate font-medium">
+                      {activeOrg?.name}
+                    </span>
+                    <span className="truncate text-xs">{activeOrg?.slug}</span>
+                  </div>
                   <ChevronsUpDown className="ml-auto" />
                 </SidebarMenuButton>
               </DropdownMenuTrigger>
@@ -150,8 +124,9 @@ export function NavWorkspace() {
                         {tenants.map((tenant, index: number) => (
                           <DropdownMenuItem
                             key={tenant.id}
-                            onClick={() => handleOrgSwitch(tenant.slug)}
-                            onMouseEnter={() => handleOrgHover(tenant.slug)}
+                            onClick={() =>
+                              handleOrgSwitch(tenant.id, tenant.slug)
+                            }
                             className="gap-2 p-2"
                           >
                             <div className="flex size-6 items-center justify-center rounded-md border">
@@ -195,7 +170,7 @@ export function NavWorkspace() {
                 </DropdownMenuSub>
               </DropdownMenuContent>
             </DropdownMenu>
-          ) : isPending ? (
+          ) : (
             <SidebarMenuButton size="lg" className="pointer-events-none">
               <Skeleton className="h-8 w-8 shrink-0 rounded-lg" />
               <div className="grid flex-1 gap-0.5 text-left text-sm leading-tight group-data-[collapsible=icon]:hidden">
@@ -204,7 +179,7 @@ export function NavWorkspace() {
               </div>
               <Skeleton className="ml-auto size-4 group-data-[collapsible=icon]:hidden" />
             </SidebarMenuButton>
-          ) : null}
+          )}
         </SidebarMenuItem>
       </SidebarMenu>
       <OrganizationDialog open={open} onOpenChange={setOpen} />

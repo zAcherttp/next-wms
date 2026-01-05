@@ -58,7 +58,7 @@ apps/web/src/
 ├── lib/
 │   ├── middleware-cache.ts   # NEW - Cookie-based caching
 │   ├── prefetch.ts           # NEW - Debounced prefetching
-│   └── auth-client.ts        # EXISTING - Better Auth client
+│   └── auth/client.ts        # EXISTING - Better Auth client
 ├── stores/
 │   ├── types.ts              # NEW - Store type definitions
 │   └── global-store.ts       # NEW - Zustand global store

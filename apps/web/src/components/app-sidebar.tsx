@@ -1,6 +1,15 @@
 "use client";
 
-import { BookOpen, Bot, Settings2, SquareTerminal } from "lucide-react";
+import {
+  ArrowBigDownDash,
+  ArrowBigUpDash,
+  ChartColumn,
+  Database,
+  Gauge,
+  Package,
+  ShieldUser,
+  Warehouse,
+} from "lucide-react";
 import { NavMain } from "@/components/nav-main";
 import { NavUser } from "@/components/nav-user";
 import { NavWorkspace } from "@/components/nav-workspace";
@@ -16,86 +25,140 @@ import { ScrollArea } from "./ui/scroll-area";
 const data = {
   navMain: [
     {
-      title: "Playground",
-      url: "#",
-      icon: SquareTerminal,
+      title: "Dashboard",
+      icon: Gauge,
       isActive: true,
       items: [
         {
-          title: "History",
-          url: "#",
-        },
-        {
-          title: "Starred",
-          url: "#",
-        },
-        {
-          title: "Settings",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Models",
-      url: "#",
-      icon: Bot,
-      items: [
-        {
-          title: "Genesis",
-          url: "#",
-        },
-        {
-          title: "Explorer",
-          url: "#",
-        },
-        {
-          title: "Quantum",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Documentation",
-      url: "#",
-      icon: BookOpen,
-      items: [
-        {
-          title: "Introduction",
-          url: "#",
-        },
-        {
-          title: "Get Started",
-          url: "#",
-        },
-        {
-          title: "Tutorials",
-          url: "#",
-        },
-        {
-          title: "Changelog",
-          url: "#",
-        },
-      ],
-    },
-    {
-      title: "Settings",
-      url: "#",
-      icon: Settings2,
-      items: [
-        {
           title: "General",
+          url: "/dashboard",
+        },
+      ],
+    },
+    {
+      title: "Inbound",
+      icon: ArrowBigDownDash,
+      isActive: true,
+      items: [
+        {
+          title: "Purchase Orders",
+          url: "/purchase-orders",
+        },
+        {
+          title: "Receiving Sessions",
+          url: "/receiving-sessions",
+        },
+        {
+          title: "Return Requests",
+          url: "/return-requests",
+        },
+      ],
+    },
+    {
+      title: "Outbound",
+      icon: ArrowBigUpDash,
+      isActive: true,
+      items: [
+        {
+          title: "Orders",
           url: "#",
         },
         {
-          title: "Team",
+          title: "Picking Sessions",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "Inventory",
+      icon: Package,
+      items: [
+        {
+          title: "Stock",
           url: "#",
         },
         {
-          title: "Billing",
+          title: "Batches",
           url: "#",
         },
         {
-          title: "Limits",
+          title: "Serials",
+          url: "#",
+        },
+        {
+          title: "Adjustments",
+          url: "#",
+        },
+        {
+          title: "Transfers",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "Warehouses Ops",
+      icon: Warehouse,
+      items: [
+        {
+          title: "Zones",
+          url: "#",
+        },
+        {
+          title: "Work Sessions",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "Master Data",
+      icon: Database,
+      items: [
+        {
+          title: "Products",
+          url: "#",
+        },
+        {
+          title: "SKUs",
+          url: "#",
+        },
+        {
+          title: "Categories",
+          url: "#",
+        },
+        {
+          title: "UoMs",
+          url: "#",
+        },
+        {
+          title: "Brands",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "Reports",
+      icon: ChartColumn,
+      items: [
+        {
+          title: "Inventory",
+          url: "#",
+        },
+        {
+          title: "Inbound",
+          url: "#",
+        },
+        {
+          title: "Outbound",
+          url: "#",
+        },
+      ],
+    },
+    {
+      title: "System",
+      icon: ShieldUser,
+      items: [
+        {
+          title: "Traceability",
           url: "#",
         },
       ],

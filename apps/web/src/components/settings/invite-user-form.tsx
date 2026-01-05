@@ -14,10 +14,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { organization } from "@/lib/auth-client";
+import { organization } from "@/lib/auth/client";
 
 const inviteFormSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
+  email: z.email("Please enter a valid email address"),
   role: z.enum(["admin", "member"]),
 });
 
@@ -130,23 +130,10 @@ export function InviteUserForm({
                 <SelectTrigger id="invite-role" className="w-full">
                   <SelectValue placeholder="Select a role" />
                 </SelectTrigger>
+                {/* TODO: get the actual roles from this organization */}
                 <SelectContent>
-                  <SelectItem value="admin">
-                    <div className="flex flex-col">
-                      <span className="font-medium">Admin</span>
-                      <span className="text-muted-foreground text-xs">
-                        Can manage members and settings
-                      </span>
-                    </div>
-                  </SelectItem>
-                  <SelectItem value="member">
-                    <div className="flex flex-col">
-                      <span className="font-medium">Member</span>
-                      <span className="text-muted-foreground text-xs">
-                        Standard workspace access
-                      </span>
-                    </div>
-                  </SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                  <SelectItem value="member">Member</SelectItem>
                 </SelectContent>
               </Select>
             </div>

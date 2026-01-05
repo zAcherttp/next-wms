@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSession } from "@/lib/auth-queries";
+import { useSession } from "@/lib/auth/client";
 import { Button } from "./ui/button";
 import { Spinner } from "./ui/spinner";
 
@@ -10,7 +10,6 @@ interface SignInProps {
 }
 
 export default function SignIn(props: SignInProps) {
-  // Use React Query hooks instead of Zustand store
   const { data: session, isPending } = useSession();
   const user = session?.user ?? null;
 

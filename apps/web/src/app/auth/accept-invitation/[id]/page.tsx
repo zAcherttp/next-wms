@@ -1,6 +1,7 @@
 "use client";
 
 import { Building2, CheckCircle, Loader2, XCircle } from "lucide-react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -11,8 +12,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { organization } from "@/lib/auth-client";
-import { useSession } from "@/lib/auth-queries";
+import { organization, useSession } from "@/lib/auth/client";
 
 type InvitationStatus =
   | "loading"
@@ -138,12 +138,12 @@ export default function AcceptInvitationPage() {
             </Button>
             <p className="text-center text-muted-foreground text-sm">
               Don't have an account?{" "}
-              <a
+              <Link
                 href={`/auth/sign-up?returnUrl=${encodeURIComponent(`/auth/accept-invitation/${invitationId}`)}`}
                 className="text-primary hover:underline"
               >
                 Sign up
-              </a>
+              </Link>
             </p>
           </CardContent>
         </Card>

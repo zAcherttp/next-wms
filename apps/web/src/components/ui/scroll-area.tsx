@@ -13,7 +13,7 @@ function ScrollArea({
   return (
     <ScrollAreaPrimitive.Root
       data-slot="scroll-area"
-      className={cn("group relative", className)}
+      className={cn("relative", className)}
       {...props}
     >
       <ScrollAreaPrimitive.Viewport
@@ -43,17 +43,14 @@ function ScrollBar({
           "h-full w-2.5 border-l border-l-transparent",
         orientation === "horizontal" &&
           "h-2.5 flex-col border-t border-t-transparent",
-        "opacity-0 transition-opacity duration-500 group-hover:opacity-100",
         className,
       )}
       {...props}
     >
       <ScrollAreaPrimitive.ScrollAreaThumb
         data-slot="scroll-area-thumb"
-        asChild
-      >
-        <div className="relative flex-1 rounded-full bg-border" />
-      </ScrollAreaPrimitive.ScrollAreaThumb>
+        className="relative flex-1 rounded-full bg-border"
+      />
     </ScrollAreaPrimitive.ScrollAreaScrollbar>
   );
 }

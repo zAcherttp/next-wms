@@ -1,32 +1,51 @@
 "use client";
 
+import { toast } from "sonner";
 import {
+  authClient,
   useActiveOrganization,
-  useAuthActions,
-  useOrganizations,
+  useListOrganizations,
   useSession,
-} from "@/lib/auth-queries";
+} from "@/lib/auth/client";
 
 /**
  * Debug page for auth state
  * Shows React Query cached auth data
  */
 export default function BetterAuthLocalPage() {
-  // -------------------------------------------------------------------------
-  // AUTH QUERIES (React Query with 5min cache)
-  // -------------------------------------------------------------------------
-  const { data: session, isPending: sessionPending } = useSession();
-  const { data: organizations, isPending: orgsPending } = useOrganizations();
-  const { data: activeOrg, isPending: activeOrgPending } =
-    useActiveOrganization();
+  const {
+    data: session,
+    isPending: sessionPending,
+    refetch: refetchSession,
+  } = useSession();
+  const {
+    data: organizations,
+    isPending: orgsPending,
+    refetch: refetchOrganizations,
+  } = useListOrganizations();
+  const {
+    data: activeOrg,
+    isPending: activeOrgPending,
+    refetch: refetchActiveOrg,
+  } = useActiveOrganization();
 
-  // -------------------------------------------------------------------------
-  // ACTIONS
-  // -------------------------------------------------------------------------
-  const { invalidateAll, switchOrganization } = useAuthActions();
+  const handleRefetch = () => {
+    refetchSession();
+    refetchOrganizations();
+    refetchActiveOrg();
+  };
 
   const handleSetActiveOrg = async (orgId: string) => {
-    await switchOrganization(orgId);
+    const { data, error } = await authClient.organization.setActive({
+      organizationId: orgId,
+    });
+
+    if (error) {
+      toast.error(`Failed to set active organization: ${error.message}`);
+      return;
+    }
+
+    toast.success(`Active organization set to: ${data.name}`);
   };
 
   return (
@@ -81,7 +100,7 @@ export default function BetterAuthLocalPage() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={() => invalidateAll()}
+                onClick={() => handleRefetch()}
                 className="rounded bg-blue-600 px-3 py-1.5 text-sm text-white hover:bg-blue-700"
               >
                 Invalidate All (Refetch)

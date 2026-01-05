@@ -13,7 +13,7 @@ import {
 import { toast } from "sonner";
 import { z } from "zod";
 
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/client";
 
 import { easeInOutTransition } from "./easing";
 import { Button } from "./ui/button";

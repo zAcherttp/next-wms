@@ -5,7 +5,7 @@ import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import AvatarUpload from "@/components/avatar-upload";
 import type { FileWithPreview } from "@/hooks/use-file-upload";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/client";
 
 interface AvatarUploadFieldProps {
   /** Current avatar URL */
