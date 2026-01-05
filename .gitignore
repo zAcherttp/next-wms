@@ -48,3 +48,7 @@ coverage
 .cache
 tmp
 temp
+
+# Convex generated files
+convex/_generated/
+**/convex/_generated/

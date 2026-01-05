@@ -81,6 +81,46 @@ export const list = query({
   },
 });
 
+export const listDetailed = query({
+  args: {
+    userId: v.id("users"),
+    unreadOnly: v.optional(v.boolean()),
+    // Add topK parameter with a default value of 10
+    topK: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.topK ?? 10;
+
+    // Use .take(limit) instead of .collect() or .paginate()
+    const notifications = await ctx.db
+      .query("notifications")
+      .withIndex("recipientUserId", (q) => q.eq("recipientUserId", args.userId))
+      .order("desc")
+      .take(limit);
+
+    // Apply filtering if unreadOnly is requested
+    const filteredNotifications = args.unreadOnly
+      ? notifications.filter((n) => !n.readAt)
+      : notifications;
+
+    // Join the related category and priority documents
+    return await Promise.all(
+      filteredNotifications.map(async (n) => {
+        const [category, priority] = await Promise.all([
+          ctx.db.get(n.notificationCategoryTypeId),
+          ctx.db.get(n.priorityTypeId),
+        ]);
+
+        return {
+          ...n,
+          category,
+          priority,
+        };
+      })
+    );
+  },
+});
+
 /**
  * Mark a notification as read.
  */
