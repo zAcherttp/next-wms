@@ -4,15 +4,15 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import {
   useActiveOrganization,
-  useOrganizations,
+  useListOrganizations,
   useSession,
-} from "@/lib/auth-queries";
+} from "@/lib/auth/client";
 
 export default function Page() {
   const router = useRouter();
   const { data: session, isPending: isPendingSession } = useSession();
   const { data: userOrganizations, isPending: isPendingOrganizations } =
-    useOrganizations();
+    useListOrganizations();
   const { data: activeOrganization, isPending: isPendingActiveOrganization } =
     useActiveOrganization();
 

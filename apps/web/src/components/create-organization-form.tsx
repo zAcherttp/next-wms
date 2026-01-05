@@ -2,7 +2,7 @@ import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useCallback, useTransition } from "react";
 import { toast } from "sonner";
 import z from "zod";
-import { authClient } from "@/lib/auth-client";
+import { authClient } from "@/lib/auth/client";
 import AvatarUpload from "./avatar-upload";
 import { Button } from "./ui/button";
 import { Field, FieldError, FieldLabel } from "./ui/field";
@@ -113,7 +113,7 @@ export function CreateOrganizationForm({
           return;
         }
 
-        // Success - WorkspaceSync will handle setting active org after navigation
+        // Success - proxy middleware will handle setting active org after navigation
         toast.success("Organization created successfully");
         onSuccess?.(value.orgSlug);
       });

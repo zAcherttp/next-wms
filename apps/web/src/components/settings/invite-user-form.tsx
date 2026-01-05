@@ -14,7 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { organization } from "@/lib/auth-client";
+import { organization } from "@/lib/auth/client";
 
 const inviteFormSchema = z.object({
   email: z.string().email("Please enter a valid email address"),

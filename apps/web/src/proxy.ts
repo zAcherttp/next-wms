@@ -1,11 +1,6 @@
+import { auth } from "@wms/backend/auth";
+import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
-import {
-  createCacheCookieHeader,
-  createClearCacheCookieHeader,
-  getCachedVerification,
-} from "@/lib/middleware-cache";
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || "";
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -31,69 +26,37 @@ export async function proxy(request: NextRequest) {
 
   const workspaceSlug = workspaceMatch[1];
 
-  // Check for cached verification result first
-  const cachedResult = getCachedVerification(request, workspaceSlug);
-  if (cachedResult) {
-    // Cache hit - skip API calls
-    return NextResponse.next();
-  }
-
-  const cookie = request.headers.get("cookie") || "";
-
   try {
     // 1. Check session with Better Auth
-    const sessionResponse = await fetch(`${APP_URL}/api/auth/get-session`, {
-      headers: { cookie },
-      cache: "no-store",
+    const getSessionResponse = await auth.api.getSession({
+      headers: await headers(), // some endpoints might require headers
     });
 
-    if (!sessionResponse.ok) {
+    if (
+      !getSessionResponse ||
+      !getSessionResponse.session ||
+      !getSessionResponse.user
+    ) {
       const url = new URL("/auth/sign-in", request.url);
       url.searchParams.set("error", "Not authenticated");
-      const redirectResponse = NextResponse.redirect(url);
-      redirectResponse.headers.set(
-        "Set-Cookie",
-        createClearCacheCookieHeader(workspaceSlug),
-      );
-      return redirectResponse;
+      return NextResponse.redirect(url);
     }
-
-    const session = await sessionResponse.json();
-
-    if (!session || !session.user) {
-      const url = new URL("/auth/sign-in", request.url);
-      const redirectResponse = NextResponse.redirect(url);
-      redirectResponse.headers.set(
-        "Set-Cookie",
-        createClearCacheCookieHeader(workspaceSlug),
-      );
-      return redirectResponse;
-    }
-
-    const userId = session.user.id;
 
     // 2. Fetch user's organizations
-    const orgsResponse = await fetch(`${APP_URL}/api/auth/organization/list`, {
-      headers: { cookie },
-      cache: "no-store",
+    const listOrgResponse = await auth.api.listOrganizations({
+      // This endpoint requires session cookies.
+      headers: await headers(),
     });
 
-    if (!orgsResponse.ok) {
+    if (!listOrgResponse) {
       const url = new URL("/join", request.url);
       url.searchParams.set("error", "Failed to fetch organizations");
-      const redirectResponse = NextResponse.redirect(url);
-      redirectResponse.headers.set(
-        "Set-Cookie",
-        createClearCacheCookieHeader(workspaceSlug),
-      );
-      return redirectResponse;
+      return NextResponse.redirect(url);
     }
 
-    const organizations = await orgsResponse.json();
-
     // 3. Check if user has access to the requested workspace
-    const org = Array.isArray(organizations)
-      ? organizations.find((o: { slug?: string }) => o.slug === workspaceSlug)
+    const org = Array.isArray(listOrgResponse)
+      ? listOrgResponse.find((o: { slug: string }) => o.slug === workspaceSlug)
       : null;
 
     if (!org) {
@@ -102,37 +65,48 @@ export async function proxy(request: NextRequest) {
         "error",
         "You don't have access to this organization",
       );
-      const redirectResponse = NextResponse.redirect(url);
-      redirectResponse.headers.set(
-        "Set-Cookie",
-        createClearCacheCookieHeader(workspaceSlug),
-      );
-      return redirectResponse;
+      return NextResponse.redirect(url);
     }
 
-    // User has access - cache the result and continue
-    const nextResponse = NextResponse.next();
+    // 4. Sync active organization with workspace URL
+    //
+    // This step ensures the session's activeOrganizationId matches the
+    // workspace slug in the URL. This provides server-side workspace sync,
+    // eliminating the need for client-side WorkspaceSync component.
+    //
+    // Benefits:
+    // - Server-rendered content always has correct org context
+    // - No hydration mismatches or race conditions
+    // - URL is the single source of truth for active workspace
+    // - Eliminates client-side sync delays and flashing
+    //
+    // The setActive call is fire-and-forget for performance:
+    // - We already verified user has access to this org
+    // - Subsequent requests will see the updated activeOrganizationId
+    // - Reduces middleware latency (don't wait for DB write)
+    if (getSessionResponse.session?.activeOrganizationId !== org.id) {
+      try {
+        const _data = await auth.api.setActiveOrganization({
+          body: {
+            organizationId: org.id,
+          },
+          // This endpoint requires session cookies.
+          headers: await headers(),
+        });
+      } catch (error) {
+        console.error("Failed to set active organization:", error);
+      }
+    }
 
-    // Set cache cookie for subsequent requests
-    nextResponse.headers.set(
-      "Set-Cookie",
-      createCacheCookieHeader(workspaceSlug, userId, org.id, org.name),
-    );
-
-    return nextResponse;
+    // User has access - allow request to continue
+    return NextResponse.next();
   } catch (error) {
     console.error("Middleware error:", error);
 
-    // On error, clear cache and redirect to join page
+    // On error, redirect to join page
     const url = new URL("/join", request.url);
     url.searchParams.set("error", "An error occurred while validating access");
-
-    const redirectResponse = NextResponse.redirect(url);
-    redirectResponse.headers.set(
-      "Set-Cookie",
-      createClearCacheCookieHeader(workspaceSlug),
-    );
-    return redirectResponse;
+    return NextResponse.redirect(url);
   }
 }
 

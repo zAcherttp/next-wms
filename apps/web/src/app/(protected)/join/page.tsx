@@ -13,14 +13,13 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
-import { Separator } from "@/components/ui/separator";
-import { useOrganizations } from "@/lib/auth-queries";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useListOrganizations } from "@/lib/auth/client";
 
 export default function Page() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  // Use React Query hooks instead of Zustand store
-  const { data: organizations } = useOrganizations();
+  const { data: organizations, isPending } = useListOrganizations();
   const tenants = organizations ?? [];
   const [showCreateForm, setShowCreateForm] = useState(false);
 
@@ -42,49 +41,55 @@ export default function Page() {
   }
 
   const handleJoinOrg = (orgSlug: string) => {
-    // Just navigate - WorkspaceSync will handle setting active org
-    toast.success("Joining organization...");
+    // Just navigate - proxy middleware will handle setting active org
+    toast.success("Opening organization...");
     router.push(`/${orgSlug}/dashboard`);
   };
 
   return (
     <div className="flex min-h-screen w-full items-center justify-center">
-      <div className="w-full max-w-100 space-y-2">
+      <div className="w-full max-w-100 space-y-6">
         {!showCreateForm ? (
           <>
-            <span className="flex justify-center pb-4 font-medium text-lg">
+            <span className="flex justify-center font-medium text-lg">
               Select an Organization to start
             </span>
-            <div className="flex flex-col space-y-2 pb-4">
-              {tenants?.map((org) => (
-                <Item key={org.id} variant="outline">
-                  <ItemMedia>
-                    <Avatar className="h-8 w-8 rounded">
-                      {org.logo && (
-                        <AvatarImage src={org.logo} alt={org.name} />
-                      )}
-                      <AvatarFallback className="rounded-lg">
-                        {getInitials(org.name)}
-                      </AvatarFallback>
-                    </Avatar>
-                  </ItemMedia>
-                  <ItemContent>
-                    <ItemTitle>{org.name}</ItemTitle>
-                  </ItemContent>
-                  <ItemActions>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleJoinOrg(org.slug)}
-                    >
-                      Join
-                    </Button>
-                  </ItemActions>
-                </Item>
-              ))}
+            <div className="flex flex-col space-y-2">
+              {isPending ? (
+                <>
+                  <Skeleton className="h-16 w-full" />
+                  <Skeleton className="h-16 w-full" />
+                </>
+              ) : (
+                tenants.map((org) => (
+                  <Item key={org.id} variant="outline">
+                    <ItemMedia>
+                      <Avatar className="h-8 w-8 rounded">
+                        {org.logo && (
+                          <AvatarImage src={org.logo} alt={org.name} />
+                        )}
+                        <AvatarFallback className="rounded-lg">
+                          {getInitials(org.name)}
+                        </AvatarFallback>
+                      </Avatar>
+                    </ItemMedia>
+                    <ItemContent>
+                      <ItemTitle>{org.name}</ItemTitle>
+                    </ItemContent>
+                    <ItemActions>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleJoinOrg(org.slug)}
+                      >
+                        Open
+                      </Button>
+                    </ItemActions>
+                  </Item>
+                ))
+              )}
             </div>
-            <Separator />
-            <span className="flex justify-center pt-4">
+            <span className="flex justify-center">
               <Button
                 className="w-8/10"
                 onClick={() => setShowCreateForm(true)}

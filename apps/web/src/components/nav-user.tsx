@@ -18,22 +18,17 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { signOut } from "@/lib/auth-client";
-import { useAuthActions, useSession } from "@/lib/auth-queries";
+import { signOut, useSession } from "@/lib/auth/client";
 import { Skeleton } from "./ui/skeleton";
 
 export function NavUser() {
-  // Use React Query hooks instead of Zustand store
   const { data: session, isPending } = useSession();
-  const { invalidateAll } = useAuthActions();
   const user = session?.user ?? null;
 
   const router = useRouter();
   const { isMobile } = useSidebar();
 
   const handleLogOut = async () => {
-    // Invalidate all auth queries on logout
-    await invalidateAll();
     signOut({
       fetchOptions: {
         onSuccess: () => {

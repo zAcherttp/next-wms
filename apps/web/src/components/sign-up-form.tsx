@@ -16,7 +16,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { signUp } from "@/lib/auth-client";
+import { signUp } from "@/lib/auth/client";
 import { Field, FieldError, FieldGroup, FieldLabel } from "./ui/field";
 import { Spinner } from "./ui/spinner";
 
