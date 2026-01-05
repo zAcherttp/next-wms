@@ -1,7 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
-import { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { type MutationCtx, mutation, query } from "./_generated/server";
 
 /**
  * Internal helper to create a notification.
@@ -20,7 +19,7 @@ export async function createNotification(
     actionUrl?: string;
     relatedEntityType?: string;
     relatedEntityId?: string;
-  }
+  },
 ) {
   await ctx.db.insert("notifications", {
     organizationId: args.organizationId,

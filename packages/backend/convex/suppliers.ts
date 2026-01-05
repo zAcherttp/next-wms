@@ -44,20 +44,20 @@ export const list = query({
     let queryBuilder = ctx.db
       .query("suppliers")
       .withIndex("organizationId", (q) =>
-        q.eq("organizationId", organizationId)
+        q.eq("organizationId", organizationId),
       );
 
     // Filter by active status
     if (isActive !== undefined) {
       queryBuilder = queryBuilder.filter((q) =>
-        q.eq(q.field("isActive"), isActive)
+        q.eq(q.field("isActive"), isActive),
       );
     }
 
     // Filter deleted items
     if (!includeDeleted) {
       queryBuilder = queryBuilder.filter((q) =>
-        q.eq(q.field("isDeleted"), false)
+        q.eq(q.field("isDeleted"), false),
       );
     }
 
@@ -163,7 +163,7 @@ export const create = mutation({
     const existing = await ctx.db
       .query("suppliers")
       .withIndex("organizationId", (q) =>
-        q.eq("organizationId", organizationId)
+        q.eq("organizationId", organizationId),
       )
       .filter((q) => q.eq(q.field("name"), name))
       .filter((q) => q.eq(q.field("isDeleted"), false))
@@ -177,7 +177,7 @@ export const create = mutation({
     const existingEmail = await ctx.db
       .query("suppliers")
       .withIndex("organizationId", (q) =>
-        q.eq("organizationId", organizationId)
+        q.eq("organizationId", organizationId),
       )
       .filter((q) => q.eq(q.field("email"), email))
       .filter((q) => q.eq(q.field("isDeleted"), false))
@@ -249,7 +249,7 @@ export const update = mutation({
         const existingEmail = await ctx.db
           .query("suppliers")
           .withIndex("organizationId", (q) =>
-            q.eq("organizationId", supplier.organizationId)
+            q.eq("organizationId", supplier.organizationId),
           )
           .filter((q) => q.eq(q.field("email"), email))
           .filter((q) => q.eq(q.field("isDeleted"), false))
@@ -268,7 +268,7 @@ export const update = mutation({
       const existingName = await ctx.db
         .query("suppliers")
         .withIndex("organizationId", (q) =>
-          q.eq("organizationId", supplier.organizationId)
+          q.eq("organizationId", supplier.organizationId),
         )
         .filter((q) => q.eq(q.field("name"), name))
         .filter((q) => q.eq(q.field("isDeleted"), false))
@@ -320,7 +320,7 @@ export const remove = mutation({
 
     if (activePurchaseOrders) {
       throw new Error(
-        "Cannot delete supplier with active purchase orders. Complete or cancel orders first."
+        "Cannot delete supplier with active purchase orders. Complete or cancel orders first.",
       );
     }
 
@@ -349,7 +349,7 @@ export const search = query({
     const suppliers = await ctx.db
       .query("suppliers")
       .withIndex("organizationId", (q) =>
-        q.eq("organizationId", organizationId)
+        q.eq("organizationId", organizationId),
       )
       .filter((q) => q.eq(q.field("isDeleted"), false))
       .collect();
@@ -361,7 +361,7 @@ export const search = query({
         (supplier) =>
           supplier.name.toLowerCase().includes(searchLower) ||
           supplier.email.toLowerCase().includes(searchLower) ||
-          supplier.contactPerson.toLowerCase().includes(searchLower)
+          supplier.contactPerson.toLowerCase().includes(searchLower),
       )
       .slice(0, limit);
 
@@ -380,7 +380,7 @@ export const getActive = query({
     const suppliers = await ctx.db
       .query("suppliers")
       .withIndex("organizationId", (q) =>
-        q.eq("organizationId", args.organizationId)
+        q.eq("organizationId", args.organizationId),
       )
       .filter((q) => q.eq(q.field("isActive"), true))
       .filter((q) => q.eq(q.field("isDeleted"), false))

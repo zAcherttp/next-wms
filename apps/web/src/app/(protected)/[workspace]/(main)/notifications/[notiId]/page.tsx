@@ -138,7 +138,7 @@ export default function NotificationsPage() {
                 <ArrowLeft className="h-4 w-4" />
               </Button>
             )}
-            <span className="font-semibold flex-1 gap-1 flex">
+            <span className="flex flex-1 gap-1 font-semibold">
               <Badge variant={"outline"} className="rounded-sm">
                 {selectedNotification?.priority}
               </Badge>

@@ -374,7 +374,7 @@ export const seedAllTestData = mutation({
         lookupValue: "Pending",
         description: "Receive session is pending",
         sortOrder: 1,
-      }
+      },
     );
 
     const receiveSessionInProgressStatusId = await ctx.db.insert(
@@ -385,7 +385,7 @@ export const seedAllTestData = mutation({
         lookupValue: "In Progress",
         description: "Receive session is in progress",
         sortOrder: 2,
-      }
+      },
     );
 
     const receiveSessionCompleteStatusId = await ctx.db.insert(
@@ -396,7 +396,7 @@ export const seedAllTestData = mutation({
         lookupValue: "Complete",
         description: "Receive session is complete",
         sortOrder: 3,
-      }
+      },
     );
 
     // Receive Session Item Status types
@@ -432,7 +432,7 @@ export const seedAllTestData = mutation({
         lookupValue: "Return Requested",
         description: "Return has been requested for this item",
         sortOrder: 4,
-      }
+      },
     );
 
     // Invitation Status types
@@ -535,7 +535,7 @@ export const seedAllTestData = mutation({
         lookupValue: "Reminder",
         description: "Reminder notifications",
         sortOrder: 3,
-      }
+      },
     );
 
     // Priority types
@@ -3223,7 +3223,7 @@ export const clearAllTestData = mutation({
       "system_lookups",
     ] as const;
 
-    let deletedCounts: Record<string, number> = {};
+    const deletedCounts: Record<string, number> = {};
     let totalDeleted = 0;
 
     for (const table of tables) {
@@ -3342,7 +3342,7 @@ export const clearAllDatabaseData = mutation({
       "system_lookups",
     ] as const;
 
-    let deletedCounts: Record<string, number> = {};
+    const deletedCounts: Record<string, number> = {};
     let totalDeleted = 0;
 
     for (const table of tables) {

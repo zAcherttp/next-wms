@@ -7,8 +7,8 @@ const crons = cronJobs();
 // 6:00 AM VN = 23:00 PM UTC (previous day)
 crons.cron(
   "check-inventory-expiration",
-  "0 23 * * *", 
-  internal.inventory.checkInventoryExpiration
+  "0 23 * * *",
+  internal.inventory.checkInventoryExpiration,
 );
 
 export default crons;

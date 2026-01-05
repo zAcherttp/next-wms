@@ -1,7 +1,6 @@
 "use client";
 
 import { Bell } from "lucide-react";
-import { motion } from "motion/react";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import NotificationsItem from "@/app/(protected)/[workspace]/(main)/notifications/notification-item";

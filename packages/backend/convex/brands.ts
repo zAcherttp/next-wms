@@ -1,11 +1,11 @@
 /**
  * BRANDS API - UC2
- * 
+ *
  * WHO CAN USE:
  * ✅ Warehouse Manager - full CRUD
  * ✅ Admin - full CRUD
  * ⚠️ Staff - read only
- * 
+ *
  * BEST PRACTICES:
  * - Pagination: Use paginationOpts for large datasets
  * - Soft delete: Use isActive flag instead of hard delete
@@ -35,7 +35,9 @@ export const getPaginatedBrands = query({
     let query = organizationId
       ? ctx.db
           .query("brands")
-          .withIndex("organizationId", (q) => q.eq("organizationId", organizationId))
+          .withIndex("organizationId", (q) =>
+            q.eq("organizationId", organizationId),
+          )
       : ctx.db.query("brands");
 
     // Filter by active status if provided
@@ -77,7 +79,9 @@ export const listAll = query({
 
     let query = ctx.db
       .query("brands")
-      .withIndex("organizationId", (q) => q.eq("organizationId", organizationId));
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organizationId),
+      );
 
     if (isActive !== undefined) {
       query = query.filter((q) => q.eq(q.field("isActive"), isActive));
@@ -106,7 +110,9 @@ export const createBrand = mutation({
     // Check if brand name already exists in this organization
     const existing = await ctx.db
       .query("brands")
-      .withIndex("organizationId", (q) => q.eq("organizationId", organizationId))
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organizationId),
+      )
       .filter((q) => q.eq(q.field("name"), name))
       .first();
 
@@ -148,7 +154,9 @@ export const updateBrand = mutation({
     if (name !== undefined && name !== brand.name) {
       const existing = await ctx.db
         .query("brands")
-        .withIndex("organizationId", (q) => q.eq("organizationId", brand.organizationId))
+        .withIndex("organizationId", (q) =>
+          q.eq("organizationId", brand.organizationId),
+        )
         .filter((q) => q.eq(q.field("name"), name))
         .first();
 
@@ -190,7 +198,9 @@ export const deleteBrand = mutation({
       .first();
 
     if (hasProducts) {
-      throw new Error("Cannot delete brand that has products. Remove products first or deactivate the brand.");
+      throw new Error(
+        "Cannot delete brand that has products. Remove products first or deactivate the brand.",
+      );
     }
 
     await ctx.db.delete(id);
@@ -237,13 +247,17 @@ export const search = query({
 
     const brands = await ctx.db
       .query("brands")
-      .withIndex("organizationId", (q) => q.eq("organizationId", organizationId))
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organizationId),
+      )
       .filter((q) => q.eq(q.field("isActive"), true))
       .collect();
 
     // Simple case-insensitive search
     const filtered = brands
-      .filter((brand) => brand.name.toLowerCase().includes(searchTerm.toLowerCase()))
+      .filter((brand) =>
+        brand.name.toLowerCase().includes(searchTerm.toLowerCase()),
+      )
       .slice(0, limit);
 
     return filtered;

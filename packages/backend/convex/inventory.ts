@@ -1,7 +1,8 @@
-import { internalMutation, mutation } from "./_generated/server";
-import { createNotification } from "./notifications";
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+import { internalMutation, mutation } from "./_generated/server";
 import { logAudit } from "./audit";
+import { createNotification } from "./notifications";
 
 /**
  * Adjust inventory quantity (increase or decrease).
@@ -34,23 +35,25 @@ export const adjustInventory = mutation({
 
     // 2. Get current user (who is performing the action)
     const identity = await ctx.auth.getUserIdentity();
-    let userId = undefined;
+    let userId: Id<"users"> | undefined;
     if (identity) {
-        // Assuming we store the convex user ID in the token or can look it up
-        // For now, we'll try to find the user by subject/tokenIdentifier if needed
-        // But typically in this schema, we need a valid User ID.
-        // We will query the user table by the token identifier (subject)
-        const user = await ctx.db
-            .query("users")
-            .withIndex("organizationId", q => q.eq("organizationId", batch.organizationId)) // Optimization hint
-            .filter(q => q.eq(q.field("email"), identity.email)) // Fallback to email matching
-            .first();
-        userId = user?._id;
+      // Assuming we store the convex user ID in the token or can look it up
+      // For now, we'll try to find the user by subject/tokenIdentifier if needed
+      // But typically in this schema, we need a valid User ID.
+      // We will query the user table by the token identifier (subject)
+      const user = await ctx.db
+        .query("users")
+        .withIndex("organizationId", (q) =>
+          q.eq("organizationId", batch.organizationId),
+        ) // Optimization hint
+        .filter((q) => q.eq(q.field("email"), identity.email)) // Fallback to email matching
+        .first();
+      userId = user?._id;
     }
-    
+
     if (!userId) {
-        // In a real app, we might enforce authentication here
-        // throw new Error("Unauthenticated");
+      // In a real app, we might enforce authentication here
+      // throw new Error("Unauthenticated");
     }
 
     // 3. Record the inventory transaction
@@ -75,7 +78,7 @@ export const adjustInventory = mutation({
       fieldName: "quantity",
       oldValue: quantityBefore,
       newValue: quantityAfter,
-      notes: `Inventory adjustment: ${args.quantityChange > 0 ? '+' : ''}${args.quantityChange}. Reason: ${args.notes ?? "N/A"}`,
+      notes: `Inventory adjustment: ${args.quantityChange > 0 ? "+" : ""}${args.quantityChange}. Reason: ${args.notes ?? "N/A"}`,
     });
 
     return {
@@ -97,13 +100,13 @@ export const checkInventoryExpiration = internalMutation({
     let alertType = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "NOTIFICATION_TYPE").eq("lookupCode", "ALERT")
+        q.eq("lookupType", "NOTIFICATION_TYPE").eq("lookupCode", "ALERT"),
       )
       .first();
 
     if (!alertType) {
-       // Fallback: try to find any notification type
-       alertType = await ctx.db
+      // Fallback: try to find any notification type
+      alertType = await ctx.db
         .query("system_lookups")
         .withIndex("lookupType", (q) => q.eq("lookupType", "NOTIFICATION_TYPE"))
         .first();
@@ -113,20 +116,22 @@ export const checkInventoryExpiration = internalMutation({
     let highPriority = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "PRIORITY").eq("lookupCode", "HIGH")
+        q.eq("lookupType", "PRIORITY").eq("lookupCode", "HIGH"),
       )
       .first();
-    
+
     if (!highPriority) {
-        // Fallback
-        highPriority = await ctx.db
+      // Fallback
+      highPriority = await ctx.db
         .query("system_lookups")
         .withIndex("lookupType", (q) => q.eq("lookupType", "PRIORITY"))
         .first();
     }
 
     if (!alertType || !highPriority) {
-      console.error("Missing system lookups for notifications (NOTIFICATION_TYPE or PRIORITY)");
+      console.error(
+        "Missing system lookups for notifications (NOTIFICATION_TYPE or PRIORITY)",
+      );
       return;
     }
 
@@ -134,7 +139,9 @@ export const checkInventoryExpiration = internalMutation({
     // We use the index on expiresAt to efficiently find batches
     const expiringBatches = await ctx.db
       .query("inventory_batches")
-      .withIndex("expiresAt", (q) => q.gt("expiresAt", now).lt("expiresAt", threeMonthsFromNow))
+      .withIndex("expiresAt", (q) =>
+        q.gt("expiresAt", now).lt("expiresAt", threeMonthsFromNow),
+      )
       .collect();
 
     // 3. Process batches
@@ -152,16 +159,18 @@ export const checkInventoryExpiration = internalMutation({
       // In a real app, we might want to notify only specific roles (e.g. Warehouse Manager)
       const users = await ctx.db
         .query("users")
-        .withIndex("organizationId", (q) => q.eq("organizationId", batch.organizationId))
+        .withIndex("organizationId", (q) =>
+          q.eq("organizationId", batch.organizationId),
+        )
         .collect();
 
       for (const user of users) {
         if (user.isDeleted || !user.isActive) continue;
 
         // Check if we already notified this user about this batch recently?
-        // For simplicity, we'll just create the notification. 
+        // For simplicity, we'll just create the notification.
         // The user can mark it as read.
-        
+
         await createNotification(ctx, {
           organizationId: batch.organizationId,
           notificationCategoryTypeId: alertType._id,
@@ -175,7 +184,9 @@ export const checkInventoryExpiration = internalMutation({
         });
       }
     }
-    
-    console.log(`Checked inventory expiration. Found ${expiringBatches.length} batches expiring soon.`);
+
+    console.log(
+      `Checked inventory expiration. Found ${expiringBatches.length} batches expiring soon.`,
+    );
   },
 });

@@ -1,7 +1,6 @@
 import { v } from "convex/values";
-import { mutation } from "./_generated/server";
-import { Id } from "./_generated/dataModel";
-import { MutationCtx } from "./_generated/server";
+import type { Id } from "./_generated/dataModel";
+import { type MutationCtx, mutation } from "./_generated/server";
 
 /**
  * Internal helper to create an audit log entry.
@@ -20,7 +19,7 @@ export async function logAudit(
     newValue?: any;
     ipAddress?: string;
     notes?: string;
-  }
+  },
 ) {
   await ctx.db.insert("audit_logs", {
     organizationId: args.organizationId,
