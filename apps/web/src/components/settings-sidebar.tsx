@@ -7,11 +7,10 @@ import {
   CircleUserRound,
   KeyRound,
   Settings2,
-  UserCog,
   UserRound,
   Users2,
 } from "lucide-react";
-
+import Link from "next/link";
 import { useParams } from "next/navigation";
 import {
   Sidebar,
@@ -85,12 +84,6 @@ const settingsNavs: SettingNavGroup[] = [
         url: "admin/roles",
         isAdmin: true,
       },
-      {
-        title: "Role Assignments",
-        icon: UserCog,
-        url: "admin/assignments",
-        isAdmin: true,
-      },
     ],
   },
 ];
@@ -115,10 +108,10 @@ export function SettingsSidebar({ ...props }: SettingsSidebarProps) {
     <Sidebar collapsible={isMobile ? "offcanvas" : "none"} {...props}>
       <SidebarHeader>
         <Button variant="ghost" className="w-1/2" asChild>
-          <a href={`/${workspace}/dashboard`}>
+          <Link href={`/${workspace}/dashboard`}>
             <ChevronLeft />
             Back to app
-          </a>
+          </Link>
         </Button>
       </SidebarHeader>
       <SidebarContent>

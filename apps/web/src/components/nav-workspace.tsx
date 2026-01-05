@@ -1,8 +1,8 @@
 "use client";
 
 import { Building2, ChevronsUpDown, Plus } from "lucide-react";
-import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
 import { toast } from "sonner";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
@@ -23,7 +23,11 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { useActiveOrganization, useListOrganizations } from "@/lib/auth/client";
+import {
+  organization,
+  useActiveOrganization,
+  useListOrganizations,
+} from "@/lib/auth/client";
 import { OrganizationDialog } from "./organization-dialog";
 import { Kbd } from "./ui/kbd";
 import { ScrollArea } from "./ui/scroll-area";
@@ -31,8 +35,6 @@ import { Skeleton } from "./ui/skeleton";
 
 export function NavWorkspace() {
   const router = useRouter();
-  const params = useParams();
-  const workspace = params.workspace as string | undefined;
   const { isMobile } = useSidebar();
 
   const { data: organizations } = useListOrganizations();
@@ -41,19 +43,17 @@ export function NavWorkspace() {
 
   const [open, setOpen] = useState(false);
 
-  // Sync with URL workspace param
-  // When URL changes (via middleware), refetch to get updated active org
-  useEffect(() => {
-    if (!workspace || !activeOrg) return;
-
-    // If URL workspace doesn't match active org, refetch
-    if (workspace !== activeOrg.slug) {
+  const handleOrgSwitch = async (orgId: string, orgSlug: string) => {
+    try {
+      await organization.setActive({
+        organizationId: orgId,
+      });
+      router.push(`/${orgSlug}/dashboard`);
       refetch();
+    } catch (error) {
+      console.error("Failed to switch organization:", error);
+      toast.error("Failed to switch organization");
     }
-  }, [workspace, activeOrg, refetch]);
-
-  const handleOrgSwitch = (orgSlug: string) => {
-    router.push(`/${orgSlug}/dashboard`);
   };
 
   const handleSettingsClick = () => {
@@ -124,7 +124,9 @@ export function NavWorkspace() {
                         {tenants.map((tenant, index: number) => (
                           <DropdownMenuItem
                             key={tenant.id}
-                            onClick={() => handleOrgSwitch(tenant.slug)}
+                            onClick={() =>
+                              handleOrgSwitch(tenant.id, tenant.slug)
+                            }
                             className="gap-2 p-2"
                           >
                             <div className="flex size-6 items-center justify-center rounded-md border">

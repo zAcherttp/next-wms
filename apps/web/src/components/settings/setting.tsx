@@ -21,8 +21,10 @@ export function SettingHeader({
 }) {
   return (
     <div>
-      <h1 className="font-semibold text-3xl">{title}</h1>
-      {description && <p className="text-muted-foreground">{description}</p>}
+      <span className="font-semibold text-2xl">{title}</span>
+      {description && (
+        <p className="text-muted-foreground text-sm">{description}</p>
+      )}
     </div>
   );
 }
@@ -43,7 +45,7 @@ export function SettingSection({
   return (
     <div className="space-y-4">
       <div>
-        <h2 className="font-medium text-xl">{title}</h2>
+        <h3 className="font-medium">{title}</h3>
         {description && (
           <p className="text-muted-foreground text-sm">{description}</p>
         )}

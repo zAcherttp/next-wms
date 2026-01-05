@@ -17,7 +17,7 @@ import {
 import { organization } from "@/lib/auth/client";
 
 const inviteFormSchema = z.object({
-  email: z.string().email("Please enter a valid email address"),
+  email: z.email("Please enter a valid email address"),
   role: z.enum(["admin", "member"]),
 });
 

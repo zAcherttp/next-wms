@@ -14,7 +14,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useListOrganizations } from "@/lib/auth/client";
+import { authClient, useListOrganizations } from "@/lib/auth/client";
 
 export default function Page() {
   const router = useRouter();
@@ -41,8 +41,10 @@ export default function Page() {
   }
 
   const handleJoinOrg = (orgSlug: string) => {
-    // Just navigate - proxy middleware will handle setting active org
-    toast.success("Opening organization...");
+    toast.success("Loading organization...");
+    authClient.organization.setActive({
+      organizationSlug: orgSlug,
+    });
     router.push(`/${orgSlug}/dashboard`);
   };
 

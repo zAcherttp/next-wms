@@ -3,6 +3,14 @@ import {
   SettingHeader,
   SettingSection,
 } from "@/components/settings/setting";
+import { ThemeSelector } from "@/components/theme-selector";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemTitle,
+} from "@/components/ui/item";
 
 export default function PreferencesPage() {
   return (
@@ -12,13 +20,18 @@ export default function PreferencesPage() {
         description="Manage your personal preferences and settings"
       />
 
-      <SettingSection
-        title="Theme"
-        description="Customize the appearance of the application"
-      >
-        <div className="rounded-lg border p-4">
-          <p className="text-sm">Theme selection will be implemented here</p>
-        </div>
+      <SettingSection title="Theme">
+        <Item className="border border-primary/10">
+          <ItemContent>
+            <ItemTitle>Interface theme</ItemTitle>
+            <ItemDescription>
+              Select your interface color scheme
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
+            <ThemeSelector />
+          </ItemActions>
+        </Item>
       </SettingSection>
     </Setting>
   );

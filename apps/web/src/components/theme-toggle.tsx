@@ -7,7 +7,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Button } from "./ui/button";
 import { Label } from "./ui/label";
 
-export function ThemeSwitcher() {
+export function ThemeToggle() {
   const { setTheme, resolvedTheme } = useTheme();
 
   const [mounted, setMounted] = useState(false);
