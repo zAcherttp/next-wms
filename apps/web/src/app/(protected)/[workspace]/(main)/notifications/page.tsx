@@ -1,9 +1,12 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { Bell } from "lucide-react";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
-import NotificationsItem from "@/app/(protected)/[workspace]/(main)/notifications/notification-item";
+import NotificationsItem from "@/components/notification-item";
 import {
   Empty,
   EmptyDescription,
@@ -13,124 +16,74 @@ import {
 } from "@/components/ui/empty";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import type { NotificationItem } from "@/lib/auth/types";
-
-const NOTIFICATIONS: NotificationItem[] = [
-  {
-    id: "1",
-    actionUrl: "/workspace/inventory/item/123",
-    title: "Low Stock Alert",
-    message:
-      "Item 'Laptop Stand' is running low on stock. Current quantity: 5 units",
-    category: "inventory",
-    type: "alert",
-    priority: "high",
-    dismissed: false,
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 30).toISOString(),
-  },
-  {
-    id: "2",
-    title: "New Order Received",
-    message: "Order #ORD-2024-001 has been placed by Customer ABC Corp",
-    category: "orders",
-    type: "info",
-    priority: "medium",
-    dismissed: false,
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
-  },
-  {
-    id: "3",
-    actionUrl: "/workspace/shipments/456",
-    title: "Shipment Delayed",
-    message: "Shipment #SHP-456 is delayed by 2 days due to weather conditions",
-    category: "shipments",
-    type: "warning",
-    priority: "high",
-    dismissed: false,
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24 * 61).toISOString(),
-  },
-  {
-    id: "4",
-    title: "Inventory Report Ready",
-    message: "Your monthly inventory report for January 2024 is now available",
-    category: "reports",
-    type: "info",
-    priority: "low",
-    dismissed: true,
-    read: true,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
-  },
-  {
-    id: "5",
-    actionUrl: "/workspace/inventory/item/789",
-    title: "Stock Threshold Reached",
-    message:
-      "Item 'USB-C Cable' has reached minimum stock threshold of 10 units Item 'USB-C Cable' has reached minimum stock threshold of 10 units Item 'USB-C Cable' has reached minimum stock threshold of 10 units Item 'USB-C Cable' has reached minimum stock threshold of 10 units Item 'USB-C Cable' has reached minimum stock threshold of 10 units ",
-    category: "inventory",
-    type: "warning",
-    priority: "medium",
-    dismissed: false,
-    read: false,
-    createdAt: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(),
-  },
-];
+import { useSession } from "@/lib/auth/client";
 
 export default function NotificationsPage() {
+  const { data: sessionData } = useSession();
+  const userId = sessionData?.user.id;
   const params = useParams();
   const workspace = params.workspace as string;
 
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
+  const { data: notifications } = useQuery({
+    ...convexQuery(api.notifications.listDetailed, {
+      userId: userId as Id<"users">,
+    }),
+    enabled: !!userId,
+  });
 
   return (
-    <div className="h-[calc(100vh-4rem)] py-4">
-      <div className="flex h-full gap-0 rounded-sm border">
-        {/* Notification List */}
-        <div className="flex w-full flex-col border-r md:w-[400px]">
-          <div className="flex h-12 items-center px-4">
-            <span className="font-semibold">Notifications</span>
-          </div>
-          <Separator />
+    <>
+      {/* Notification List */}
+      <div className="flex w-full flex-col border-r md:w-[400px]">
+        <div className="flex h-10 items-center px-4">
+          <span className="font-semibold">Notifications</span>
+        </div>
+        <Separator />
+        {notifications && notifications.length > 0 ? (
           <ScrollArea className="flex-1 py-1">
-            {NOTIFICATIONS.map((notification) => (
+            {notifications.map((notification) => (
               <NotificationsItem
-                key={notification.id}
+                key={notification._id}
                 notification={notification}
-                href={`/${workspace}/notifications/${notification.id}`}
+                href={`/${workspace}/notifications/${notification._id}`}
               />
             ))}
           </ScrollArea>
-        </div>
-
-        {/* Details Panel - Empty state */}
-        <div className="hidden flex-1 flex-col md:flex">
-          <div className="flex h-12 items-center gap-2 px-4" />
-          <Separator />
+        ) : (
           <div className="flex flex-1 items-center justify-center p-4">
             <Empty>
               <EmptyHeader>
                 <EmptyMedia variant="icon">
                   <Bell />
                 </EmptyMedia>
-                <EmptyTitle>No notification selected</EmptyTitle>
+                <EmptyTitle>No notifications</EmptyTitle>
                 <EmptyDescription>
-                  Select a notification from the list to view its details
+                  You don't have any notifications yet
                 </EmptyDescription>
               </EmptyHeader>
             </Empty>
           </div>
+        )}
+      </div>
+
+      {/* Details Panel - Empty state on desktop */}
+      <div className="hidden flex-1 flex-col md:flex">
+        <div className="flex h-10 items-center gap-2 px-4" />
+        <Separator />
+        <div className="flex flex-1 items-center justify-center p-4">
+          <Empty>
+            <EmptyHeader>
+              <EmptyMedia variant="icon">
+                <Bell />
+              </EmptyMedia>
+              <EmptyTitle>No notification selected</EmptyTitle>
+              <EmptyDescription>
+                Select a notification from the list to view its details
+              </EmptyDescription>
+            </EmptyHeader>
+          </Empty>
         </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -86,10 +86,10 @@ export const listDetailed = query({
     userId: v.id("users"),
     unreadOnly: v.optional(v.boolean()),
     // Add topK parameter with a default value of 10
-    topK: v.optional(v.number()),
+    limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const limit = args.topK ?? 10;
+    const limit = args.limit ?? 10;
 
     // Use .take(limit) instead of .collect() or .paginate()
     const notifications = await ctx.db
