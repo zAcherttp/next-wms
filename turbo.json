@@ -17,23 +17,7 @@
       "cache": false,
       "persistent": true
     },
-    "db:app:dev": {
-      "cache": false,
-      "persistent": true
-    },
-    "db:auth:push": {
-      "cache": false,
-      "persistent": true
-    },
-    "db:auth:studio": {
-      "cache": false,
-      "persistent": true
-    },
-    "db:auth:migrate": {
-      "cache": false,
-      "persistent": true
-    },
-    "db:auth:generate": {
+    "db:dev": {
       "cache": false,
       "persistent": true
     }

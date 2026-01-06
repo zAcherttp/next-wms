@@ -11,9 +11,9 @@
     "build": "turbo build",
     "check": "biome check --write .",
     "check-types": "turbo check-types",
-    "dev": "turbo -F web dev -F @wms/backend db:app:dev",
+    "dev": "turbo -F web dev -F @wms/backend db:dev",
     "dev:web": "turbo -F web dev",
-    "dev:backend": "turbo -F @wms/backend db:app:dev"
+    "dev:backend": "turbo -F @wms/backend db:dev"
   },
   "dependencies": {
     "dotenv": "^17.2.3",

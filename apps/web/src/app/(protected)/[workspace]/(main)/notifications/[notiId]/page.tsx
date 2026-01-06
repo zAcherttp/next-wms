@@ -1,7 +1,7 @@
 "use client";
 
 import { convexQuery } from "@convex-dev/react-query";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { ArrowLeft } from "lucide-react";
