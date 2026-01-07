@@ -84,6 +84,7 @@ export const list = query({
 export const listDetailed = query({
   args: {
     userId: v.id("users"),
+    organizationId: v.id("organizations"),
     unreadOnly: v.optional(v.boolean()),
     // Add topK parameter with a default value of 10
     limit: v.optional(v.number()),
@@ -95,6 +96,7 @@ export const listDetailed = query({
     const notifications = await ctx.db
       .query("notifications")
       .withIndex("recipientUserId", (q) => q.eq("recipientUserId", args.userId))
+      .filter((q) => q.eq(q.field("organizationId"), args.organizationId))
       .order("desc")
       .take(limit);
 

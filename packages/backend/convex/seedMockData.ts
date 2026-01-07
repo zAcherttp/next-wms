@@ -851,7 +851,6 @@ export const seedAllTestData = mutation({
       authUpdatedAt: now,
       
       // Application-specific fields
-      organizationId,
       username: "testuser",
       fullName: "Test User",
       email: "testuser@testwarehouse.com",
@@ -869,7 +868,6 @@ export const seedAllTestData = mutation({
       authUpdatedAt: now,
       
       // Application-specific fields
-      organizationId,
       username: "admin",
       fullName: "Admin User",
       email: "admin@testwarehouse.com",
@@ -887,7 +885,6 @@ export const seedAllTestData = mutation({
       authUpdatedAt: now,
       
       // Application-specific fields
-      organizationId,
       username: "manager",
       fullName: "Warehouse Manager",
       email: "manager@testwarehouse.com",
@@ -905,7 +902,6 @@ export const seedAllTestData = mutation({
       authUpdatedAt: now,
       
       // Application-specific fields
-      organizationId,
       username: "receiver",
       fullName: "Goods Receiver",
       email: "receiver@testwarehouse.com",
@@ -923,7 +919,6 @@ export const seedAllTestData = mutation({
       authUpdatedAt: now,
       
       // Application-specific fields
-      organizationId,
       username: "picker",
       fullName: "Order Picker",
       email: "picker@testwarehouse.com",
@@ -941,7 +936,6 @@ export const seedAllTestData = mutation({
       authUpdatedAt: now,
       
       // Application-specific fields
-      organizationId,
       username: "auditor",
       fullName: "Inventory Auditor",
       email: "auditor@testwarehouse.com",
@@ -951,7 +945,53 @@ export const seedAllTestData = mutation({
     });
 
     // ================================================================
-    // 5. ROLES & PERMISSIONS
+    // 5. MEMBERS (Link users to organizations)
+    // ================================================================
+
+    await ctx.db.insert("members", {
+      userId,
+      organizationId,
+      userAuthId: "seed_user_testuser_001",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    await ctx.db.insert("members", {
+      userId: adminUserId,
+      organizationId,
+      userAuthId: "seed_user_admin_002",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    await ctx.db.insert("members", {
+      userId: managerUserId,
+      organizationId,
+      userAuthId: "seed_user_manager_003",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    await ctx.db.insert("members", {
+      userId: receiverUserId,
+      organizationId,
+      userAuthId: "seed_user_receiver_004",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    await ctx.db.insert("members", {
+      userId: pickerUserId,
+      organizationId,
+      userAuthId: "seed_user_picker_005",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    await ctx.db.insert("members", {
+      userId: auditorUserId,
+      organizationId,
+      userAuthId: "seed_user_auditor_006",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    // ================================================================
+    // 6. ROLES & PERMISSIONS
     // ================================================================
 
     const adminRoleId = await ctx.db.insert("roles", {

@@ -65,7 +65,6 @@ export default defineSchema({
    * Users table
    * Synced from Better Auth + Application-specific data
    * Note: Password management is handled by Better Auth in Neon DB
-   * Users are created first, then linked to organizations later
    */
   users: defineTable({
     // Better Auth fields (synced from Neon DB)
@@ -76,7 +75,6 @@ export default defineSchema({
     authUpdatedAt: v.number(), // timestamp from Better Auth
     
     // Application-specific fields
-    organizationId: v.optional(v.id("organizations")), // Optional - set when user joins/creates org
     username: v.string(),
     fullName: v.string(),
     email: v.string(),
@@ -86,11 +84,28 @@ export default defineSchema({
     deletedAt: v.optional(v.number()),
   })
     .index("authId", ["authId"])
-    .index("organizationId", ["organizationId"])
     .index("username", ["username"])
     .index("email", ["email"])
     .index("isActive", ["isActive"])
     .index("isDeleted", ["isDeleted"]),
+
+  /**
+   * Members table
+   * Represents organization membership (many-to-many between users and organizations)
+   * Synced from Better Auth membership data
+   */
+  members: defineTable({
+    userId: v.id("users"),
+    organizationId: v.id("organizations"),
+    userAuthId: v.string(), // Better Auth user ID for sync
+    organizationAuthId: v.string(), // Better Auth organization ID for sync
+  })
+    .index("userId", ["userId"])
+    .index("organizationId", ["organizationId"])
+    .index("userAuthId", ["userAuthId"])
+    .index("organizationAuthId", ["organizationAuthId"])
+    .index("userId_organizationId", ["userId", "organizationId"])
+    .index("userAuthId_organizationAuthId", ["userAuthId", "organizationAuthId"]),
 
   user_branch_assignments: defineTable({
     userId: v.id("users"),

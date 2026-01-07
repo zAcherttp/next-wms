@@ -86,6 +86,10 @@ const authConfig = {
       organizationHooks: {
         afterCreateOrganization: async ({ organization, member, user }) => {
           // Sync organization to Convex
+          console.log(
+            "[Convex Sync] Syncing new organization to Convex:",
+            organization,
+          );
           if (convex) {
             try {
               await convex.mutation(api.authSync.syncOrganization, {
@@ -99,6 +103,18 @@ const authConfig = {
               console.log(
                 `[Convex Sync] Organization created: ${organization.id}`,
               );
+
+              // Create member for the organization creator
+              // This handles the case where member sync was attempted before org sync
+              if (member && user) {
+                await convex.mutation(api.authSync.createMemberIfNeeded, {
+                  userAuthId: user.id,
+                  organizationAuthId: organization.id,
+                });
+                console.log(
+                  `[Convex Sync] Creator member synced for org: ${organization.id}`,
+                );
+              }
             } catch (error) {
               console.error(
                 "[Convex Sync] Failed to sync organization creation:",
@@ -127,6 +143,47 @@ const authConfig = {
             } catch (error) {
               console.error(
                 "[Convex Sync] Failed to sync organization update:",
+                error,
+              );
+            }
+          }
+        },
+        // After a member is added
+        afterAddMember: async ({ member, user, organization }) => {
+          if (convex) {
+            try {
+              console.log(
+                `[Convex Sync] Syncing member addition: User ${user.id} to Organization ${organization.id}`,
+              );
+              await convex.mutation(api.authSync.syncMember, {
+                userAuthId: user.id,
+                organizationAuthId: organization.id,
+              });
+              console.log(
+                `[Convex Sync] User ${user.id} added to organization ${organization.id}`,
+              );
+            } catch (error) {
+              console.error(
+                "[Convex Sync] Failed to sync member addition:",
+                error,
+              );
+            }
+          }
+        },
+        // After a member is removed
+        afterRemoveMember: async ({ member, user, organization }) => {
+          if (convex) {
+            try {
+              await convex.mutation(api.authSync.deleteMember, {
+                userAuthId: user.id,
+                organizationAuthId: organization.id,
+              });
+              console.log(
+                `[Convex Sync] User ${user.id} removed from organization ${organization.id}`,
+              );
+            } catch (error) {
+              console.error(
+                "[Convex Sync] Failed to sync member removal:",
                 error,
               );
             }

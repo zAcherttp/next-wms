@@ -112,7 +112,13 @@ export function NavWorkspace() {
                     <Kbd>S</Kbd>
                   </DropdownMenuShortcut>
                 </DropdownMenuItem>
-                <DropdownMenuItem>Invite and manage members</DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={() =>
+                    router.push(`/${activeOrg?.slug}/settings/admin/members`)
+                  }
+                >
+                  Invite and manage members
+                </DropdownMenuItem>
                 <DropdownMenuSeparator />
                 <DropdownMenuSub>
                   <DropdownMenuSubTrigger>

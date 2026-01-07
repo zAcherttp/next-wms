@@ -19,11 +19,12 @@ export default function NotificationDetailPage() {
   const workspace = params.workspace as string;
   const notiId = params.notiId as string;
 
-  const { userId } = useCurrentUser();
+  const { userId, organizationId } = useCurrentUser();
 
   const { data: notifications } = useQuery({
     ...convexQuery(api.notifications.listDetailed, {
       userId: userId as Id<"users">,
+      organizationId: organizationId as Id<"organizations">,
     }),
     enabled: !!userId,
   });

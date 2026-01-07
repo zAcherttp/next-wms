@@ -52,8 +52,7 @@ export const syncUser = mutation({
       console.log(`[Convex Sync] User updated: ${args.authId}`);
       return existingUser._id;
     } else {
-      // Create new user without organizationId
-      // User will be linked to organization when they create/join one
+      // Create new user
       console.warn(`[Convex Sync] User ${args.authId} not found, creating first.`);
       const userId = await ctx.db.insert("users", {
         authId: args.authId,
@@ -64,7 +63,6 @@ export const syncUser = mutation({
         authCreatedAt: args.createdAt,
         authUpdatedAt: args.updatedAt,
         // Application defaults for new users
-        organizationId: undefined, // Will be set when user joins/creates org
         username: args.email.split('@')[0], // Default username from email
         isActive: true,
         isDeleted: false,
@@ -116,6 +114,182 @@ export const deleteUser = mutation({
         deletedAt: Date.now(),
       });
     }
+  },
+});
+
+// ================================================================
+// MEMBER SYNC
+// ================================================================
+
+/**
+ * Sync member when user joins an organization
+ * Called from Better Auth afterAddMember hook
+ */
+export const syncMember = mutation({
+  args: {
+    userAuthId: v.string(),
+    organizationAuthId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find user by authId
+    const user = await ctx.db
+      .query("users")
+      .withIndex("authId", (q) => q.eq("authId", args.userAuthId))
+      .first();
+
+    if (!user) {
+      console.warn(
+        `[Convex Sync] User ${args.userAuthId} not found, cannot create member`
+      );
+      return null;
+    }
+
+    // Find organization by authId
+    // Note: Organization might not exist yet if Better Auth creates members before orgs
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("authId", (q) => q.eq("authId", args.organizationAuthId))
+      .first();
+
+    if (!org) {
+      console.log(
+        `[Convex Sync] Organization ${args.organizationAuthId} not synced yet, member will be created when org is synced`
+      );
+      return null;
+    }
+
+    // Check if member already exists
+    const existingMember = await ctx.db
+      .query("members")
+      .withIndex("userId_organizationId", (q) => 
+        q.eq("userId", user._id).eq("organizationId", org._id)
+      )
+      .first();
+
+    if (existingMember) {
+      console.log(
+        `[Convex Sync] Member already exists: user ${args.userAuthId} in org ${args.organizationAuthId}`
+      );
+      return existingMember._id;
+    }
+
+    // Create member
+    const memberId = await ctx.db.insert("members", {
+      userId: user._id,
+      organizationId: org._id,
+      userAuthId: args.userAuthId,
+      organizationAuthId: args.organizationAuthId,
+    });
+
+    console.log(
+      `[Convex Sync] Member created: user ${args.userAuthId} added to org ${args.organizationAuthId}`
+    );
+    return memberId;
+  },
+});
+
+/**
+ * Delete member when user leaves an organization
+ * Called from Better Auth afterRemoveMember hook
+ */
+export const deleteMember = mutation({
+  args: {
+    userAuthId: v.string(),
+    organizationAuthId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find member by auth IDs
+    const member = await ctx.db
+      .query("members")
+      .withIndex("userAuthId_organizationAuthId", (q) => 
+        q.eq("userAuthId", args.userAuthId).eq("organizationAuthId", args.organizationAuthId)
+      )
+      .first();
+
+    if (!member) {
+      console.warn(
+        `[Convex Sync] Member not found: user ${args.userAuthId} in org ${args.organizationAuthId}`
+      );
+      return null;
+    }
+
+    // Delete member
+    await ctx.db.delete(member._id);
+
+    console.log(
+      `[Convex Sync] Member deleted: user ${args.userAuthId} removed from org ${args.organizationAuthId}`
+    );
+    return member._id;
+  },
+});
+
+/**
+ * Get user's organization memberships
+ */
+export const getUserMemberships = query({
+  args: { userId: v.id("users") },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("members")
+      .withIndex("userId", (q) => q.eq("userId", args.userId))
+      .collect();
+  },
+});
+
+/**
+ * Create member for user and organization (internal helper)
+ * Used when organization is created after member sync was attempted
+ */
+export const createMemberIfNeeded = mutation({
+  args: {
+    userAuthId: v.string(),
+    organizationAuthId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find user by authId
+    const user = await ctx.db
+      .query("users")
+      .withIndex("authId", (q) => q.eq("authId", args.userAuthId))
+      .first();
+
+    if (!user) {
+      return null;
+    }
+
+    // Find organization by authId
+    const org = await ctx.db
+      .query("organizations")
+      .withIndex("authId", (q) => q.eq("authId", args.organizationAuthId))
+      .first();
+
+    if (!org) {
+      return null;
+    }
+
+    // Check if member already exists
+    const existingMember = await ctx.db
+      .query("members")
+      .withIndex("userId_organizationId", (q) => 
+        q.eq("userId", user._id).eq("organizationId", org._id)
+      )
+      .first();
+
+    if (existingMember) {
+      return existingMember._id;
+    }
+
+    // Create member
+    const memberId = await ctx.db.insert("members", {
+      userId: user._id,
+      organizationId: org._id,
+      userAuthId: args.userAuthId,
+      organizationAuthId: args.organizationAuthId,
+    });
+
+    console.log(
+      `[Convex Sync] Retroactive member created: user ${args.userAuthId} added to org ${args.organizationAuthId}`
+    );
+    return memberId;
   },
 });
 

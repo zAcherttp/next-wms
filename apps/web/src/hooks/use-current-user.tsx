@@ -2,7 +2,8 @@
  * Custom hook to get the current user's Convex data
  *
  * This hook bridges the gap between Better Auth session (which has authId)
- * and Convex user data (which has the Convex document ID and organizationId)
+ * and Convex user data (which has the Convex document ID)
+ * It also fetches the user's organization memberships
  */
 
 import { convexQuery } from "@convex-dev/react-query";
@@ -27,6 +28,18 @@ export function useCurrentUser() {
     staleTime: 30 * 60 * 1000, // Cache for 30 minutes
   });
 
+  // Query user's organization memberships
+  const { data: memberships, isPending: isMembershipsPending } = useQuery({
+    ...convexQuery(api.authSync.getUserMemberships, {
+      userId: convexUser?._id ?? ("" as any),
+    }),
+    enabled: !!convexUser?._id,
+    staleTime: 30 * 60 * 1000, // Cache for 30 minutes
+  });
+
+  // Get the first organization (for now, later can support multi-org switching)
+  const organizationId = memberships?.[0]?.organizationId;
+
   return {
     // Session data (from Better Auth)
     session,
@@ -35,18 +48,20 @@ export function useCurrentUser() {
     // Convex user data
     user: convexUser,
     userId: convexUser?._id,
-    organizationId: convexUser?.organizationId,
+    organizationId,
+    memberships,
 
     // Loading states
-    isPending: isSessionPending || isUserPending,
+    isPending: isSessionPending || isUserPending || isMembershipsPending,
     isSessionPending,
     isUserPending,
+    isMembershipsPending,
 
     // Error state
     error,
 
     // Convenience flags
     isAuthenticated: !!session?.user,
-    hasOrganization: !!convexUser?.organizationId,
+    hasOrganization: !!organizationId,
   };
 }

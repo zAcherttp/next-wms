@@ -19,15 +19,16 @@ import { Separator } from "@/components/ui/separator";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 export default function NotificationsPage() {
-  const { userId } = useCurrentUser();
+  const { userId, organizationId } = useCurrentUser();
   const params = useParams();
   const workspace = params.workspace as string;
 
   const { data: notifications } = useQuery({
     ...convexQuery(api.notifications.listDetailed, {
       userId: userId as Id<"users">,
+      organizationId: organizationId as Id<"organizations">,
     }),
-    enabled: !!userId,
+    enabled: !!userId && !!organizationId,
   });
 
   return (
