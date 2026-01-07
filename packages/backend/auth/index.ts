@@ -1,6 +1,8 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
 import { emailOTP, organization } from "better-auth/plugins";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../convex/_generated/api";
 import { ac, admin, member, owner } from "../lib/permissions";
 import { db } from "./db";
 import {
@@ -9,17 +11,17 @@ import {
 } from "./email/resend";
 import * as schema from "./schema";
 
+// Initialize Convex client for syncing auth data
+const convexUrl = process.env.CONVEX_URL || process.env.NEXT_PUBLIC_CONVEX_URL;
+if (!convexUrl) {
+  console.warn("[Auth] CONVEX_URL not set - auth data will not sync to Convex");
+}
+const convex = convexUrl ? new ConvexHttpClient(convexUrl) : null;
+
 // Get site URL from environment
 const siteUrl = process.env.SITE_URL || "";
 
-/**
- * Better Auth instance configured with:
- * - Drizzle adapter for Neon PostgreSQL
- * - Organization plugin for multi-tenancy
- * - Email OTP for verification
- * - Dynamic access control
- */
-export const auth = betterAuth({
+const authConfig = {
   baseURL: siteUrl,
   trustedOrigins: [siteUrl],
 
@@ -81,6 +83,94 @@ export const auth = betterAuth({
           role: data.role,
         });
       },
+      organizationHooks: {
+        afterCreateOrganization: async ({ organization, member, user }) => {
+          // Sync organization to Convex
+          if (convex) {
+            try {
+              await convex.mutation(api.authSync.syncOrganization, {
+                authId: organization.id,
+                name: organization.name,
+                slug: organization.slug,
+                logo: organization.logo || undefined,
+                metadata: organization.metadata || undefined,
+                createdAt: new Date(organization.createdAt).getTime(),
+              });
+              console.log(
+                `[Convex Sync] Organization created: ${organization.id}`,
+              );
+            } catch (error) {
+              console.error(
+                "[Convex Sync] Failed to sync organization creation:",
+                error,
+              );
+            }
+          }
+        },
+        afterUpdateOrganization: async ({ organization, user, member }) => {
+          // Sync organization update to Convex
+          if (convex) {
+            try {
+              if (organization) {
+                await convex.mutation(api.authSync.syncOrganization, {
+                  authId: organization.id,
+                  name: organization.name,
+                  slug: organization.slug,
+                  logo: organization.logo || undefined,
+                  metadata: organization.metadata || undefined,
+                  createdAt: new Date(organization.createdAt).getTime(),
+                });
+                console.log(
+                  `[Convex Sync] Organization updated: ${organization.id}`,
+                );
+              }
+            } catch (error) {
+              console.error(
+                "[Convex Sync] Failed to sync organization update:",
+                error,
+              );
+            }
+          }
+        },
+        // After a member is added
+        afterAddMember: async ({ member, user, organization }) => {
+          // Sync member to Convex
+          if (convex) {
+            try {
+              await convex.mutation(api.authSync.syncMember, {
+                authId: member.id,
+                organizationAuthId: member.organizationId,
+                userAuthId: member.userId,
+                role: member.role,
+                createdAt: new Date(member.createdAt).getTime(),
+              });
+              console.log(`[Convex Sync] Member added: ${member.id}`);
+            } catch (error) {
+              console.error(
+                "[Convex Sync] Failed to sync member addition:",
+                error,
+              );
+            }
+          }
+        },
+        // After a member is removed
+        afterRemoveMember: async ({ member, user, organization }) => {
+          // Remove member from Convex
+          if (convex) {
+            try {
+              await convex.mutation(api.authSync.deleteMember, {
+                authId: member.id,
+              });
+              console.log(`[Convex Sync] Member removed: ${member.id}`);
+            } catch (error) {
+              console.error(
+                "[Convex Sync] Failed to sync member removal:",
+                error,
+              );
+            }
+          }
+        },
+      },
     }),
 
     // Email OTP verification
@@ -93,7 +183,60 @@ export const auth = betterAuth({
       },
     }),
   ],
-});
+
+  // Hooks to sync data to Convex
+  databaseHooks: {
+    user: {
+      create: {
+        after: async (user) => {
+          // Sync new user to Convex
+          if (convex) {
+            try {
+              await convex.mutation(api.authSync.syncUser, {
+                authId: user.id,
+                name: user.name,
+                email: user.email,
+                emailVerified: user.emailVerified,
+                image: user.image || undefined,
+                createdAt: new Date(user.createdAt).getTime(),
+                updatedAt: new Date(user.updatedAt).getTime(),
+              });
+              console.log(`[Convex Sync] User created: ${user.id}`);
+            } catch (error) {
+              console.error(
+                "[Convex Sync] Failed to sync user creation:",
+                error,
+              );
+            }
+          }
+        },
+      },
+      update: {
+        after: async (user) => {
+          // Sync user update to Convex
+          if (convex) {
+            try {
+              await convex.mutation(api.authSync.syncUser, {
+                authId: user.id,
+                name: user.name,
+                email: user.email,
+                emailVerified: user.emailVerified,
+                image: user.image || undefined,
+                createdAt: new Date(user.createdAt).getTime(),
+                updatedAt: new Date(user.updatedAt).getTime(),
+              });
+              console.log(`[Convex Sync] User updated: ${user.id}`);
+            } catch (error) {
+              console.error("[Convex Sync] Failed to sync user update:", error);
+            }
+          }
+        },
+      },
+    },
+  },
+};
+
+export const auth = betterAuth(authConfig);
 
 // Export auth type for client inference
 export type Auth = typeof auth;
