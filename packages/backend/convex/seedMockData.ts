@@ -720,6 +720,7 @@ export const seedAllTestData = mutation({
 
     const organizationId = await ctx.db.insert("organizations", {
       name: "Test Warehouse Corp",
+      authOrganizationId: "auth_org_12345",
       address: "123 Warehouse Street, District 1, Ho Chi Minh City",
       contactInfo: {
         phone: "+84 28 1234 5678",
@@ -731,6 +732,7 @@ export const seedAllTestData = mutation({
 
     const organization2Id = await ctx.db.insert("organizations", {
       name: "Secondary Distribution Inc",
+      authOrganizationId: "auth_org_12345",
       address: "456 Logistics Avenue, District 7, Ho Chi Minh City",
       contactInfo: {
         phone: "+84 28 9876 5432",
@@ -824,6 +826,7 @@ export const seedAllTestData = mutation({
     const userId = await ctx.db.insert("users", {
       organizationId,
       username: "testuser",
+      authUserId: "auth_user_12345",
       passwordHash: "hashed_password_placeholder",
       fullName: "Test User",
       email: "testuser@testwarehouse.com",
@@ -835,6 +838,7 @@ export const seedAllTestData = mutation({
     const adminUserId = await ctx.db.insert("users", {
       organizationId,
       username: "admin",
+      authUserId: "auth_user_12345",
       passwordHash: "hashed_password_placeholder",
       fullName: "Admin User",
       email: "admin@testwarehouse.com",
@@ -846,6 +850,7 @@ export const seedAllTestData = mutation({
     const managerUserId = await ctx.db.insert("users", {
       organizationId,
       username: "manager",
+      authUserId: "auth_user_12345",
       passwordHash: "hashed_password_placeholder",
       fullName: "Warehouse Manager",
       email: "manager@testwarehouse.com",
@@ -857,6 +862,7 @@ export const seedAllTestData = mutation({
     const receiverUserId = await ctx.db.insert("users", {
       organizationId,
       username: "receiver",
+      authUserId: "auth_user_12345",
       passwordHash: "hashed_password_placeholder",
       fullName: "Goods Receiver",
       email: "receiver@testwarehouse.com",
@@ -868,6 +874,7 @@ export const seedAllTestData = mutation({
     const pickerUserId = await ctx.db.insert("users", {
       organizationId,
       username: "picker",
+      authUserId: "auth_user_12345",
       passwordHash: "hashed_password_placeholder",
       fullName: "Order Picker",
       email: "picker@testwarehouse.com",
@@ -879,6 +886,7 @@ export const seedAllTestData = mutation({
     const auditorUserId = await ctx.db.insert("users", {
       organizationId,
       username: "auditor",
+      authUserId: "auth_user_12345",
       passwordHash: "hashed_password_placeholder",
       fullName: "Inventory Auditor",
       email: "auditor@testwarehouse.com",
@@ -1075,22 +1083,22 @@ export const seedAllTestData = mutation({
       assignedAt: now,
     });
 
-    // Workspace Invitations
-    const invitationId = await ctx.db.insert("workspace_invitations", {
-      organizationId,
-      invitationCode: "INV-2026-001",
-      createdByUserId: adminUserId,
-      expiresAt: now + oneWeek,
-      statusTypeId: invitationPendingStatusId,
-    });
+    // // Workspace Invitations
+    // const invitationId = await ctx.db.insert("workspace_invitations", {
+    //   organizationId,
+    //   invitationCode: "INV-2026-001",
+    //   createdByAuthUserId: adminUserId,
+    //   expiresAt: now + oneWeek,
+    //   statusTypeId: invitationPendingStatusId,
+    // });
 
-    await ctx.db.insert("workspace_invitations", {
-      organizationId,
-      invitationCode: "INV-2026-002",
-      createdByUserId: adminUserId,
-      expiresAt: now + oneWeek * 2,
-      statusTypeId: invitationPendingStatusId,
-    });
+    // await ctx.db.insert("workspace_invitations", {
+    //   organizationId,
+    //   invitationCode: "INV-2026-002",
+    //   createdByAuthUserId: adminUserId,
+    //   expiresAt: now + oneWeek * 2,
+    //   statusTypeId: invitationPendingStatusId,
+    // });
 
     // ================================================================
     // 6. BRANDS
@@ -3209,7 +3217,7 @@ export const clearAllTestData = mutation({
       "users",
 
       // Workspace Invitations
-      "workspace_invitations",
+      // "workspace_invitations",
 
       // Branch Settings
       "branch_settings",
@@ -3328,7 +3336,7 @@ export const clearAllDatabaseData = mutation({
       "users",
 
       // Workspace Invitations
-      "workspace_invitations",
+      // "workspace_invitations",
 
       // Branch Settings
       "branch_settings",

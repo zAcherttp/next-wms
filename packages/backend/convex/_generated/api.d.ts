@@ -9,6 +9,7 @@
  */
 
 import type * as audit from "../audit.js";
+import type * as authSync from "../authSync.js";
 import type * as brands from "../brands.js";
 import type * as categories from "../categories.js";
 import type * as crons from "../crons.js";
@@ -16,7 +17,6 @@ import type * as cycleCount from "../cycleCount.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
 import type * as inventory from "../inventory.js";
-import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as privateData from "../privateData.js";
 import type * as products from "../products.js";
@@ -34,6 +34,7 @@ import type {
 
 declare const fullApi: ApiFromModules<{
   audit: typeof audit;
+  authSync: typeof authSync;
   brands: typeof brands;
   categories: typeof categories;
   crons: typeof crons;
@@ -41,7 +42,6 @@ declare const fullApi: ApiFromModules<{
   healthCheck: typeof healthCheck;
   http: typeof http;
   inventory: typeof inventory;
-  migrations: typeof migrations;
   notifications: typeof notifications;
   privateData: typeof privateData;
   products: typeof products;
