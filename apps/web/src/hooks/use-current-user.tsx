@@ -9,10 +9,11 @@
 import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
-import { useSession } from "@/lib/auth/client";
+import { useActiveOrganization, useSession } from "@/lib/auth/client";
 
 export function useCurrentUser() {
   const { data: session, isPending: isSessionPending } = useSession();
+  const { data: activeOrganization } = useActiveOrganization();
   const authId = session?.user?.id;
 
   // Query Convex for the user document using authId
@@ -29,16 +30,16 @@ export function useCurrentUser() {
   });
 
   // Query user's organization memberships
-  const { data: memberships, isPending: isMembershipsPending } = useQuery({
-    ...convexQuery(api.authSync.getUserMemberships, {
-      userId: convexUser?._id ?? ("" as any),
+  const { data: organization, isPending: isActiveOrgPending } = useQuery({
+    ...convexQuery(api.authSync.getOrganizationByAuthId, {
+      authId: activeOrganization?.id ?? "",
     }),
-    enabled: !!convexUser?._id,
+    enabled: !!convexUser?._id && !!activeOrganization,
     staleTime: 30 * 60 * 1000, // Cache for 30 minutes
   });
 
   // Get the first organization (for now, later can support multi-org switching)
-  const organizationId = memberships?.[0]?.organizationId;
+  const organizationId = organization?._id;
 
   return {
     // Session data (from Better Auth)
@@ -49,13 +50,13 @@ export function useCurrentUser() {
     user: convexUser,
     userId: convexUser?._id,
     organizationId,
-    memberships,
+    organization,
 
     // Loading states
-    isPending: isSessionPending || isUserPending || isMembershipsPending,
+    isPending: isSessionPending || isUserPending || isActiveOrgPending,
     isSessionPending,
     isUserPending,
-    isMembershipsPending,
+    isActiveOrgPending,
 
     // Error state
     error,
