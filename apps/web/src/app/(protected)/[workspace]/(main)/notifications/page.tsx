@@ -16,11 +16,10 @@ import {
 } from "@/components/ui/empty";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { useSession } from "@/lib/auth/client";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 export default function NotificationsPage() {
-  const { data: sessionData } = useSession();
-  const userId = sessionData?.user.id;
+  const { userId } = useCurrentUser();
   const params = useParams();
   const workspace = params.workspace as string;
 

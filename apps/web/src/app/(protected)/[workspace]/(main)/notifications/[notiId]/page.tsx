@@ -1,7 +1,7 @@
 "use client";
 
 import { convexQuery } from "@convex-dev/react-query";
-import { useQuery, useSuspenseQuery } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { ArrowLeft } from "lucide-react";
@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { useSession } from "@/lib/auth/client";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 export default function NotificationDetailPage() {
   const router = useRouter();
@@ -19,8 +19,7 @@ export default function NotificationDetailPage() {
   const workspace = params.workspace as string;
   const notiId = params.notiId as string;
 
-  const { data: sessionData } = useSession();
-  const userId = sessionData?.user.id;
+  const { userId } = useCurrentUser();
 
   const { data: notifications } = useQuery({
     ...convexQuery(api.notifications.listDetailed, {

@@ -1,20 +1,28 @@
 "use client";
 
 import { InviteUserDialog } from "@/components/settings/invite-user-dialog";
+import {
+  Setting,
+  SettingHeader,
+  SettingSection,
+} from "@/components/settings/setting";
 
 export default function MembersPage() {
   return (
-    <div className="flex items-start justify-between">
-      <div>
-        <div className="flex items-center gap-2">
-          <h1 className="font-semibold text-3xl">Members</h1>
-        </div>
-        <p className="mt-1 text-muted-foreground">
-          View and manage workspace members
-        </p>
-      </div>
+    <Setting>
+      <SettingHeader
+        title="Members"
+        description="View and manage workspace members."
+      />
 
-      <InviteUserDialog />
-    </div>
+      <SettingSection title="Members Management">
+        <div className="rounded-lg border p-4">
+          <p className="flex items-center justify-between text-sm">
+            Members management functionality will be implemented here
+            <InviteUserDialog />
+          </p>
+        </div>
+      </SettingSection>
+    </Setting>
   );
 }

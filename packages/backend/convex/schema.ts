@@ -3,66 +3,22 @@ import { v } from "convex/values";
 
 export default defineSchema({
   // ================================================================
-  // BETTER AUTH SYNC TABLES (synced from Neon DB)
-  // ================================================================
-  
-  /**
-   * Users table - synced from Better Auth
-   * Primary source: Neon DB (Better Auth)
-   * Synced via auth hooks
-   */
-  auth_users: defineTable({
-    authId: v.string(), // ID from Better Auth (Neon DB)
-    name: v.string(),
-    email: v.string(),
-    emailVerified: v.boolean(),
-    image: v.optional(v.string()),
-    createdAt: v.number(), // timestamp
-    updatedAt: v.number(), // timestamp
-  })
-    .index("authId", ["authId"])
-    .index("email", ["email"]),
-
-  /**
-   * Organizations table - synced from Better Auth
-   * Primary source: Neon DB (Better Auth)
-   * Synced via auth hooks
-   */
-  auth_organizations: defineTable({
-    authId: v.string(), // ID from Better Auth (Neon DB)
-    name: v.string(),
-    slug: v.string(),
-    logo: v.optional(v.string()),
-    metadata: v.optional(v.string()), // JSON string
-    createdAt: v.number(), // timestamp
-  })
-    .index("authId", ["authId"])
-    .index("slug", ["slug"]),
-
-  /**
-   * Members table - synced from Better Auth
-   * Links users to organizations with roles
-   * Primary source: Neon DB (Better Auth)
-   * Synced via auth hooks
-   */
-  auth_members: defineTable({
-    authId: v.string(), // ID from Better Auth (Neon DB)
-    organizationAuthId: v.string(), // References auth_organizations.authId
-    userAuthId: v.string(), // References auth_users.authId
-    role: v.string(), // member, admin, owner
-    createdAt: v.number(), // timestamp
-  })
-    .index("authId", ["authId"])
-    .index("organizationAuthId", ["organizationAuthId"])
-    .index("userAuthId", ["userAuthId"])
-    .index("org_user", ["organizationAuthId", "userAuthId"]),
-
-  // ================================================================
   // ORGANIZATION & WORKSPACE MANAGEMENT
   // ================================================================
 
+  /**
+   * Organizations table
+   * Synced from Better Auth + Application-specific data
+   */
   organizations: defineTable({
-    authOrganizationId: v.string(), // References auth_organizations.authId
+    // Better Auth fields (synced from Neon DB)
+    authId: v.string(), // ID from Better Auth (Neon DB)
+    slug: v.string(),
+    logo: v.optional(v.string()),
+    authMetadata: v.optional(v.string()), // JSON string from Better Auth
+    authCreatedAt: v.number(), // timestamp from Better Auth
+    
+    // Application-specific fields
     name: v.string(),
     address: v.string(),
     contactInfo: v.optional(v.any()), // jsonb
@@ -70,7 +26,8 @@ export default defineSchema({
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
   })
-    .index("authOrganizationId", ["authOrganizationId"])
+    .index("authId", ["authId"])
+    .index("slug", ["slug"])
     .index("name", ["name"])
     .index("isActive", ["isActive"])
     .index("isDeleted", ["isDeleted"]),
@@ -100,27 +57,27 @@ export default defineSchema({
     settingValue: v.any(), // jsonb
   }).index("branchId_settingKey", ["branchId", "settingKey"]),
 
-  // workspace_invitations: defineTable({
-  //   organizationId: v.id("organizations"),
-  //   invitationCode: v.string(),
-  //   createdByAuthUserId: v.string(), // References auth_users.authId
-  //   expiresAt: v.number(),
-  //   statusTypeId: v.id("system_lookups"),
-  // })
-  //   .index("organizationId", ["organizationId"])
-  //   .index("invitationCode", ["invitationCode"])
-  //   .index("statusTypeId", ["statusTypeId"])
-  //   .index("createdByAuthUserId", ["createdByAuthUserId"]),
-
   // ================================================================
   // USER MANAGEMENT & AUTHENTICATION
   // ================================================================
 
+  /**
+   * Users table
+   * Synced from Better Auth + Application-specific data
+   * Note: Password management is handled by Better Auth in Neon DB
+   * Users are created first, then linked to organizations later
+   */
   users: defineTable({
-    authUserId: v.string(), // References auth_users.authId
-    organizationId: v.id("organizations"),
+    // Better Auth fields (synced from Neon DB)
+    authId: v.string(), // ID from Better Auth (Neon DB)
+    emailVerified: v.boolean(),
+    image: v.optional(v.string()),
+    authCreatedAt: v.number(), // timestamp from Better Auth
+    authUpdatedAt: v.number(), // timestamp from Better Auth
+    
+    // Application-specific fields
+    organizationId: v.optional(v.id("organizations")), // Optional - set when user joins/creates org
     username: v.string(),
-    passwordHash: v.string(),
     fullName: v.string(),
     email: v.string(),
     isActive: v.boolean(),
@@ -128,7 +85,7 @@ export default defineSchema({
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
   })
-    .index("authUserId", ["authUserId"])
+    .index("authId", ["authId"])
     .index("organizationId", ["organizationId"])
     .index("username", ["username"])
     .index("email", ["email"])

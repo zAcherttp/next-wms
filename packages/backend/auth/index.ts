@@ -132,44 +132,6 @@ const authConfig = {
             }
           }
         },
-        // After a member is added
-        afterAddMember: async ({ member, user, organization }) => {
-          // Sync member to Convex
-          if (convex) {
-            try {
-              await convex.mutation(api.authSync.syncMember, {
-                authId: member.id,
-                organizationAuthId: member.organizationId,
-                userAuthId: member.userId,
-                role: member.role,
-                createdAt: new Date(member.createdAt).getTime(),
-              });
-              console.log(`[Convex Sync] Member added: ${member.id}`);
-            } catch (error) {
-              console.error(
-                "[Convex Sync] Failed to sync member addition:",
-                error,
-              );
-            }
-          }
-        },
-        // After a member is removed
-        afterRemoveMember: async ({ member, user, organization }) => {
-          // Remove member from Convex
-          if (convex) {
-            try {
-              await convex.mutation(api.authSync.deleteMember, {
-                authId: member.id,
-              });
-              console.log(`[Convex Sync] Member removed: ${member.id}`);
-            } catch (error) {
-              console.error(
-                "[Convex Sync] Failed to sync member removal:",
-                error,
-              );
-            }
-          }
-        },
       },
     }),
 

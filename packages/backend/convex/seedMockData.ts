@@ -717,10 +717,19 @@ export const seedAllTestData = mutation({
     // ================================================================
     // 2. ORGANIZATIONS
     // ================================================================
+    // NOTE: In production, organizations should be created via Better Auth
+    // These are test/seed data with mock auth IDs
 
     const organizationId = await ctx.db.insert("organizations", {
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_org_test_warehouse_001",
+      slug: "test-warehouse-corp",
+      logo: undefined,
+      authMetadata: JSON.stringify({ seed: true, createdBy: "seedMockData" }),
+      authCreatedAt: now,
+      
+      // Application-specific fields
       name: "Test Warehouse Corp",
-      authOrganizationId: "auth_org_12345",
       address: "123 Warehouse Street, District 1, Ho Chi Minh City",
       contactInfo: {
         phone: "+84 28 1234 5678",
@@ -731,8 +740,15 @@ export const seedAllTestData = mutation({
     });
 
     const organization2Id = await ctx.db.insert("organizations", {
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_org_secondary_dist_002",
+      slug: "secondary-distribution-inc",
+      logo: undefined,
+      authMetadata: JSON.stringify({ seed: true, createdBy: "seedMockData" }),
+      authCreatedAt: now,
+      
+      // Application-specific fields
       name: "Secondary Distribution Inc",
-      authOrganizationId: "auth_org_12345",
       address: "456 Logistics Avenue, District 7, Ho Chi Minh City",
       contactInfo: {
         phone: "+84 28 9876 5432",
@@ -822,12 +838,21 @@ export const seedAllTestData = mutation({
     // ================================================================
     // 4. USERS
     // ================================================================
+    // NOTE: In production, users should be created via Better Auth first,
+    // then linked to Convex. These are test/seed data with mock auth IDs.
+    // Passwords are managed by Better Auth, not stored here.
 
     const userId = await ctx.db.insert("users", {
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_testuser_001",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       organizationId,
       username: "testuser",
-      authUserId: "auth_user_12345",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Test User",
       email: "testuser@testwarehouse.com",
       isActive: true,
@@ -836,10 +861,16 @@ export const seedAllTestData = mutation({
     });
 
     const adminUserId = await ctx.db.insert("users", {
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_admin_002",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       organizationId,
       username: "admin",
-      authUserId: "auth_user_12345",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Admin User",
       email: "admin@testwarehouse.com",
       isActive: true,
@@ -848,10 +879,16 @@ export const seedAllTestData = mutation({
     });
 
     const managerUserId = await ctx.db.insert("users", {
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_manager_003",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       organizationId,
       username: "manager",
-      authUserId: "auth_user_12345",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Warehouse Manager",
       email: "manager@testwarehouse.com",
       isActive: true,
@@ -860,10 +897,16 @@ export const seedAllTestData = mutation({
     });
 
     const receiverUserId = await ctx.db.insert("users", {
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_receiver_004",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       organizationId,
       username: "receiver",
-      authUserId: "auth_user_12345",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Goods Receiver",
       email: "receiver@testwarehouse.com",
       isActive: true,
@@ -872,10 +915,16 @@ export const seedAllTestData = mutation({
     });
 
     const pickerUserId = await ctx.db.insert("users", {
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_picker_005",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       organizationId,
       username: "picker",
-      authUserId: "auth_user_12345",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Order Picker",
       email: "picker@testwarehouse.com",
       isActive: true,
@@ -884,10 +933,16 @@ export const seedAllTestData = mutation({
     });
 
     const auditorUserId = await ctx.db.insert("users", {
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_auditor_006",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       organizationId,
       username: "auditor",
-      authUserId: "auth_user_12345",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Inventory Auditor",
       email: "auditor@testwarehouse.com",
       isActive: true,
