@@ -7,8 +7,11 @@ import {
   CircleUserRound,
   KeyRound,
   Settings2,
+  Table,
+  TableProperties,
   UserRound,
   Users2,
+  Warehouse,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -82,6 +85,18 @@ const settingsNavs: SettingNavGroup[] = [
         title: "Roles & Permissions",
         icon: CircleUserRound,
         url: "admin/roles",
+        isAdmin: true,
+      },
+      {
+        title: "Branches",
+        icon: Warehouse,
+        url: "admin/branches",
+        isAdmin: true,
+      },
+      {
+        title: "System Lookups",
+        icon: TableProperties,
+        url: "admin/lookups",
         isAdmin: true,
       },
     ],

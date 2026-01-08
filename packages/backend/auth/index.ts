@@ -29,13 +29,7 @@ const authConfig = {
   database: drizzleAdapter(db, {
     provider: "pg",
     schema: {
-      user: schema.user,
-      session: schema.session,
-      account: schema.account,
-      verification: schema.verification,
-      organization: schema.organization,
-      member: schema.member,
-      invitation: schema.invitation,
+      ...schema,
     },
   }),
 
@@ -123,7 +117,7 @@ const authConfig = {
             }
           }
         },
-        afterUpdateOrganization: async ({ organization, user, member }) => {
+        afterUpdateOrganization: async ({ organization }) => {
           // Sync organization update to Convex
           if (convex) {
             try {
@@ -148,8 +142,37 @@ const authConfig = {
             }
           }
         },
+        afterDeleteOrganization: async ({ organization }) => {
+          if (convex) {
+            try {
+              // Delete all members of the organization
+              const memberCleanup = await convex.mutation(
+                api.authSync.deleteAllMembersOfOrganization,
+                {
+                  organizationAuthId: organization.id,
+                },
+              );
+              console.log(
+                `[Convex Sync] Deleted ${memberCleanup.deletedCount} members from organization ${organization.id}`,
+              );
+
+              // Soft delete the organization
+              await convex.mutation(api.authSync.deleteOrganization, {
+                authId: organization.id,
+              });
+              console.log(
+                `[Convex Sync] Organization deleted: ${organization.id}`,
+              );
+            } catch (error) {
+              console.error(
+                "[Convex Sync] Failed to sync organization deletion:",
+                error,
+              );
+            }
+          }
+        },
         // After a member is added
-        afterAddMember: async ({ member, user, organization }) => {
+        afterAddMember: async ({ user, organization }) => {
           if (convex) {
             try {
               console.log(
@@ -171,7 +194,7 @@ const authConfig = {
           }
         },
         // After a member is removed
-        afterRemoveMember: async ({ member, user, organization }) => {
+        afterRemoveMember: async ({ user, organization }) => {
           if (convex) {
             try {
               await convex.mutation(api.authSync.deleteMember, {

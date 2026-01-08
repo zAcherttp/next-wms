@@ -237,6 +237,36 @@ export const getUserMemberships = query({
 });
 
 /**
+ * Delete all members of an organization
+ * Called when organization is deleted
+ */
+export const deleteAllMembersOfOrganization = mutation({
+  args: {
+    organizationAuthId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Find all members by organizationAuthId
+    const members = await ctx.db
+      .query("members")
+      .withIndex("organizationAuthId", (q) =>
+        q.eq("organizationAuthId", args.organizationAuthId)
+      )
+      .collect();
+
+    // Delete all member records
+    for (const member of members) {
+      await ctx.db.delete(member._id);
+    }
+
+    console.log(
+      `[Convex Sync] Deleted ${members.length} members from organization ${args.organizationAuthId}`
+    );
+
+    return { deletedCount: members.length };
+  },
+});
+
+/**
  * Create member for user and organization (internal helper)
  * Used when organization is created after member sync was attempted
  */

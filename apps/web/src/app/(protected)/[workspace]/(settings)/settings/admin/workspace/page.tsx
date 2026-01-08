@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { toast } from "sonner";
 import {
@@ -26,6 +27,7 @@ export default function AdminPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [confirmationText, setConfirmationText] = useState("");
   const { data } = useActiveOrganization();
+  const router = useRouter();
 
   const organizationName = data?.name;
   const isConfirmationValid = confirmationText === organizationName;
@@ -41,6 +43,7 @@ export default function AdminPage() {
     }
 
     toast.success("Workspace deleted successfully");
+    router.push("/");
   };
 
   return (
