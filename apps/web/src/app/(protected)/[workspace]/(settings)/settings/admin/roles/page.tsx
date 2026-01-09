@@ -272,8 +272,8 @@ export default function RolesSettingsPage() {
               value="permissions"
               className="flex flex-1 flex-col overflow-hidden data-[state=active]:flex"
             >
-              <ScrollArea className="max-h-[calc(100vh-18rem)]">
-                <div className="h-[calc(100vh-18rem)] py-4">
+              <ScrollArea className="h-[calc(100vh-18rem)]">
+                <div className="py-4">
                   {filteredPermissions.map((section) => (
                     <div key={section.label} className="mb-6">
                       <h3 className="mb-2 font-semibold">{section.label}</h3>
@@ -319,7 +319,7 @@ export default function RolesSettingsPage() {
               value="members"
               className="flex flex-1 flex-col overflow-hidden data-[state=active]:flex"
             >
-              <ScrollArea className="max-h-[calc(100vh-18rem)]">
+              <ScrollArea className="h-[calc(100vh-18rem)]">
                 <div className="space-y-2 py-4">
                   {filteredMembers.map((member) => {
                     const initials = member.user.fullName
