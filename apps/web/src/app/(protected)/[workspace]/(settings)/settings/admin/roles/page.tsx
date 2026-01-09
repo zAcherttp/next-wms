@@ -1,21 +1,21 @@
 "use client";
 
 import {
-  admin,
+  DEFAULT_ROLES,
   getPermissionDisplayKeys,
-  member,
-  owner,
   permissionDisplayConfig,
   type RoleStatements,
 } from "@wms/backend/lib/permissions";
 import { Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { toast } from "sonner";
 import { MembersAction } from "@/app/(protected)/[workspace]/(settings)/settings/admin/roles/components/members-action";
 import {
   Setting,
   SettingHeader,
   SettingSection,
 } from "@/components/settings/setting";
+import { Button } from "@/components/ui/button";
 import {
   InputGroup,
   InputGroupAddon,
@@ -78,16 +78,11 @@ const MOCK_MEMBERS = [
   },
 ];
 
-const DEFAULT_ROLES = [
-  { id: "owner", name: "Owner", role: owner, isDefault: true },
-  { id: "admin", name: "Admin", role: admin, isDefault: true },
-  { id: "member", name: "Member", role: member, isDefault: true },
-];
-
 export default function RolesSettingsPage() {
   const { data: activeOrganization } = useActiveOrganization();
   const { data } = useRoles(activeOrganization?.id);
-  const [, roleSearchQuery] = useDebouncedInput("");
+  const [setRoleSearchQuery, roleSearchQuery, roleSearchQueryDebounced] =
+    useDebouncedInput("");
   const [
     setPermissionSearchQuery,
     permissionSearchQuery,
@@ -96,9 +91,30 @@ export default function RolesSettingsPage() {
   const [setMemberSearchQuery, memberSearchQuery, memberSearchQueryDebounced] =
     useDebouncedInput("");
   const [tabsValue, setTabsValue] = useState("permissions");
-  const [selectedRole, setSelectedRole] = useState(DEFAULT_ROLES[0]);
 
   const roles = data?.data;
+
+  // Map fetched custom roles to match DEFAULT_ROLES structure
+  const customRoles = useMemo(() => {
+    if (!roles) return [];
+    return roles.map((role) => ({
+      id: role.id,
+      name: role.role,
+      role: {
+        statements: {} as RoleStatements, // Custom roles will have their own statements
+      },
+      isDefault: false,
+    }));
+  }, [roles]);
+
+  const allRoles = useMemo(
+    () => [...DEFAULT_ROLES, ...customRoles],
+    [customRoles],
+  );
+
+  const [selectedRole, setSelectedRole] = useState<(typeof allRoles)[number]>(
+    allRoles[0],
+  );
 
   const filteredMembers = useMemo(() => {
     const m = selectedRole
@@ -116,6 +132,84 @@ export default function RolesSettingsPage() {
     () => selectedRole?.role.statements || {},
     [selectedRole],
   );
+
+  // Build the initial permission switch state map from the selected role
+  const initialSwitchState = useMemo(() => {
+    const stateMap: Record<string, Record<string, boolean>> = {};
+    for (const resource of getPermissionDisplayKeys()) {
+      const section = permissionDisplayConfig[resource];
+      stateMap[resource] = {};
+      for (const key of Object.keys(section.permissions)) {
+        stateMap[resource][key] =
+          selectedRolePermissions[resource]?.includes(key) ?? false;
+      }
+    }
+    return stateMap;
+  }, [selectedRolePermissions]);
+
+  // Local state for permission switches (only used for custom roles)
+  const [permissionSwitchState, setPermissionSwitchState] =
+    useState<Record<string, Record<string, boolean>>>(initialSwitchState);
+
+  // Sync local state when selected role changes
+  useEffect(() => {
+    setPermissionSwitchState(initialSwitchState);
+  }, [initialSwitchState]);
+
+  // Check if there are any modifications from the initial state
+  const isModified = useMemo(() => {
+    if (selectedRole?.isDefault) return false;
+    for (const resource of Object.keys(permissionSwitchState)) {
+      for (const key of Object.keys(permissionSwitchState[resource] || {})) {
+        if (
+          permissionSwitchState[resource]?.[key] !==
+          initialSwitchState[resource]?.[key]
+        ) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }, [permissionSwitchState, initialSwitchState, selectedRole?.isDefault]);
+
+  // Handler for toggling a permission switch
+  const handlePermissionToggle = useCallback(
+    (resource: string, permissionKey: string) => {
+      if (selectedRole?.isDefault) {
+        toast.warning("Default role permissions cannot be modified");
+        return;
+      }
+      setPermissionSwitchState((prev) => ({
+        ...prev,
+        [resource]: {
+          ...prev[resource],
+          [permissionKey]: !prev[resource]?.[permissionKey],
+        },
+      }));
+    },
+    [selectedRole?.isDefault],
+  );
+
+  // Handler for saving changes
+  const handleSaveChanges = useCallback(() => {
+    // TODO: Implement API call to save permission changes
+    toast.success("Changes saved successfully");
+    // After saving, the initialSwitchState should be updated via data refetch
+  }, []);
+
+  // Handler for canceling changes
+  const handleCancelChanges = useCallback(() => {
+    setPermissionSwitchState(initialSwitchState);
+    toast.info("Changes discarded");
+  }, [initialSwitchState]);
+
+  const filteredRoles = useMemo(() => {
+    if (!roleSearchQueryDebounced.trim()) return allRoles;
+
+    return allRoles.filter((role) =>
+      fuzzyMatch(roleSearchQueryDebounced, role.name),
+    );
+  }, [roleSearchQueryDebounced, allRoles]);
 
   const filteredPermissions = useMemo(() => {
     if (!permissionSearchQueryDebounced.trim())
@@ -190,15 +284,15 @@ export default function RolesSettingsPage() {
             <div className="flex w-full items-center gap-2">
               <SearchInput
                 value={roleSearchQuery}
-                onChange={(e) => {}}
+                onChange={(e) => setRoleSearchQuery(e.target.value)}
                 placeholder="Search..."
-                count={roles?.length || 0}
+                count={filteredRoles.length}
               />
               <CreateRoleDialog />
             </div>
             <ScrollArea className="h-[300px] lg:h-[calc(100vh-20rem)]">
               <div className="space-y-2">
-                {DEFAULT_ROLES.map((role) => (
+                {filteredRoles.map((role) => (
                   <Item
                     key={role.id}
                     className="cursor-pointer py-2"
@@ -216,17 +310,11 @@ export default function RolesSettingsPage() {
                     </ItemActions>
                   </Item>
                 ))}
-                {roles?.map((role) => (
-                  <Item key={role.id} className="py-2">
-                    <ItemContent>
-                      <ItemTitle>{role.role}</ItemTitle>
-                      <ItemDescription>Custom role</ItemDescription>
-                    </ItemContent>
-                    <ItemActions>
-                      <RolesAction roleId={role.id} />
-                    </ItemActions>
-                  </Item>
-                ))}
+                {!filteredRoles.length && (
+                  <p className="p-4 text-center text-muted-foreground text-sm">
+                    No roles found matching "{roleSearchQuery}"
+                  </p>
+                )}
               </div>
             </ScrollArea>
           </div>
@@ -274,38 +362,49 @@ export default function RolesSettingsPage() {
             >
               <ScrollArea className="h-[calc(100vh-18rem)]">
                 <div className="py-4">
-                  {filteredPermissions.map((section) => (
-                    <div key={section.label} className="mb-6">
-                      <h3 className="mb-2 font-semibold">{section.label}</h3>
-                      <div className="space-y-1">
-                        {Object.entries(section.permissions).map(
-                          ([key, permission]) => {
-                            // Check if this permission is enabled for selected role
-                            const resource = getPermissionDisplayKeys().find(
-                              (r) => permissionDisplayConfig[r] === section,
-                            );
-                            const isEnabled =
-                              resource &&
-                              selectedRolePermissions[resource]?.includes(key);
+                  {filteredPermissions.map((section) => {
+                    // Use label comparison instead of reference comparison
+                    // because filtered sections are new objects with filtered permissions
+                    const resource = getPermissionDisplayKeys().find(
+                      (r) => permissionDisplayConfig[r].label === section.label,
+                    );
+                    return (
+                      <div key={section.label} className="mb-6">
+                        <h3 className="mb-2 font-semibold">{section.label}</h3>
+                        <div className="space-y-1">
+                          {Object.entries(section.permissions).map(
+                            ([key, permission]) => {
+                              // Get switch state from controlled state map
+                              const isEnabled = resource
+                                ? (permissionSwitchState[resource]?.[key] ??
+                                  false)
+                                : false;
 
-                            return (
-                              <Item className="py-2" key={key}>
-                                <ItemContent>
-                                  <ItemTitle>{permission.label}</ItemTitle>
-                                  <ItemDescription>
-                                    {permission.description}
-                                  </ItemDescription>
-                                </ItemContent>
-                                <ItemActions>
-                                  <Switch checked={isEnabled} />
-                                </ItemActions>
-                              </Item>
-                            );
-                          },
-                        )}
+                              return (
+                                <Item className="py-2" key={key}>
+                                  <ItemContent>
+                                    <ItemTitle>{permission.label}</ItemTitle>
+                                    <ItemDescription>
+                                      {permission.description}
+                                    </ItemDescription>
+                                  </ItemContent>
+                                  <ItemActions>
+                                    <Switch
+                                      checked={isEnabled}
+                                      onCheckedChange={() =>
+                                        resource &&
+                                        handlePermissionToggle(resource, key)
+                                      }
+                                    />
+                                  </ItemActions>
+                                </Item>
+                              );
+                            },
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {!filteredPermissions.length && (
                     <p className="p-4 text-center text-muted-foreground text-sm">
                       No permissions found matching "{permissionSearchQuery}"
@@ -313,6 +412,15 @@ export default function RolesSettingsPage() {
                   )}
                 </div>
               </ScrollArea>
+              {/* Save/Cancel buttons for custom roles with modifications */}
+              {isModified && (
+                <div className="mt-4 flex justify-end gap-2 border-t pt-4">
+                  <Button variant="outline" onClick={handleCancelChanges}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleSaveChanges}>Save Changes</Button>
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent

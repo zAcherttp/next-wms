@@ -92,6 +92,15 @@ export const member = ac.newRole({
 });
 
 /**
+ * Default roles configuration for UI
+ */
+export const DEFAULT_ROLES = [
+  { id: "owner", name: "Owner", role: owner, isDefault: true },
+  { id: "admin", name: "Admin", role: admin, isDefault: true },
+  { id: "member", name: "Member", role: member, isDefault: true },
+] as const;
+
+/**
  * Permission display configuration for UI
  * Maps raw permissions to user-friendly display names and groups
  */
