@@ -1,6 +1,6 @@
 import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
-import { emailOTP, organization } from "better-auth/plugins";
+import { emailOTP, openAPI, organization } from "better-auth/plugins";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
 import { ac, admin, member, owner } from "../lib/permissions";
@@ -53,6 +53,7 @@ const authConfig = {
 
   // Plugins
   plugins: [
+    openAPI(),
     // Organization/multi-tenancy support
     organization({
       ac,

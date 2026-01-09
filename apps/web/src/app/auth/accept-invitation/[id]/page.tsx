@@ -3,7 +3,7 @@
 import { Building2, CheckCircle, Loader2, XCircle } from "lucide-react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -12,17 +12,21 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { organization, useSession } from "@/lib/auth/client";
+import { authClient, organization, useSession } from "@/lib/auth/client";
 
 type InvitationStatus =
   | "loading"
+  | "checking"
   | "accepting"
   | "success"
+  | "already-accepted"
   | "error"
   | "login-required";
 
 interface InvitationDetails {
   organizationName?: string;
+  organizationSlug?: string;
+  organizationId?: string;
   role?: string;
   email?: string;
 }
@@ -36,6 +40,9 @@ export default function AcceptInvitationPage() {
   const [error, setError] = useState<string | null>(null);
   const [details, setDetails] = useState<InvitationDetails>({});
 
+  // Prevent double execution from React strict mode
+  const processingRef = useRef(false);
+
   const invitationId = params?.id;
 
   useEffect(() => {
@@ -47,8 +54,12 @@ export default function AcceptInvitationPage() {
       return;
     }
 
-    // Accept the invitation
-    const acceptInvitation = async () => {
+    // Prevent double execution
+    if (processingRef.current) return;
+    processingRef.current = true;
+
+    // Process the invitation
+    const processInvitation = async () => {
       if (!invitationId) {
         setStatus("error");
         setError("Invalid invitation link");
@@ -56,6 +67,58 @@ export default function AcceptInvitationPage() {
       }
 
       try {
+        // First, check the invitation status
+        setStatus("checking");
+        const invitationResult = await authClient.organization.getInvitation({
+          query: { id: invitationId },
+        });
+
+        if (invitationResult.error) {
+          setStatus("error");
+          setError(invitationResult.error.message ?? "Invitation not found");
+          return;
+        }
+
+        const invitation = invitationResult.data;
+
+        // Store invitation details for display
+        setDetails({
+          organizationName: invitation?.organizationName,
+          organizationSlug: invitation?.organizationSlug,
+          organizationId: invitation?.organizationId,
+          role: invitation?.role,
+          email: invitation?.email,
+        });
+
+        // Check if already accepted
+        if (invitation?.status === "accepted") {
+          // Set the organization as active and redirect
+          if (invitation.organizationId) {
+            await organization.setActive({
+              organizationId: invitation.organizationId,
+            });
+          }
+          setStatus("already-accepted");
+          return;
+        }
+
+        // Check if invitation is expired or cancelled
+        if (invitation?.status === "canceled") {
+          setStatus("error");
+          setError("This invitation has been cancelled");
+          return;
+        }
+
+        if (
+          invitation?.expiresAt &&
+          new Date(invitation.expiresAt) < new Date()
+        ) {
+          setStatus("error");
+          setError("This invitation has expired");
+          return;
+        }
+
+        // Accept the invitation
         setStatus("accepting");
         const result = await organization.acceptInvitation({
           invitationId,
@@ -74,20 +137,20 @@ export default function AcceptInvitationPage() {
           });
         }
 
-        setDetails({
-          organizationName: undefined, // Organization name not available in response
-          role: result.data?.member?.role,
-        });
+        setDetails((prev) => ({
+          ...prev,
+          role: result.data?.member?.role ?? prev.role,
+        }));
         setStatus("success");
       } catch (err) {
         setStatus("error");
         setError(
-          err instanceof Error ? err.message : "Failed to accept invitation",
+          err instanceof Error ? err.message : "Failed to process invitation",
         );
       }
     };
 
-    acceptInvitation();
+    processInvitation();
   }, [invitationId, session?.user, sessionLoading]);
 
   const handleSignIn = () => {
@@ -102,16 +165,20 @@ export default function AcceptInvitationPage() {
     router.push("/");
   };
 
-  if (status === "loading" || status === "accepting") {
+  if (status === "loading" || status === "checking" || status === "accepting") {
+    const statusMessages = {
+      loading: "Loading invitation...",
+      checking: "Checking invitation status...",
+      accepting: "Accepting invitation...",
+    };
+
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Card className="w-full max-w-md">
+        <Card className="w-[400px] max-w-md">
           <CardContent className="flex flex-col items-center gap-4 pt-6">
             <Loader2 className="size-8 animate-spin text-primary" />
             <p className="text-muted-foreground">
-              {status === "loading"
-                ? "Loading invitation..."
-                : "Accepting invitation..."}
+              {statusMessages[status as keyof typeof statusMessages]}
             </p>
           </CardContent>
         </Card>
@@ -122,7 +189,7 @@ export default function AcceptInvitationPage() {
   if (status === "login-required") {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-[400px] max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10">
               <Building2 className="size-6 text-primary" />
@@ -151,10 +218,49 @@ export default function AcceptInvitationPage() {
     );
   }
 
+  if (status === "already-accepted") {
+    const handleGoToOrganization = () => {
+      if (details.organizationSlug) {
+        router.push(`/${details.organizationSlug}`);
+      } else {
+        router.push("/");
+      }
+    };
+
+    return (
+      <div className="flex min-h-screen items-center justify-center p-4">
+        <Card className="w-[400px] max-w-md">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/20">
+              <CheckCircle className="size-6 text-blue-600 dark:text-blue-400" />
+            </div>
+            <CardTitle>Already a Member</CardTitle>
+            <CardDescription>
+              You've already accepted this invitation and are a member of{" "}
+              <strong>{details.organizationName ?? "this workspace"}</strong>
+              {details.role && (
+                <>
+                  {" "}
+                  as <strong>{details.role}</strong>
+                </>
+              )}
+              .
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <Button onClick={handleGoToOrganization} className="w-full">
+              Go to Workspace
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   if (status === "error") {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-[400px] max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-destructive/10">
               <XCircle className="size-6 text-destructive" />
@@ -175,7 +281,7 @@ export default function AcceptInvitationPage() {
   if (status === "success") {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-full max-w-md">
+        <Card className="w-[400px] max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20">
               <CheckCircle className="size-6 text-green-600 dark:text-green-400" />
