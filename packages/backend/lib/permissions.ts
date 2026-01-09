@@ -16,14 +16,8 @@ const statement = {
   // Include default Better Auth statements for organization management
   ...defaultStatements,
 
-  // Member management (extends defaults)
-  member: ["create", "read", "update", "delete", "invite", "kick"],
-
   // Role management (for dynamic access control)
   role: ["create", "read", "update", "delete"],
-
-  // Invitation management
-  invitation: ["create", "read", "cancel"],
 
   // Settings access control
   settings: ["profile", "security", "admin", "members", "roles"],
@@ -120,10 +114,6 @@ export const permissionDisplayConfig = {
     label: "Members",
     permissions: {
       create: { label: "Add members", description: "Add new members directly" },
-      read: {
-        label: "View members",
-        description: "See member list and profiles",
-      },
       update: {
         label: "Update members",
         description: "Modify member information",
@@ -132,18 +122,9 @@ export const permissionDisplayConfig = {
         label: "Remove members",
         description: "Remove members from workspace",
       },
-      invite: {
-        label: "Invite members",
-        description: "Send invitation emails",
-      },
-      kick: {
-        label: "Kick members",
-        description: "Force remove members",
-        dangerous: true,
-      },
     },
     groups: {
-      manage: ["create", "read", "update", "delete"],
+      manage: ["create", "update", "delete"],
     },
   },
   role: {
@@ -167,10 +148,6 @@ export const permissionDisplayConfig = {
       create: {
         label: "Create invitations",
         description: "Send new invitations",
-      },
-      read: {
-        label: "View invitations",
-        description: "See pending invitations",
       },
       cancel: {
         label: "Cancel invitations",
@@ -261,3 +238,37 @@ export type PermissionResource = keyof typeof statement;
  */
 export type PermissionAction<R extends PermissionResource> =
   (typeof statement)[R][number];
+
+/**
+ * Type for permission display config keys
+ */
+export type PermissionDisplayResource = keyof typeof permissionDisplayConfig;
+
+/**
+ * Type for role statements - maps resources to readonly arrays of actions
+ */
+export type RoleStatements = {
+  [K in PermissionResource]?: readonly string[];
+};
+
+/**
+ * Helper type to extract permissions from a role
+ */
+export type RolePermissions<T extends { statements: RoleStatements }> =
+  T["statements"];
+
+/**
+ * Type guard to check if a key is a valid permission display resource
+ */
+export function isPermissionDisplayResource(
+  key: string,
+): key is PermissionDisplayResource {
+  return key in permissionDisplayConfig;
+}
+
+/**
+ * Helper to get permission display config keys in a type-safe way
+ */
+export function getPermissionDisplayKeys(): PermissionDisplayResource[] {
+  return Object.keys(permissionDisplayConfig) as PermissionDisplayResource[];
+}

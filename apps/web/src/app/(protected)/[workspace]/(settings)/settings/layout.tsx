@@ -40,18 +40,18 @@ export default function SettingsLayout({ children }: SettingsLayoutProps) {
       <SidebarProvider defaultOpen={true}>
         <SettingsSidebar className="h-screen" />
         <SidebarInset>
-          <ScrollArea className="h-screen">
+          <ScrollArea className="flex h-screen min-h-0 flex-col">
             <header className="flex h-16 shrink-0 items-center transition-[width,height] ease-linear group-has-data-[collapsible=icon]/sidebar-wrapper:h-12">
               <div className="flex w-full flex-row items-center justify-between px-4 transition-[padding] group-has-data-[collapsible=icon]/sidebar-wrapper:px-2">
                 {isMobile && <SidebarTrigger className="size-8" />}
                 Role: {role?.role}
               </div>
             </header>
-            <div className="flex flex-col gap-2">
-              <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 py-4 md:gap-6 md:py-6">
-                <div className="space-y-6 px-4">{children}</div>
+            <main className="min-h-0 flex-1 overflow-hidden">
+              <div className="mx-auto max-w-4xl px-4 py-4 md:py-6">
+                <div className="space-y-6">{children}</div>
               </div>
-            </div>
+            </main>
           </ScrollArea>
         </SidebarInset>
       </SidebarProvider>

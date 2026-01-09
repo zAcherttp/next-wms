@@ -7,7 +7,6 @@ import {
   CircleUserRound,
   KeyRound,
   Settings2,
-  Table,
   TableProperties,
   UserRound,
   Users2,

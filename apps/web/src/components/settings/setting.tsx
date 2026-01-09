@@ -5,7 +5,11 @@ import type { ReactNode } from "react";
  * Provides consistent spacing between header and sections
  */
 export function Setting({ children }: { children: ReactNode }) {
-  return <div className="space-y-6 pb-16">{children}</div>;
+  return (
+    <div className="flex min-h-0 flex-1 flex-col space-y-6 pb-16">
+      {children}
+    </div>
+  );
 }
 
 /**
@@ -37,13 +41,15 @@ export function SettingSection({
   title,
   description,
   children,
+  className,
 }: {
   title: string;
   description?: string;
   children: ReactNode;
+  className?: string;
 }) {
   return (
-    <div className="space-y-4">
+    <div className={`space-y-4 ${className}`}>
       <div>
         <h3 className="font-medium">{title}</h3>
         {description && (
