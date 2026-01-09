@@ -26,7 +26,7 @@ import { parseUserAgent } from "@/lib/user-agent";
 
 export default function SecurityPage() {
   const { data: activeSession } = useSession();
-  const { sessions, isLoading } = useListSessions();
+  const { sessions, isLoading } = useListSessions(activeSession?.user.id);
 
   const router = useRouter();
 

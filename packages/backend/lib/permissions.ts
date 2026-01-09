@@ -314,7 +314,7 @@ export function getPermissionCacheKey(permissions: PermissionsInput): string {
     .sort()
     .map(
       (resource) =>
-        `${resource}:${[...permissions[resource]].sort().join(",")}`,
+        `${resource}:${[...(permissions[resource] ?? [])].sort().join(",")}`,
     )
     .join("|");
 }
