@@ -281,3 +281,56 @@ export function isPermissionDisplayResource(
 export function getPermissionDisplayKeys(): PermissionDisplayResource[] {
   return Object.keys(permissionDisplayConfig) as PermissionDisplayResource[];
 }
+
+// ============================================================================
+// Permission Check Types & Helpers
+// ============================================================================
+
+/**
+ * Type-safe permissions object for permission checks.
+ * Maps resources to arrays of their valid actions.
+ */
+export type Permissions = {
+  [K in PermissionResource]?: readonly PermissionAction<K>[];
+};
+
+/**
+ * Loose permissions type for API calls (accepts string arrays).
+ */
+export type PermissionsInput = Record<string, string[]>;
+
+/**
+ * Creates a stable, sorted cache key from a permissions object.
+ * Used for consistent TanStack Query cache keys.
+ *
+ * @example
+ * ```ts
+ * getPermissionCacheKey({ settings: ["admin"], project: ["create", "read"] })
+ * // Returns: "project:create,read|settings:admin"
+ * ```
+ */
+export function getPermissionCacheKey(permissions: PermissionsInput): string {
+  return Object.keys(permissions)
+    .sort()
+    .map(
+      (resource) =>
+        `${resource}:${[...permissions[resource]].sort().join(",")}`,
+    )
+    .join("|");
+}
+
+/**
+ * Creates a TanStack Query key for permission checks.
+ *
+ * @example
+ * ```ts
+ * getPermissionQueryKey("user123", { settings: ["admin"] })
+ * // Returns: ["user123", "hasPerms", "settings:admin"]
+ * ```
+ */
+export function getPermissionQueryKey(
+  userId: string,
+  permissions: PermissionsInput,
+): readonly [string, "hasPerms", string] {
+  return [userId, "hasPerms", getPermissionCacheKey(permissions)] as const;
+}

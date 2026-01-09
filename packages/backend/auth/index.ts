@@ -65,6 +65,10 @@ const authConfig = {
       dynamicAccessControl: {
         enabled: true,
       },
+      cookieCache: {
+        enabled: true,
+        maxAge: 5 * 60, // Cache duration in seconds
+      },
       async sendInvitationEmail(data) {
         // Build the invitation acceptance URL
         const invitationUrl = `${siteUrl}/auth/accept-invitation/${data.invitation.id}`;
