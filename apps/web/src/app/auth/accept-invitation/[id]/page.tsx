@@ -1,6 +1,7 @@
 "use client";
 
 import { Building2, CheckCircle, Loader2, XCircle } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -221,7 +222,7 @@ export default function AcceptInvitationPage() {
   if (status === "already-accepted") {
     const handleGoToOrganization = () => {
       if (details.organizationSlug) {
-        router.push(`/${details.organizationSlug}`);
+        router.push(`/${details.organizationSlug}` as Route);
       } else {
         router.push("/");
       }

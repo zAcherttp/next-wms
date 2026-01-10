@@ -260,14 +260,14 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
       from:
         typeof initialDateFrom === 'string'
           ? getDateAdjustedForTimezone(initialDateFrom)
-          : initialDateFrom,
+          : initialDateFrom ?? defaultRange.from,
       to: initialDateTo
         ? typeof initialDateTo === 'string'
           ? getDateAdjustedForTimezone(initialDateTo)
           : initialDateTo
         : typeof initialDateFrom === 'string'
           ? getDateAdjustedForTimezone(initialDateFrom)
-          : initialDateFrom
+          : initialDateFrom ?? defaultRange.from
     })
     setRangeCompare(
       initialCompareFrom

@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 import {
   Item,
@@ -13,7 +14,7 @@ export default function NotificationsItem({
   href,
 }: {
   notification: NotificationItem;
-  href: string;
+  href: Route;
 }) {
   return (
     <Item asChild className="mx-2 my-1 px-2 py-1">

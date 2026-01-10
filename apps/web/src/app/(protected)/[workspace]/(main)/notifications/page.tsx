@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { Bell } from "lucide-react";
+import type { Route } from "next";
 import { useParams } from "next/navigation";
 import NotificationsItem from "@/components/notification-item";
 import {
@@ -45,7 +46,9 @@ export default function NotificationsPage() {
               <NotificationsItem
                 key={notification._id}
                 notification={notification}
-                href={`/${workspace}/notifications/${notification._id}`}
+                href={
+                  `/${workspace}/notifications/${notification._id}` as Route
+                }
               />
             ))}
           </ScrollArea>

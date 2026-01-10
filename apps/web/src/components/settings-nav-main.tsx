@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
 import {
   SidebarGroup,
@@ -27,7 +28,7 @@ export function SettingsNavMain({ items }: { items: SettingNavGroup[] }) {
               {item.items?.map((subItem) => (
                 <SidebarMenuSubItem key={subItem.title}>
                   <SidebarMenuSubButton asChild>
-                    <Link href={subItem.url}>
+                    <Link href={subItem.url as Route}>
                       {subItem.icon && <subItem.icon />}
                       <span>{subItem.title}</span>
                     </Link>

@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { ArrowLeft } from "lucide-react";
+import type { Route } from "next";
 import { useParams, useRouter } from "next/navigation";
 import NotificationsItem from "@/components/notification-item";
 import { Badge } from "@/components/ui/badge";
@@ -32,7 +33,6 @@ export default function NotificationDetailPage() {
   const selectedNotification = notifications?.find((n) => n._id === notiId);
 
   const handleBack = () => {
-    // @ts-expect-error - dynamic route param
     router.push(`/${workspace}/notifications`);
   };
 
@@ -53,7 +53,7 @@ export default function NotificationDetailPage() {
             <NotificationsItem
               key={notification._id}
               notification={notification}
-              href={`/${workspace}/notifications/${notification._id}`}
+              href={`/${workspace}/notifications/${notification._id}` as Route}
             />
           ))}
         </ScrollArea>

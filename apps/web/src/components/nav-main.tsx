@@ -1,6 +1,7 @@
 "use client";
 
 import { ChevronRight, type LucideIcon } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import {
@@ -38,7 +39,7 @@ export function NavMain({
 
   return (
     <SidebarGroup>
-      <SidebarGroupLabel>Platform</SidebarGroupLabel>
+      <SidebarGroupLabel>Main</SidebarGroupLabel>
       <SidebarMenu>
         {items.map((item) => (
           <Collapsible
@@ -65,7 +66,7 @@ export function NavMain({
                           className={isActive ? "bg-accent" : ""}
                           asChild
                         >
-                          <Link href={`/${workspace}${subItem.url}`}>
+                          <Link href={`/${workspace}${subItem.url}` as Route}>
                             <span>{subItem.title}</span>
                           </Link>
                         </SidebarMenuSubButton>
