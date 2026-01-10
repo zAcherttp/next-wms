@@ -25,7 +25,6 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import * as React from "react";
-import { AddPurchaseOrderDialog } from "@/components/add-purchase-order-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -448,7 +447,7 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
   },
 ];
 
-export function PurchaseOrdersTable() {
+export function ReturnRequestsTable() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -541,7 +540,6 @@ export function PurchaseOrdersTable() {
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <AddPurchaseOrderDialog />
         </div>
       </div>
       <div className="overflow-hidden rounded-md border">

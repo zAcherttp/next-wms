@@ -24,3 +24,8 @@ export type PurchaseOrder = Omit<
   supplier: Pick<Supplier, "name" | "defaultLeadTimeDays"> | null;
   createdByUser: Pick<User, "fullName"> | null;
 };
+
+export type Product = Omit<Doc<"products">, "_id" | "organizationId"> & {
+  storageRequirementType: Pick<SystemLookups, "lookupValue"> | null;
+  trackingMethodType: Pick<SystemLookups, "lookupValue"> | null;
+};

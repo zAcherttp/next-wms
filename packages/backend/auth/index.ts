@@ -1,5 +1,5 @@
-import { betterAuth } from "better-auth";
 import { drizzleAdapter } from "better-auth/adapters/drizzle";
+import { betterAuth } from "better-auth/minimal";
 import { emailOTP, openAPI, organization } from "better-auth/plugins";
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../convex/_generated/api";
@@ -17,6 +17,16 @@ if (!convexUrl) {
   console.warn("[Auth] CONVEX_URL not set - auth data will not sync to Convex");
 }
 const convex = convexUrl ? new ConvexHttpClient(convexUrl) : null;
+
+type DBHookUser = {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  email: string;
+  emailVerified: boolean;
+  name: string;
+  image?: string | null | undefined;
+};
 
 // Get site URL from environment
 const siteUrl = process.env.SITE_URL || "";
@@ -235,7 +245,7 @@ const authConfig = {
   databaseHooks: {
     user: {
       create: {
-        after: async (user) => {
+        after: async (user: DBHookUser) => {
           // Sync new user to Convex
           if (convex) {
             try {
@@ -259,7 +269,7 @@ const authConfig = {
         },
       },
       update: {
-        after: async (user) => {
+        after: async (user: DBHookUser) => {
           // Sync user update to Convex
           if (convex) {
             try {
