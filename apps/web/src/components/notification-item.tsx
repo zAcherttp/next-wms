@@ -5,8 +5,8 @@ import {
   ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
-import type { NotificationItem } from "@/lib/auth/types";
 import { formatRelativeTime } from "@/lib/format-date";
+import type { NotificationItem } from "@/lib/types";
 
 export default function NotificationsItem({
   notification,
