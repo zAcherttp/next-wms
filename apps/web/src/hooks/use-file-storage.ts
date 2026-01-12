@@ -12,11 +12,11 @@ interface UploadResult {
 
 /**
  * Hook for uploading files to Convex storage
- * 
+ *
  * Usage:
  * ```tsx
  * const { uploadFile, isUploading, error } = useFileStorage();
- * 
+ *
  * // Upload a file and get the storage ID
  * const { storageId } = await uploadFile(file);
  * ```
@@ -66,7 +66,7 @@ export function useFileStorage() {
 
       return { storageId };
     },
-    [generateUploadUrl, postToUploadUrl]
+    [generateUploadUrl, postToUploadUrl],
   );
 
   return {
