@@ -10,6 +10,7 @@
 
 import type * as audit from "../audit.js";
 import type * as authSync from "../authSync.js";
+import type * as branches from "../branches.js";
 import type * as brands from "../brands.js";
 import type * as categories from "../categories.js";
 import type * as crons from "../crons.js";
@@ -35,6 +36,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   audit: typeof audit;
   authSync: typeof authSync;
+  branches: typeof branches;
   brands: typeof brands;
   categories: typeof categories;
   crons: typeof crons;

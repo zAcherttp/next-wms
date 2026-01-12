@@ -5,21 +5,18 @@ import {
   SettingHeader,
   SettingSection,
 } from "@/components/settings/setting";
+import { BranchesTable } from "@/components/table/branches-table";
 
 export default function BranchesPage() {
   return (
     <Setting>
       <SettingHeader
-        title="Branches"
-        description="View and manage workspace branches."
+        title="Branches Management"
+        description="View and manage branches for your organization."
       />
 
-      <SettingSection title="Branches Management">
-        <div className="rounded-lg border p-4">
-          <p className="flex items-center justify-between text-sm">
-            Branches management functionality will be implemented here
-          </p>
-        </div>
+      <SettingSection title="Branches">
+        <BranchesTable />
       </SettingSection>
     </Setting>
   );

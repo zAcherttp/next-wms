@@ -29,3 +29,7 @@ export type Product = Omit<Doc<"products">, "_id" | "organizationId"> & {
   storageRequirementType: Pick<SystemLookups, "lookupValue"> | null;
   trackingMethodType: Pick<SystemLookups, "lookupValue"> | null;
 };
+
+export type Brand = Doc<"brands">;
+
+export type Branch = Doc<"branches">;

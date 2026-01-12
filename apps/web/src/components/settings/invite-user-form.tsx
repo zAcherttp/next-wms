@@ -1,7 +1,7 @@
 "use client";
 
 import { useForm } from "@tanstack/react-form";
-import { Loader2, Mail, UserPlus } from "lucide-react";
+import { Mail, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
@@ -14,6 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Spinner } from "@/components/ui/spinner";
 import { organization } from "@/lib/auth/client";
 
 const inviteFormSchema = z.object({
@@ -151,7 +152,7 @@ export function InviteUserForm({
             {(isSubmitting) => (
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? (
-                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  <Spinner />
                 ) : (
                   <UserPlus className="mr-2 size-4" />
                 )}
