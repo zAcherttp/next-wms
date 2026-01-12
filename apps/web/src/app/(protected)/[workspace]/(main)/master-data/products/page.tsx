@@ -1,3 +1,7 @@
+"use client";
+
+import { ProductsTable } from "@/components/table/products-table";
+
 export default function Page() {
-  return <div>Products Page</div>;
+  return <ProductsTable />;
 }
