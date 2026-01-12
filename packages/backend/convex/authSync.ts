@@ -434,6 +434,133 @@ export const deleteOrganization = mutation({
   },
 });
 
+/**
+ * Update organization application-level fields
+ * Permission required: organization owner/admin
+ */
+export const updateOrganization = mutation({
+  args: {
+    id: v.id("organizations"),
+    name: v.optional(v.string()),
+    address: v.optional(v.string()),
+    contactInfo: v.optional(v.any()),
+    logo: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const { id, name, address, contactInfo, logo } = args;
+
+    const org = await ctx.db.get(id);
+    if (!org) {
+      throw new Error("Organization not found");
+    }
+
+    const updates: Partial<{
+      name: string;
+      address: string;
+      contactInfo: unknown;
+      logo: string;
+    }> = {};
+
+    if (name !== undefined) {
+      updates.name = name;
+    }
+
+    if (address !== undefined) {
+      updates.address = address;
+    }
+
+    if (contactInfo !== undefined) {
+      updates.contactInfo = contactInfo;
+    }
+
+    if (logo !== undefined) {
+      updates.logo = logo;
+    }
+
+    await ctx.db.patch(id, updates);
+    return id;
+  },
+});
+
+// ================================================================
+// FILE STORAGE
+// ================================================================
+
+/**
+ * Generate an upload URL for file storage
+ * Used before uploading files to Convex storage
+ */
+export const generateUploadUrl = mutation({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.storage.generateUploadUrl();
+  },
+});
+
+/**
+ * Get the URL for a stored file
+ */
+export const getStorageUrl = query({
+  args: { storageId: v.id("_storage") },
+  handler: async (ctx, args) => {
+    return await ctx.storage.getUrl(args.storageId);
+  },
+});
+
+/**
+ * Update organization logo with a storage ID
+ * Converts storage ID to URL and saves to organization
+ */
+export const updateOrganizationLogo = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId, storageId } = args;
+
+    // Get the URL for the stored file
+    const logoUrl = await ctx.storage.getUrl(storageId);
+    if (!logoUrl) {
+      throw new Error("Failed to get URL for uploaded file");
+    }
+
+    // Update the organization with the logo URL
+    await ctx.db.patch(organizationId, {
+      logo: logoUrl,
+    });
+
+    return { logoUrl };
+  },
+});
+
+/**
+ * Update user profile image with a storage ID
+ * Converts storage ID to URL and saves to user
+ */
+export const updateUserImage = mutation({
+  args: {
+    userId: v.id("users"),
+    storageId: v.id("_storage"),
+  },
+  handler: async (ctx, args) => {
+    const { userId, storageId } = args;
+
+    // Get the URL for the stored file
+    const imageUrl = await ctx.storage.getUrl(storageId);
+    if (!imageUrl) {
+      throw new Error("Failed to get URL for uploaded file");
+    }
+
+    // Update the user with the image URL
+    await ctx.db.patch(userId, {
+      image: imageUrl,
+    });
+
+    return { imageUrl };
+  },
+});
+
 // ================================================================
 // BATCH SYNC OPERATIONS
 // ================================================================

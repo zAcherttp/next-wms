@@ -70,7 +70,7 @@ const settingsNavs: SettingNavGroup[] = [
     showTitle: true,
     items: [
       {
-        title: "Workspace",
+        title: "Organization",
         icon: Building,
         url: "admin/workspace",
         requiredPermission: "settings:admin",
