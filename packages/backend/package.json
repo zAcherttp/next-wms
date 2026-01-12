@@ -2,6 +2,7 @@
   "name": "@wms/backend",
   "version": "1.0.0",
   "type": "module",
+  "private": true,
   "exports": {
     "./auth": {
       "types": "./auth/index.ts",
