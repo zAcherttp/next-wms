@@ -41,7 +41,7 @@ export default function SecurityPage() {
         title="Sessions"
         description="Device logged into your account"
       >
-        <ItemGroup className="rounded-md border border-primary/10 dark:bg-primary/5">
+        <ItemGroup className="rounded-md border border-border dark:bg-primary/5">
           {sessions.map((session, index) => (
             <Fragment key={session.id}>
               <Item className="group">

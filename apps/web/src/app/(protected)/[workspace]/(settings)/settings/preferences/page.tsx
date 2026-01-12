@@ -21,7 +21,7 @@ export default function PreferencesPage() {
       />
 
       <SettingSection title="Theme">
-        <Item className="border border-primary/10">
+        <Item className="border border-border">
           <ItemContent>
             <ItemTitle>Interface theme</ItemTitle>
             <ItemDescription>

@@ -9,7 +9,6 @@ import {
   SettingSection,
 } from "@/components/settings/setting";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -19,6 +18,13 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Label } from "@/components/ui/label";
 import { authClient, useActiveOrganization } from "@/lib/auth/client";
 
@@ -56,22 +62,22 @@ export default function AdminPage() {
         title="Danger Zone"
         description="Irreversible and destructive actions"
       >
-        <Card className="border-destructive/50">
-          <CardContent className="flex items-center justify-between">
-            <div>
-              <p className="font-medium">Delete Workspace</p>
-              <p className="text-muted-foreground text-sm">
-                Permanently delete this workspace and all its data
-              </p>
-            </div>
+        <Item className="border border-destructive/50">
+          <ItemContent>
+            <ItemTitle>Delete Workspace</ItemTitle>
+            <ItemDescription>
+              Permanently delete this workspace and all its data
+            </ItemDescription>
+          </ItemContent>
+          <ItemActions>
             <Button
               onClick={() => setIsDeleteDialogOpen(true)}
               variant="destructive"
             >
               Delete Workspace
             </Button>
-          </CardContent>
-        </Card>
+          </ItemActions>
+        </Item>
       </SettingSection>
 
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
