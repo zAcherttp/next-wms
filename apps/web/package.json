@@ -8,6 +8,7 @@
     "start": "next start"
   },
   "dependencies": {
+    "@convex-dev/better-auth": "catalog:",
     "@convex-dev/react-query": "^0.1.0",
     "@hookform/resolvers": "^5.2.2",
     "@ncdai/react-wheel-picker": "^1.1.0",

@@ -17,6 +17,7 @@ export const authClient = createAuthClient({
       },
     }),
     emailOTPClient(),
+    convexClient(),
   ],
   fetchOptions: {
     onError(e) {

@@ -6,6 +6,7 @@ import {
 } from "@wms/backend/lib/permissions";
 import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
+import { getToken, preloadAuthQuery } from "@/lib/auth/server";
 
 /**
  * Server-side QueryClient singleton for permission caching in middleware.
@@ -76,46 +77,41 @@ export async function proxy(request: NextRequest) {
   const workspaceSlug = workspaceMatch[1];
 
   try {
-    // 1. Check session with Better Auth
-    const getSessionResponse = await auth.api.getSession({
-      headers: await headers(), // some endpoints might require headers
-    });
+    // 1. Get auth user from Convex via Better Auth component
+    const user = await preloadAuthQuery(api.auth.getCurrentUser);
 
-    if (
-      !getSessionResponse ||
-      !getSessionResponse.session ||
-      !getSessionResponse.user
-    ) {
+    console.log("Middleware - Authenticated user:", user);
+
+    if (!user) {
       const url = new URL("/auth/sign-in", request.url);
       url.searchParams.set("error", "Not authenticated");
       return NextResponse.redirect(url);
     }
 
-    // 2. Fetch user's organizations
-    const listOrgResponse = await auth.api.listOrganizations({
-      // This endpoint requires session cookies.
-      headers: await headers(),
-    });
+    // // 2. Fetch user's organizations using Better Auth API
+    // const listOrgResponse = await authComponent.api.listOrganizations({
+    //   headers: await headers(),
+    // });
 
-    if (!listOrgResponse) {
-      const url = new URL("/join", request.url);
-      url.searchParams.set("error", "Failed to fetch organizations");
-      return NextResponse.redirect(url);
-    }
+    // if (!listOrgResponse) {
+    //   const url = new URL("/join", request.url);
+    //   url.searchParams.set("error", "Failed to fetch organizations");
+    //   return NextResponse.redirect(url);
+    // }
 
-    // 3. Check if user has access to the requested workspace
-    const org = Array.isArray(listOrgResponse)
-      ? listOrgResponse.find((o: { slug: string }) => o.slug === workspaceSlug)
-      : null;
+    // // 3. Check if user has access to the requested workspace
+    // const org = Array.isArray(listOrgResponse)
+    //   ? listOrgResponse.find((o: { slug: string }) => o.slug === workspaceSlug)
+    //   : null;
 
-    if (!org) {
-      const url = new URL("/join", request.url);
-      url.searchParams.set(
-        "error",
-        "You don't have access to this organization",
-      );
-      return NextResponse.redirect(url);
-    }
+    // if (!org) {
+    //   const url = new URL("/join", request.url);
+    //   url.searchParams.set(
+    //     "error",
+    //     "You don't have access to this organization",
+    //   );
+    //   return NextResponse.redirect(url);
+    // }
 
     // 4. Sync active organization with workspace URL
     //
@@ -133,19 +129,22 @@ export async function proxy(request: NextRequest) {
     // - We already verified user has access to this org
     // - Subsequent requests will see the updated activeOrganizationId
     // - Reduces middleware latency (don't wait for DB write)
-    if (getSessionResponse.session?.activeOrganizationId !== org.id) {
-      try {
-        const _data = await auth.api.setActiveOrganization({
-          body: {
-            organizationId: org.id,
-          },
-          // This endpoint requires session cookies.
-          headers: await headers(),
-        });
-      } catch (error) {
-        console.error("Failed to set active organization:", error);
-      }
-    }
+    // const session = await authComponent.api.getSession({
+    //   headers: await headers(),
+    // });
+
+    // if (session?.session?.activeOrganizationId !== org.id) {
+    //   try {
+    //     await authComponent.api.setActiveOrganization({
+    //       body: {
+    //         organizationId: org.id,
+    //       },
+    //       headers: await headers(),
+    //     });
+    //   } catch (error) {
+    //     console.error("Failed to set active organization:", error);
+    //   }
+    // }
 
     // 5. Check permissions for protected admin routes
     //

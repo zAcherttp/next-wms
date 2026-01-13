@@ -138,7 +138,6 @@ export type CycleCountSessionWithDetails = {
   createdAt: number;
   zones: CycleCountZoneDetail[];
 };
-
 export type Product = Omit<Doc<"products">, "_id" | "organizationId"> & {
   storageRequirementType: Pick<SystemLookups, "lookupValue"> | null;
   trackingMethodType: Pick<SystemLookups, "lookupValue"> | null;
