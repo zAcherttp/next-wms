@@ -239,17 +239,15 @@ export function AddPurchaseOrderDialog({
 
         {/* Products Table */}
         <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
-          <div className="max-h-[300px] overflow-y-auto rounded-md border">
+          <div className="max-h-75 overflow-y-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[120px]">SKU Code</TableHead>
+                  <TableHead className="w-30">SKU Code</TableHead>
                   <TableHead>Product Name</TableHead>
-                  <TableHead className="w-[100px] text-center">
-                    Quantity
-                  </TableHead>
-                  <TableHead className="w-[180px]">Location</TableHead>
-                  <TableHead className="w-[50px]" />
+                  <TableHead className="w-25 text-center">Quantity</TableHead>
+                  <TableHead className="w-45">Location</TableHead>
+                  <TableHead className="w-12.5" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -303,10 +301,7 @@ export function AddPurchaseOrderDialog({
                               {product.zoneName || "Select zone"}
                             </Button>
                           </PopoverTrigger>
-                          <PopoverContent
-                            className="w-[250px] p-0"
-                            align="start"
-                          >
+                          <PopoverContent className="w-62.5 p-0" align="start">
                             <Command>
                               <CommandInput placeholder="Search zones..." />
                               <CommandList>
@@ -361,7 +356,7 @@ export function AddPurchaseOrderDialog({
                 Add product <Plus className="ml-1 size-4" />
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-[350px] p-0" align="start">
+            <PopoverContent className="w-87.5 p-0" align="start">
               <Command>
                 <CommandInput placeholder="Search SKU code or name..." />
                 <CommandList>

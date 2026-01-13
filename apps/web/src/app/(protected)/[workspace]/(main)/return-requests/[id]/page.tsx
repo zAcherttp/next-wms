@@ -105,7 +105,7 @@ const columns: ColumnDef<DetailItem>[] = [
       const reason = row.getValue("reason.lookupValue") as string;
       const notes = row.original.customReasonNotes;
       return (
-        <div className="max-w-[200px]">
+        <div className="max-w-50">
           <div className="font-medium">{reason ?? "-"}</div>
           {notes && (
             <div className="truncate text-muted-foreground text-xs">
@@ -187,9 +187,9 @@ export default function ReturnRequestDetailPage() {
   if (isPending) {
     return (
       <div className="flex flex-col gap-4 p-2">
-        <div className="h-8 w-[200px] animate-pulse rounded bg-muted" />
-        <div className="h-[200px] w-full animate-pulse rounded bg-muted" />
-        <div className="h-[300px] w-full animate-pulse rounded bg-muted" />
+        <div className="h-8 w-50 animate-pulse rounded bg-muted" />
+        <div className="h-50 w-full animate-pulse rounded bg-muted" />
+        <div className="h-50 w-full animate-pulse rounded bg-muted" />
       </div>
     );
   }
@@ -335,7 +335,7 @@ export default function ReturnRequestDetailPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Return Items</CardTitle>
-            <InputGroup className="max-w-[200px]">
+            <InputGroup className="max-w-50">
               <InputGroupInput
                 placeholder="Filter SKU..."
                 value={instantFilterValue}

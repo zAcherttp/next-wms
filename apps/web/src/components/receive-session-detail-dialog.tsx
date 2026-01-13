@@ -201,14 +201,12 @@ export function ReceiveSessionDetailDialog({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[100px]">SKU</TableHead>
-                <TableHead className="w-[150px]">Name</TableHead>
-                <TableHead className="w-[100px] text-center">Exp Qty</TableHead>
-                <TableHead className="w-[100px] text-center">
-                  Received
-                </TableHead>
+                <TableHead className="w-25">SKU</TableHead>
+                <TableHead className="w-37.5">Name</TableHead>
+                <TableHead className="w-25 text-center">Exp Qty</TableHead>
+                <TableHead className="w-25 text-center">Received</TableHead>
                 <TableHead>Note</TableHead>
-                <TableHead className="w-[120px] text-center">Status</TableHead>
+                <TableHead className="w-30 text-center">Status</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>

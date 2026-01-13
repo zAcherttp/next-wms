@@ -193,12 +193,12 @@ export function PurchaseOrderDetailDialog({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[120px]">SKU</TableHead>
+                  <TableHead className="w-30">SKU</TableHead>
                   <TableHead>Product Name</TableHead>
-                  <TableHead className="w-[100px] text-center">
+                  <TableHead className="w-25 text-center">
                     Qty Ordered
                   </TableHead>
-                  <TableHead className="w-[180px]">Location</TableHead>
+                  <TableHead className="w-45">Location</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>

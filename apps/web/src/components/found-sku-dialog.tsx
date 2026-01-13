@@ -76,7 +76,7 @@ export function FoundSkuDialog({
           {/* Attachments */}
           <div className="space-y-2">
             <Label>Attachments</Label>
-            <div className="flex min-h-[80px] items-center justify-center rounded-md border p-4 text-muted-foreground">
+            <div className="flex min-h-20 items-center justify-center rounded-md border p-4 text-muted-foreground">
               Add attachment
             </div>
           </div>

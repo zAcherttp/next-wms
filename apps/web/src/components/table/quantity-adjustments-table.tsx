@@ -13,28 +13,18 @@ import {
   type VisibilityState,
 } from "@tanstack/react-table";
 import {
-  ArrowUpDown,
-  Check,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Filter,
-  Funnel,
 } from "lucide-react";
 import * as React from "react";
+import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Command,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -47,12 +37,6 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
   Table,
   TableBody,
   TableCell,
@@ -60,146 +44,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 import {
   MOCK_QUANTITY_ADJUSTMENTS,
   type QuantityAdjustmentRequest,
 } from "@/mock/data/adjustments";
-
-interface FilterPopoverProps {
-  label: string;
-  options: { label: string; value: string }[];
-  currentValue?: string | string[];
-  onChange: (value: string | string[] | undefined) => void;
-  isSort?: boolean;
-  variant?: "single" | "multi-select";
-}
-
-const FilterPopover = ({
-  label,
-  options,
-  currentValue,
-  onChange,
-  isSort = false,
-  variant = "single",
-}: FilterPopoverProps) => {
-  const [searchQuery, instantQuery, debouncedQuery] = useDebouncedInput(
-    "",
-    100,
-  );
-
-  const isFiltered =
-    variant === "single"
-      ? currentValue !== undefined && currentValue !== "default"
-      : Array.isArray(currentValue) && currentValue.length > 0;
-
-  const selectedValues = Array.isArray(currentValue) ? currentValue : [];
-  const allSelected = selectedValues.length === 0;
-
-  const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(debouncedQuery.toLowerCase()),
-  );
-
-  const toggleSelection = (value: string, e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    const currentArray = Array.isArray(currentValue) ? currentValue : [];
-    const newSelected = currentArray.includes(value)
-      ? currentArray.filter((v) => v !== value)
-      : [...currentArray, value];
-    onChange(newSelected.length === 0 ? undefined : newSelected);
-  };
-
-  const toggleAll = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    onChange(undefined);
-  };
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant={isFiltered ? "default" : "ghost"} size={"sm"}>
-          {label}
-          {variant === "multi-select" && selectedValues.length > 0 && (
-            <span className="ml-1 rounded-full bg-primary-foreground px-1.5 text-primary text-xs">
-              {selectedValues.length}
-            </span>
-          )}
-          {isSort ? <ArrowUpDown /> : <Funnel />}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
-        <Command shouldFilter={false}>
-          {variant === "multi-select" && (
-            <CommandInput
-              placeholder="Search..."
-              value={instantQuery}
-              onValueChange={searchQuery}
-              className="h-9"
-            />
-          )}
-          <CommandList>
-            {variant === "multi-select" ? (
-              <>
-                <CommandGroup>
-                  <CommandItem
-                    onSelect={() => toggleAll()}
-                    className="flex cursor-pointer items-center gap-2"
-                  >
-                    <Checkbox
-                      checked={allSelected}
-                      className="pointer-events-none"
-                    />
-                    <span>All</span>
-                  </CommandItem>
-                </CommandGroup>
-                <ScrollArea className="h-[200px]">
-                  <CommandGroup>
-                    {filteredOptions.map((option) => (
-                      <CommandItem
-                        key={option.value}
-                        value={option.value}
-                        onSelect={() => toggleSelection(option.value)}
-                        className="flex cursor-pointer items-center gap-2"
-                      >
-                        <Checkbox
-                          checked={selectedValues.includes(option.value)}
-                          className="pointer-events-none"
-                        />
-                        <span>{option.label}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </ScrollArea>
-              </>
-            ) : (
-              <CommandGroup>
-                {options.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.value}
-                    onSelect={() => onChange(option.value)}
-                    className={cn(
-                      "flex cursor-pointer items-center justify-between gap-2",
-                      currentValue === option.value && "bg-accent",
-                    )}
-                  >
-                    <span>{option.label}</span>
-                    {currentValue === option.value && (
-                      <Check className="h-4 w-4" />
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
 
 // Status filter options
 const statusFilterOptions = [

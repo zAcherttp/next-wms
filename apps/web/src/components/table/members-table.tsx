@@ -12,28 +12,20 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import {
-  ArrowUpDown,
-  Check,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Filter,
-  Funnel,
   MoreHorizontal,
 } from "lucide-react";
 import * as React from "react";
 import { InviteUserDialog } from "@/components/settings/invite-user-dialog";
+import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,11 +40,6 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -85,60 +72,6 @@ const getRoleBadgeStyle = (role: string) => {
     default:
       return "bg-gray-500/10 text-gray-500 border-gray-500/60";
   }
-};
-
-interface FilterPopoverProps {
-  label: string;
-  options: { label: string; value: string }[];
-  currentValue?: string;
-  onChange: (value: string | undefined) => void;
-  isSort?: boolean;
-}
-
-const FilterPopover = ({
-  label,
-  options,
-  currentValue,
-  onChange,
-  isSort = false,
-}: FilterPopoverProps) => {
-  const isFiltered = currentValue !== undefined && currentValue !== "default";
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant={isFiltered ? "default" : "ghost"} size={"sm"}>
-          {label}
-          {isSort ? <ArrowUpDown /> : <Funnel />}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-50 p-0">
-        <Command shouldFilter={false}>
-          <CommandList>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  onSelect={() => {
-                    onChange(option.value === "all" ? undefined : option.value);
-                  }}
-                  className="flex justify-between"
-                >
-                  {option.label}
-                  {(currentValue === option.value ||
-                    (currentValue === "default" &&
-                      option.value === "default") ||
-                    (!currentValue && option.value === "all")) && (
-                    <Check className="h-4 w-4" />
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
 };
 
 const getInitials = (name: string | null | undefined) => {

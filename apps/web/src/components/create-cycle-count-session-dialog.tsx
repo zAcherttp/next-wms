@@ -267,7 +267,7 @@ export function CreateCycleCountSessionDialog({
                     </button>
                   </div>
 
-                  <div className="max-h-[200px] space-y-2 overflow-y-auto pr-1">
+                  <div className="max-h-50 space-y-2 overflow-y-auto pr-1">
                     {zoneAssignments.map((assignment) => (
                       <div
                         key={assignment.id}

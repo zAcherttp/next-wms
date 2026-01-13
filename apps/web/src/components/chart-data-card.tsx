@@ -176,7 +176,7 @@ export function ChartDataCard({
         </div>
 
         {/* Chart Section */}
-        <div className="h-auto w-full lg:w-full xl:w-[200px] min-[520px]:w-[200px]">
+        <div className="h-auto w-full lg:w-full xl:w-50 min-[520px]:w-50">
           <ChartContainer config={chartConfig}>
             <AreaChart
               accessibilityLayer

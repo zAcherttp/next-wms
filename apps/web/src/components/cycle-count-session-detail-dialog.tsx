@@ -237,22 +237,22 @@ export function CycleCountSessionDetailDialog({
                   <Table>
                     <TableHeader>
                       <TableRow className="bg-muted/50">
-                        <TableHead className="w-[100px] font-semibold text-xs uppercase">
+                        <TableHead className="w-25 font-semibold text-xs uppercase">
                           Product ID
                         </TableHead>
                         <TableHead className="font-semibold text-xs uppercase">
                           Product Name
                         </TableHead>
-                        <TableHead className="w-[120px] text-center font-semibold text-xs uppercase">
+                        <TableHead className="w-30 text-center font-semibold text-xs uppercase">
                           Expected Qty
                         </TableHead>
-                        <TableHead className="w-[120px] text-center font-semibold text-xs uppercase">
+                        <TableHead className="w-30 text-center font-semibold text-xs uppercase">
                           Counted Qty
                         </TableHead>
-                        <TableHead className="w-[100px] text-center font-semibold text-xs uppercase">
+                        <TableHead className="w-25 text-center font-semibold text-xs uppercase">
                           Variance
                         </TableHead>
-                        <TableHead className="w-[140px] font-semibold text-xs uppercase">
+                        <TableHead className="w-35 font-semibold text-xs uppercase">
                           Action
                         </TableHead>
                       </TableRow>

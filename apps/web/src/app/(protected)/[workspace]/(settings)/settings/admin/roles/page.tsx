@@ -290,7 +290,7 @@ export default function RolesSettingsPage() {
               />
               <CreateRoleDialog />
             </div>
-            <ScrollArea className="h-[300px] lg:h-[calc(100vh-20rem)]">
+            <ScrollArea className="h-75 lg:h-[calc(100vh-20rem)]">
               <div className="space-y-2">
                 {filteredRoles.map((role) => (
                   <Item
