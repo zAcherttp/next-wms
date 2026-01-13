@@ -1,3 +1,4 @@
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import type {
   CycleCountSessionListItem,
   CycleCountSessionWithDetails,
@@ -56,9 +57,7 @@ export const MOCK_SECTIONS: Record<string, { _id: string; name: string }[]> = {
     { _id: "sec_012", name: "Section E2" },
     { _id: "sec_013", name: "Section E3" },
   ],
-  zone_006: [
-    { _id: "sec_014", name: "Section F1" },
-  ],
+  zone_006: [{ _id: "sec_014", name: "Section F1" }],
 };
 
 // Mock products data
@@ -127,7 +126,7 @@ export const MOCK_TRANSFER_ITEMS = [
 // Mock data for cycle count sessions list
 export const MOCK_CYCLE_COUNT_SESSIONS: CycleCountSessionListItem[] = [
   {
-    _id: "cc_001" as any,
+    _id: "cc_001" as Id<"work_sessions">,
     sessionCode: "CC-001",
     name: "Daily Cycle Count - Zone B & E",
     cycleCountType: { lookupValue: "Daily" },
@@ -137,7 +136,7 @@ export const MOCK_CYCLE_COUNT_SESSIONS: CycleCountSessionListItem[] = [
     createdAt: 1736640000000, // Jan 12, 2026
   },
   {
-    _id: "cc_002" as any,
+    _id: "cc_002" as Id<"work_sessions">,
     sessionCode: "CC-002",
     name: "Weekly Cycle Count - Full Warehouse",
     cycleCountType: { lookupValue: "Weekly" },
@@ -147,7 +146,7 @@ export const MOCK_CYCLE_COUNT_SESSIONS: CycleCountSessionListItem[] = [
     createdAt: 1736553600000, // Jan 11, 2026
   },
   {
-    _id: "cc_003" as any,
+    _id: "cc_003" as Id<"work_sessions">,
     sessionCode: "CC-003",
     name: "Daily Cycle Count - Zone A",
     cycleCountType: { lookupValue: "Daily" },
@@ -157,7 +156,7 @@ export const MOCK_CYCLE_COUNT_SESSIONS: CycleCountSessionListItem[] = [
     createdAt: 1736467200000, // Jan 10, 2026
   },
   {
-    _id: "cc_004" as any,
+    _id: "cc_004" as Id<"work_sessions">,
     sessionCode: "CC-004",
     name: "Monthly Cycle Count - High Value Items",
     cycleCountType: { lookupValue: "Monthly" },
@@ -167,7 +166,7 @@ export const MOCK_CYCLE_COUNT_SESSIONS: CycleCountSessionListItem[] = [
     createdAt: 1736380800000, // Jan 9, 2026
   },
   {
-    _id: "cc_005" as any,
+    _id: "cc_005" as Id<"work_sessions">,
     sessionCode: "CC-005",
     name: "Weekly Cycle Count - Zone C & D",
     cycleCountType: { lookupValue: "Weekly" },
@@ -177,7 +176,7 @@ export const MOCK_CYCLE_COUNT_SESSIONS: CycleCountSessionListItem[] = [
     createdAt: 1736294400000, // Jan 8, 2026
   },
   {
-    _id: "cc_006" as any,
+    _id: "cc_006" as Id<"work_sessions">,
     sessionCode: "CC-006",
     name: "Daily Cycle Count - Receiving Area",
     cycleCountType: { lookupValue: "Daily" },
@@ -187,7 +186,7 @@ export const MOCK_CYCLE_COUNT_SESSIONS: CycleCountSessionListItem[] = [
     createdAt: 1736208000000, // Jan 7, 2026
   },
   {
-    _id: "cc_007" as any,
+    _id: "cc_007" as Id<"work_sessions">,
     sessionCode: "CC-007",
     name: "Quarterly Cycle Count - All Zones",
     cycleCountType: { lookupValue: "Quarterly" },
@@ -197,7 +196,7 @@ export const MOCK_CYCLE_COUNT_SESSIONS: CycleCountSessionListItem[] = [
     createdAt: 1736121600000, // Jan 6, 2026
   },
   {
-    _id: "cc_008" as any,
+    _id: "cc_008" as Id<"work_sessions">,
     sessionCode: "CC-008",
     name: "Daily Cycle Count - Zone F",
     cycleCountType: { lookupValue: "Daily" },
@@ -214,7 +213,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
   CycleCountSessionWithDetails
 > = {
   cc_001: {
-    _id: "cc_001" as any,
+    _id: "cc_001" as Id<"work_sessions">,
     sessionCode: "CC-001",
     name: "Daily Cycle Count - Zone B & E",
     cycleCountType: { lookupValue: "Daily" },
@@ -230,7 +229,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
         totalCount: 3,
         lineItems: [
           {
-            _id: "li_001" as any,
+            _id: "li_001" as Id<"session_line_items">,
             productId: "P-0001",
             productName: "Industrial Sealant Kit",
             expectedQuantity: 50,
@@ -238,7 +237,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: 0,
           },
           {
-            _id: "li_002" as any,
+            _id: "li_002" as Id<"session_line_items">,
             productId: "P-0002",
             productName: "Clear Tubing (500m)",
             expectedQuantity: 30,
@@ -246,7 +245,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: -1,
           },
           {
-            _id: "li_003" as any,
+            _id: "li_003" as Id<"session_line_items">,
             productId: "P-0003",
             productName: "Chemical Agent C",
             expectedQuantity: 100,
@@ -263,7 +262,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
         totalCount: 4,
         lineItems: [
           {
-            _id: "li_004" as any,
+            _id: "li_004" as Id<"session_line_items">,
             productId: "P-0010",
             productName: "Packaged Widget A",
             expectedQuantity: 200,
@@ -271,7 +270,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: 0,
           },
           {
-            _id: "li_005" as any,
+            _id: "li_005" as Id<"session_line_items">,
             productId: "P-0011",
             productName: "Packaged Widget B",
             expectedQuantity: 150,
@@ -279,7 +278,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: 0,
           },
           {
-            _id: "li_006" as any,
+            _id: "li_006" as Id<"session_line_items">,
             productId: "P-0012",
             productName: "Assembly Kit Pro",
             expectedQuantity: 75,
@@ -287,7 +286,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: -3,
           },
           {
-            _id: "li_007" as any,
+            _id: "li_007" as Id<"session_line_items">,
             productId: "P-0013",
             productName: "Finished Component X",
             expectedQuantity: 40,
@@ -299,7 +298,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
     ],
   },
   cc_002: {
-    _id: "cc_002" as any,
+    _id: "cc_002" as Id<"work_sessions">,
     sessionCode: "CC-002",
     name: "Weekly Cycle Count - Full Warehouse",
     cycleCountType: { lookupValue: "Weekly" },
@@ -315,7 +314,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
         totalCount: 5,
         lineItems: [
           {
-            _id: "li_010" as any,
+            _id: "li_010" as Id<"session_line_items">,
             productId: "P-0020",
             productName: "Circuit Board Type A",
             expectedQuantity: 100,
@@ -323,7 +322,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: 0,
           },
           {
-            _id: "li_011" as any,
+            _id: "li_011" as Id<"session_line_items">,
             productId: "P-0021",
             productName: "LED Display Panel",
             expectedQuantity: 50,
@@ -331,7 +330,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: 0,
           },
           {
-            _id: "li_012" as any,
+            _id: "li_012" as Id<"session_line_items">,
             productId: "P-0022",
             productName: "Power Supply Unit",
             expectedQuantity: 30,
@@ -339,7 +338,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: 0,
           },
           {
-            _id: "li_013" as any,
+            _id: "li_013" as Id<"session_line_items">,
             productId: "P-0023",
             productName: "USB Cable 2m",
             expectedQuantity: 200,
@@ -347,7 +346,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: 0,
           },
           {
-            _id: "li_014" as any,
+            _id: "li_014" as Id<"session_line_items">,
             productId: "P-0024",
             productName: "Wireless Module",
             expectedQuantity: 80,
@@ -364,7 +363,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
         totalCount: 3,
         lineItems: [
           {
-            _id: "li_015" as any,
+            _id: "li_015" as Id<"session_line_items">,
             productId: "P-0030",
             productName: "Steel Sheet 1mm",
             expectedQuantity: 500,
@@ -372,7 +371,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: 0,
           },
           {
-            _id: "li_016" as any,
+            _id: "li_016" as Id<"session_line_items">,
             productId: "P-0031",
             productName: "Aluminum Rod 10mm",
             expectedQuantity: 300,
@@ -380,7 +379,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: 0,
           },
           {
-            _id: "li_017" as any,
+            _id: "li_017" as Id<"session_line_items">,
             productId: "P-0032",
             productName: "Copper Wire 2mm",
             expectedQuantity: 1000,
@@ -397,7 +396,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
         totalCount: 2,
         lineItems: [
           {
-            _id: "li_018" as any,
+            _id: "li_018" as Id<"session_line_items">,
             productId: "P-0040",
             productName: "Cardboard Box Large",
             expectedQuantity: 400,
@@ -405,7 +404,7 @@ export const MOCK_CYCLE_COUNT_SESSION_DETAILS: Record<
             variance: 0,
           },
           {
-            _id: "li_019" as any,
+            _id: "li_019" as Id<"session_line_items">,
             productId: "P-0041",
             productName: "Bubble Wrap Roll",
             expectedQuantity: 50,

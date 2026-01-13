@@ -163,7 +163,7 @@ const FilterPopover = ({
               <>
                 <CommandGroup>
                   <CommandItem
-                    onSelect={(value) => toggleAll()}
+                    onSelect={() => toggleAll()}
                     className="flex cursor-pointer items-center gap-2"
                   >
                     <Checkbox

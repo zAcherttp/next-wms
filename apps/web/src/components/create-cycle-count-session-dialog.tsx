@@ -11,6 +11,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogTrigger,
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
@@ -129,16 +130,21 @@ export function CreateCycleCountSessionDialog({
   };
 
   const isFormValid =
-    sessionName.trim() !== "" &&
-    zoneAssignments.every((z) => z.zoneId !== "");
+    sessionName.trim() !== "" && zoneAssignments.every((z) => z.zoneId !== "");
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
+      <DialogTrigger>
+        <Button>
+          <Plus className="mr-2 h-4 w-4" />
+          Create Session
+        </Button>
+      </DialogTrigger>
       <DialogContent
         showCloseButton={false}
         className="overflow-hidden sm:max-w-lg"
       >
-        <AnimatePresence mode="wait" initial={false}>
+        <AnimatePresence mode={"popLayout"} initial={false}>
           {view === "type-selection" ? (
             <motion.div
               key="type-selection"

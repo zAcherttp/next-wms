@@ -1,6 +1,7 @@
 "use client";
 
 import { Upload, X } from "lucide-react";
+import Image from "next/image";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -60,7 +61,7 @@ export function QuantityAdjustmentDialog({
   const [comments, setComments] = useState("");
 
   // File upload
-  const [{ files, isDragging }, { addFiles, removeFile, openFileDialog, getInputProps }] =
+  const [{ files, isDragging }, { removeFile, openFileDialog, getInputProps }] =
     useFileUpload({
       maxFiles: 5,
       maxSize: 5 * 1024 * 1024, // 5MB
@@ -100,7 +101,7 @@ export function QuantityAdjustmentDialog({
     handleClose();
   };
 
-  const sections = zoneId ? MOCK_SECTIONS[zoneId] ?? [] : [];
+  const sections = zoneId ? (MOCK_SECTIONS[zoneId] ?? []) : [];
 
   const isFormValid =
     zoneId !== "" &&
@@ -235,8 +236,6 @@ export function QuantityAdjustmentDialog({
           <Field>
             <FieldLabel>Images (Optional)</FieldLabel>
             <div
-              role="button"
-              tabIndex={0}
               onClick={openFileDialog}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -263,12 +262,12 @@ export function QuantityAdjustmentDialog({
                     key={fileWithPreview.id}
                     className="group relative h-16 w-16 overflow-hidden rounded-md border"
                   >
-                    <img
-                      src={fileWithPreview.preview}
+                    <Image
+                      src={fileWithPreview.preview ?? ""}
                       alt="Preview"
                       className="h-full w-full object-cover"
                     />
-                    <button
+                    <Button
                       type="button"
                       onClick={(e) => {
                         e.stopPropagation();
@@ -277,7 +276,7 @@ export function QuantityAdjustmentDialog({
                       className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-destructive text-destructive-foreground shadow-sm"
                     >
                       <X className="h-3 w-3" />
-                    </button>
+                    </Button>
                   </div>
                 ))}
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle2, Clock, Plus, XCircle } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useState } from "react";
 import { LocationTransferDialog } from "@/components/location-transfer-dialog";
 import { NewAdjustmentRequestDialog } from "@/components/new-adjustment-request-dialog";

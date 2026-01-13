@@ -100,11 +100,7 @@ export function NewAdjustmentRequestDialog({
 
         {/* Cancel Button */}
         <div className="mt-4">
-          <Button
-            variant="outline"
-            onClick={handleClose}
-            className="w-full"
-          >
+          <Button variant="outline" onClick={handleClose} className="w-full">
             Cancel
           </Button>
         </div>

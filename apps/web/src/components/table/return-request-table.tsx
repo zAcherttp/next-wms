@@ -292,9 +292,7 @@ export function ReturnRequestsTable() {
           const suppliers = returnRequests
             ? Array.from(
                 new Set(
-                  returnRequests
-                    .map((rr) => rr.supplier?.name)
-                    .filter(Boolean),
+                  returnRequests.map((rr) => rr.supplier?.name).filter(Boolean),
                 ),
               ).map((name) => ({
                 label: name as string,
@@ -521,7 +519,10 @@ export function ReturnRequestsTable() {
         <div className="overflow-hidden rounded-md border">
           <div className="bg-card p-4">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="mb-2 h-12 w-full animate-pulse rounded bg-muted" />
+              <div
+                key={i}
+                className="mb-2 h-12 w-full animate-pulse rounded bg-muted"
+              />
             ))}
           </div>
         </div>

@@ -15,7 +15,6 @@ import {
 import {
   ArrowUpDown,
   Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -27,8 +26,8 @@ import {
   Play,
   Trash2,
 } from "lucide-react";
-import { useParams } from "next/navigation";
 import * as React from "react";
+import { CreateCycleCountSessionDialog } from "@/components/create-cycle-count-session-dialog";
 import { CycleCountSessionDetailDialog } from "@/components/cycle-count-session-detail-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -42,7 +41,6 @@ import {
 } from "@/components/ui/command";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -229,9 +227,6 @@ const FilterPopover = ({
 };
 
 export function CycleCountSessionsTable() {
-  const params = useParams();
-  const workspace = params.workspace as string;
-
   // Using mock data instead of Convex
   const cycleCountSessions = MOCK_CYCLE_COUNT_SESSIONS;
   const isPending = false;
@@ -242,10 +237,15 @@ export function CycleCountSessionsTable() {
     string | null
   >(null);
 
-  const handleViewDetails = (sessionId: string) => {
+  const _handleViewDetails = (sessionId: string) => {
     setSelectedSessionId(sessionId);
     setDetailDialogOpen(true);
   };
+
+  const handleViewDetailsCallback = React.useCallback((sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setDetailDialogOpen(true);
+  }, []);
 
   const columns: ColumnDef<CycleCountSessionListItem>[] = React.useMemo(
     () => [
@@ -279,7 +279,9 @@ export function CycleCountSessionsTable() {
         cell: ({ row }) => (
           <button
             type="button"
-            onClick={() => handleViewDetails(row.original._id.toString())}
+            onClick={() =>
+              handleViewDetailsCallback(row.original._id.toString())
+            }
             className="font-medium text-primary hover:underline"
           >
             {row.getValue("sessionCode")}
@@ -396,7 +398,9 @@ export function CycleCountSessionsTable() {
         accessorFn: (row) => row.createdByUser?.fullName,
         header: "Created By",
         cell: ({ row }) => (
-          <div className="">{row.getValue("createdByUser.fullName") ?? "-"}</div>
+          <div className="">
+            {row.getValue("createdByUser.fullName") ?? "-"}
+          </div>
         ),
       },
       {
@@ -423,7 +427,9 @@ export function CycleCountSessionsTable() {
                   </DropdownMenuItem>
                 ) : null}
                 <DropdownMenuItem
-                  onClick={() => handleViewDetails(session._id.toString())}
+                  onClick={() =>
+                    handleViewDetailsCallback(session._id.toString())
+                  }
                 >
                   <Eye className="mr-2 h-4 w-4" />
                   View Details
@@ -439,7 +445,7 @@ export function CycleCountSessionsTable() {
         },
       },
     ],
-    [handleViewDetails],
+    [handleViewDetailsCallback],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -495,7 +501,10 @@ export function CycleCountSessionsTable() {
         <div className="overflow-hidden rounded-md border">
           <div className="bg-card p-4">
             {[...Array(5)].map((_, i) => (
-              <div key={i} className="h-12 animate-pulse rounded bg-muted mb-2" />
+              <div
+                key={`skeleton-${i.toString()}`}
+                className="mb-2 h-12 animate-pulse rounded bg-muted"
+              />
             ))}
           </div>
         </div>
@@ -534,32 +543,7 @@ export function CycleCountSessionsTable() {
               Clear all filters
             </Button>
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                Columns <ChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <CreateCycleCountSessionDialog />
         </div>
       </div>
       <div className="overflow-hidden rounded-md border">

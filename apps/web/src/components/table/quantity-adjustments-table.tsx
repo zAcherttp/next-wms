@@ -20,10 +20,8 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Eye,
   Filter,
   Funnel,
-  MoreHorizontal,
 } from "lucide-react";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
@@ -40,9 +38,6 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -67,8 +62,8 @@ import {
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import { cn } from "@/lib/utils";
 import {
-  type QuantityAdjustmentRequest,
   MOCK_QUANTITY_ADJUSTMENTS,
+  type QuantityAdjustmentRequest,
 } from "@/mock/data/adjustments";
 
 const getBadgeStyleByStatus = (status: string) => {
@@ -367,7 +362,7 @@ export function QuantityAdjustmentsTable({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-auto p-0 text-green-600 hover:text-green-700 hover:bg-transparent"
+                  className="h-auto p-0 text-green-600 hover:bg-transparent hover:text-green-700"
                   onClick={() => onApprove?.(adjustment._id as string)}
                 >
                   Approve
@@ -375,7 +370,7 @@ export function QuantityAdjustmentsTable({
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-auto p-0 text-red-600 hover:text-red-700 hover:bg-transparent"
+                  className="h-auto p-0 text-red-600 hover:bg-transparent hover:text-red-700"
                   onClick={() => onReject?.(adjustment._id as string)}
                 >
                   Reject
@@ -385,7 +380,7 @@ export function QuantityAdjustmentsTable({
               <Button
                 variant="ghost"
                 size="sm"
-                className="h-auto p-0 text-primary hover:text-primary/80 hover:bg-transparent"
+                className="h-auto p-0 text-primary hover:bg-transparent hover:text-primary/80"
                 onClick={() => onView?.(adjustment._id as string)}
               >
                 View

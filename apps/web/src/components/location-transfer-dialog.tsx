@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { ArrowRight, Check, Package } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
+import { AnimatePresence, motion } from "motion/react";
+import { useEffect, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -22,10 +23,9 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { cn } from "@/lib/utils";
-
 import {
-  MOCK_STORAGE_ZONES,
   MOCK_SECTIONS,
+  MOCK_STORAGE_ZONES,
   MOCK_TRANSFER_ITEMS,
 } from "@/mock/data/cycle-count";
 
@@ -95,13 +95,13 @@ export function LocationTransferDialog({
     if (!fromSections.find((s) => s._id === fromSection)) {
       setFromSection("");
     }
-  }, [fromZone, fromSections, fromSection]);
+  }, [fromSections, fromSection]);
 
   useEffect(() => {
     if (!toSections.find((s) => s._id === toSection)) {
       setToSection("");
     }
-  }, [toZone, toSections, toSection]);
+  }, [toSections, toSection]);
 
   const handleClose = () => {
     setStep(1);
@@ -129,7 +129,7 @@ export function LocationTransferDialog({
     setSelectedItems((prev) =>
       prev.includes(itemId)
         ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId]
+        : [...prev, itemId],
     );
   };
 
@@ -163,17 +163,14 @@ export function LocationTransferDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent
-        showCloseButton={false}
-        className="sm:max-w-lg"
-      >
+      <DialogContent showCloseButton={false} className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Transfer Items to New Location</DialogTitle>
         </DialogHeader>
 
         <Separator />
 
-        <AnimatePresence mode="wait">
+        <AnimatePresence mode={"popLayout"}>
           {/* Step 1: Select Source Location */}
           {step === 1 && (
             <motion.div
@@ -184,13 +181,15 @@ export function LocationTransferDialog({
               transition={springTransition}
               className="space-y-6 py-4"
             >
-              <h3 className="text-sm font-medium">Step 1: Select Source Location</h3>
+              <h3 className="font-medium text-sm">
+                Step 1: Select Source Location
+              </h3>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm text-muted-foreground">
+                  <Label className="text-muted-foreground text-sm">
                     From Zone
-                  </label>
+                  </Label>
                   <Select value={fromZone} onValueChange={setFromZone}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select zone" />
@@ -206,9 +205,9 @@ export function LocationTransferDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm text-muted-foreground">
+                  <Label className="text-muted-foreground text-sm">
                     From Section
-                  </label>
+                  </Label>
                   <Select
                     value={fromSection}
                     onValueChange={setFromSection}
@@ -240,23 +239,26 @@ export function LocationTransferDialog({
               transition={springTransition}
               className="space-y-6 py-4"
             >
-              <h3 className="text-sm font-medium">Step 2: Select Destination Location</h3>
+              <h3 className="font-medium text-sm">
+                Step 2: Select Destination Location
+              </h3>
 
               {/* From Location Display */}
               <div className="space-y-2">
-                <label className="text-xs font-medium uppercase text-muted-foreground">
+                <Label className="font-medium text-muted-foreground text-xs uppercase">
                   FROM
-                </label>
+                </Label>
                 <div className="rounded-md bg-muted px-3 py-2 text-sm">
-                  {getZoneName(fromZone)} - {getSectionName(fromZone, fromSection)}
+                  {getZoneName(fromZone)} -{" "}
+                  {getSectionName(fromZone, fromSection)}
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <label className="text-sm text-muted-foreground">
+                  <Label className="text-muted-foreground text-sm">
                     To Zone
-                  </label>
+                  </Label>
                   <Select value={toZone} onValueChange={setToZone}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select zone" />
@@ -272,9 +274,9 @@ export function LocationTransferDialog({
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm text-muted-foreground">
+                  <Label className="text-muted-foreground text-sm">
                     To Section
-                  </label>
+                  </Label>
                   <Select
                     value={toSection}
                     onValueChange={setToSection}
@@ -306,29 +308,31 @@ export function LocationTransferDialog({
               transition={springTransition}
               className="space-y-4 py-4"
             >
-              <h3 className="text-sm font-medium">Step 3: Select Items to Transfer</h3>
+              <h3 className="font-medium text-sm">
+                Step 3: Select Items to Transfer
+              </h3>
 
               {/* From/To Summary */}
               <div className="grid grid-cols-2 gap-4">
                 <div className="rounded-md border bg-muted/50 p-3">
-                  <span className="text-xs font-medium uppercase text-muted-foreground">
+                  <span className="font-medium text-muted-foreground text-xs uppercase">
                     FROM
                   </span>
-                  <p className="mt-1 text-sm font-medium text-primary">
+                  <p className="mt-1 font-medium text-primary text-sm">
                     {getZoneName(fromZone)}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     {getSectionName(fromZone, fromSection)}
                   </p>
                 </div>
                 <div className="rounded-md border bg-primary/5 p-3">
-                  <span className="text-xs font-medium uppercase text-muted-foreground">
+                  <span className="font-medium text-muted-foreground text-xs uppercase">
                     TO
                   </span>
-                  <p className="mt-1 text-sm font-medium text-primary">
+                  <p className="mt-1 font-medium text-primary text-sm">
                     {getZoneName(toZone)}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-muted-foreground text-xs">
                     {getSectionName(toZone, toSection)}
                   </p>
                 </div>
@@ -336,9 +340,9 @@ export function LocationTransferDialog({
 
               {/* Available Items */}
               <div className="space-y-2">
-                <label className="text-sm text-muted-foreground">
+                <Label className="text-muted-foreground text-sm">
                   Available Items in {getSectionName(fromZone, fromSection)}
-                </label>
+                </Label>
                 <div className="max-h-60 space-y-2 overflow-y-auto">
                   {availableItems.map((item) => {
                     const isSelected = selectedItems.includes(item.id);
@@ -349,9 +353,15 @@ export function LocationTransferDialog({
                           "cursor-pointer rounded-lg border p-3 transition-colors",
                           isSelected
                             ? "border-primary bg-primary/5"
-                            : "hover:border-muted-foreground/30"
+                            : "hover:border-muted-foreground/30",
                         )}
                         onClick={() => handleItemToggle(item.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            e.preventDefault();
+                            handleItemToggle(item.id);
+                          }
+                        }}
                       >
                         <div className="flex items-start gap-3">
                           <Checkbox
@@ -365,20 +375,26 @@ export function LocationTransferDialog({
                                 {item.productName}
                               </span>
                             </div>
-                            <p className="text-xs text-muted-foreground">
+                            <p className="text-muted-foreground text-xs">
                               {item.productId}
                             </p>
-                            <div className="flex gap-4 text-xs text-muted-foreground">
+                            <div className="flex gap-4 text-muted-foreground text-xs">
                               <span>
-                                <span className="font-medium text-foreground">Box</span>{" "}
+                                <span className="font-medium text-foreground">
+                                  Box
+                                </span>{" "}
                                 {item.box}
                               </span>
                               <span>
-                                <span className="font-medium text-foreground">Quantity</span>{" "}
+                                <span className="font-medium text-foreground">
+                                  Quantity
+                                </span>{" "}
                                 {item.quantity} units
                               </span>
                               <span>
-                                <span className="font-medium text-foreground">Expiry Date</span>{" "}
+                                <span className="font-medium text-foreground">
+                                  Expiry Date
+                                </span>{" "}
                                 {item.expiryDate}
                               </span>
                             </div>
@@ -392,10 +408,10 @@ export function LocationTransferDialog({
 
               {/* Selection Summary */}
               <div className="rounded-md bg-muted px-3 py-2">
-                <p className="text-sm font-medium text-primary">
+                <p className="font-medium text-primary text-sm">
                   {selectedItems.length} item(s) selected
                 </p>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   Total quantity: {getTotalQuantity()} units
                 </p>
               </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, X } from "lucide-react";
+import { X } from "lucide-react";
 import { useState } from "react";
 import { LocationTransferDialog } from "@/components/location-transfer-dialog";
 import { NewAdjustmentRequestDialog } from "@/components/new-adjustment-request-dialog";
@@ -24,8 +24,8 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { cn } from "@/lib/utils";
 import type { CycleCountLineItem } from "@/lib/types";
+import { cn } from "@/lib/utils";
 import { getMockSessionDetails } from "@/mock/data/cycle-count";
 
 interface CycleCountSessionDetailDialogProps {
@@ -62,7 +62,10 @@ export function CycleCountSessionDetailDialog({
 
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
 
-  const handleCreateAdjustment = (lineItem: CycleCountLineItem, zoneId: string) => {
+  const handleCreateAdjustment = (
+    lineItem: CycleCountLineItem,
+    zoneId: string,
+  ) => {
     setSelectedLineItem(lineItem);
     setSelectedZoneId(zoneId);
     setAdjustmentDialogOpen(true);
@@ -158,157 +161,156 @@ export function CycleCountSessionDetailDialog({
               <X className="h-4 w-4" />
               <span className="sr-only">Close</span>
             </button>
-        </DialogHeader>
+          </DialogHeader>
 
-        {/* Zone Tabs */}
-        <Tabs
-          value={String(activeZoneIndex)}
-          onValueChange={(v) => setActiveZoneIndex(Number(v))}
-          className="w-full"
-        >
-          <TabsList className="w-full justify-start">
+          {/* Zone Tabs */}
+          <Tabs
+            value={String(activeZoneIndex)}
+            onValueChange={(v) => setActiveZoneIndex(Number(v))}
+            className="w-full"
+          >
+            <TabsList className="w-full justify-start">
+              {session.zones.map((zone, index) => (
+                <TabsTrigger
+                  key={zone.zoneId}
+                  value={String(index)}
+                  className="shrink-0"
+                >
+                  {zone.zoneName}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+
             {session.zones.map((zone, index) => (
-              <TabsTrigger
+              <TabsContent
                 key={zone.zoneId}
                 value={String(index)}
-                className="shrink-0"
+                className="mt-4 space-y-4"
               >
-                {zone.zoneName}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+                {/* Info Cards */}
+                <div className="grid grid-cols-3 gap-4">
+                  {/* Assigned Worker */}
+                  <div className="rounded-lg border bg-card p-3">
+                    <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                      Assigned Worker
+                    </p>
+                    <p className="font-medium text-sm">
+                      {zone.assignedWorker?.fullName ?? "Unassigned"}
+                    </p>
+                  </div>
 
-          {session.zones.map((zone, index) => (
-            <TabsContent
-              key={zone.zoneId}
-              value={String(index)}
-              className="mt-4 space-y-4"
-            >
-              {/* Info Cards */}
-              <div className="grid grid-cols-3 gap-4">
-                {/* Assigned Worker */}
-                <div className="rounded-lg border bg-card p-3">
-                  <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                    Assigned Worker
-                  </p>
-                  <p className="font-medium text-sm">
-                    {zone.assignedWorker?.fullName ?? "Unassigned"}
-                  </p>
+                  {/* Verification Status */}
+                  <div className="rounded-lg border bg-card p-3">
+                    <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                      Verification Status
+                    </p>
+                    <p className="font-medium text-sm">
+                      {zone.matchedCount} of {zone.totalCount} matched
+                    </p>
+                  </div>
+
+                  {/* Count Type */}
+                  <div className="rounded-lg border bg-card p-3">
+                    <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                      Count Type
+                    </p>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "mt-0.5 rounded-sm font-semibold uppercase",
+                        session.cycleCountType?.lookupValue?.toLowerCase() ===
+                          "daily"
+                          ? "border-green-500/60 bg-green-500/10 text-green-600"
+                          : session.cycleCountType?.lookupValue?.toLowerCase() ===
+                              "weekly"
+                            ? "border-blue-500/60 bg-blue-500/10 text-blue-600"
+                            : "border-purple-500/60 bg-purple-500/10 text-purple-600",
+                      )}
+                    >
+                      {session.cycleCountType?.lookupValue ?? "Unknown"}
+                    </Badge>
+                  </div>
                 </div>
 
-                {/* Verification Status */}
-                <div className="rounded-lg border bg-card p-3">
-                  <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                    Verification Status
-                  </p>
-                  <p className="font-medium text-sm">
-                    {zone.matchedCount} of {zone.totalCount} matched
-                  </p>
-                </div>
-
-                {/* Count Type */}
-                <div className="rounded-lg border bg-card p-3">
-                  <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                    Count Type
-                  </p>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "mt-0.5 rounded-sm font-semibold uppercase",
-                      session.cycleCountType?.lookupValue?.toLowerCase() ===
-                        "daily"
-                        ? "border-green-500/60 bg-green-500/10 text-green-600"
-                        : session.cycleCountType?.lookupValue?.toLowerCase() ===
-                            "weekly"
-                          ? "border-blue-500/60 bg-blue-500/10 text-blue-600"
-                          : "border-purple-500/60 bg-purple-500/10 text-purple-600",
-                    )}
-                  >
-                    {session.cycleCountType?.lookupValue ?? "Unknown"}
-                  </Badge>
-                </div>
-              </div>
-
-              {/* Line Items Table */}
-              <div className="overflow-hidden rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="bg-muted/50">
-                      <TableHead className="w-[100px] font-semibold text-xs uppercase">
-                        Product ID
-                      </TableHead>
-                      <TableHead className="font-semibold text-xs uppercase">
-                        Product Name
-                      </TableHead>
-                      <TableHead className="w-[120px] text-center font-semibold text-xs uppercase">
-                        Expected Qty
-                      </TableHead>
-                      <TableHead className="w-[120px] text-center font-semibold text-xs uppercase">
-                        Counted Qty
-                      </TableHead>
-                      <TableHead className="w-[100px] text-center font-semibold text-xs uppercase">
-                        Variance
-                      </TableHead>
-                      <TableHead className="w-[140px] font-semibold text-xs uppercase">
-                        Action
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {zone.lineItems.map((item) => (
-                      <TableRow key={item._id as string}>
-                        <TableCell className="font-medium text-primary">
-                          {item.productId}
-                        </TableCell>
-                        <TableCell>{item.productName}</TableCell>
-                        <TableCell className="text-center">
-                          {item.expectedQuantity}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          <Input
-                            type="number"
-                            value={item.actualQuantity}
-                            readOnly
-                            className="h-8 w-20 text-center mx-auto"
-                          />
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {getVarianceDisplay(item.variance)}
-                        </TableCell>
-                        <TableCell>
-                          <Button
-                            variant="link"
-                            size="sm"
-                            className="h-auto p-0 text-primary"
-                            onClick={() =>
-                              handleCreateAdjustment(item, zone.zoneId)
-                            }
-                          >
-                            Create Adjustment
-                          </Button>
-                        </TableCell>
+                {/* Line Items Table */}
+                <div className="overflow-hidden rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead className="w-[100px] font-semibold text-xs uppercase">
+                          Product ID
+                        </TableHead>
+                        <TableHead className="font-semibold text-xs uppercase">
+                          Product Name
+                        </TableHead>
+                        <TableHead className="w-[120px] text-center font-semibold text-xs uppercase">
+                          Expected Qty
+                        </TableHead>
+                        <TableHead className="w-[120px] text-center font-semibold text-xs uppercase">
+                          Counted Qty
+                        </TableHead>
+                        <TableHead className="w-[100px] text-center font-semibold text-xs uppercase">
+                          Variance
+                        </TableHead>
+                        <TableHead className="w-[140px] font-semibold text-xs uppercase">
+                          Action
+                        </TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </TabsContent>
-          ))}
-        </Tabs>
+                    </TableHeader>
+                    <TableBody>
+                      {zone.lineItems.map((item) => (
+                        <TableRow key={item._id as string}>
+                          <TableCell className="font-medium">
+                            {item.productId}
+                          </TableCell>
+                          <TableCell>{item.productName}</TableCell>
+                          <TableCell className="text-center">
+                            {item.expectedQuantity}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Input
+                              type="number"
+                              value={item.actualQuantity}
+                              readOnly
+                              className="mx-auto h-8 w-20 text-center"
+                            />
+                          </TableCell>
+                          <TableCell className="text-center">
+                            {getVarianceDisplay(item.variance)}
+                          </TableCell>
+                          <TableCell>
+                            <Button
+                              className="text-foreground"
+                              variant="link"
+                              size="sm"
+                              onClick={() =>
+                                handleCreateAdjustment(item, zone.zoneId)
+                              }
+                            >
+                              Create Adjustment
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </TabsContent>
+            ))}
+          </Tabs>
 
-        {/* Footer */}
-        <DialogFooter className="flex-row gap-2 sm:justify-between">
-          <Button
-            onClick={handleCompleteSession}
-            className="flex-1 bg-green-600 hover:bg-green-700"
-          >
-            <CheckCircle className="mr-2 h-4 w-4" />
-            Complete Session
-          </Button>
-          <Button variant="outline" onClick={handleClose} className="flex-1">
-            Close
-          </Button>
-        </DialogFooter>
+          {/* Footer */}
+          <DialogFooter className="flex-row gap-2 sm:justify-between">
+            <Button
+              onClick={handleCompleteSession}
+              className="flex-1 bg-green-600 text-secondary hover:bg-green-700"
+            >
+              Complete
+            </Button>
+            <Button variant="outline" onClick={handleClose} className="flex-1">
+              Close
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
