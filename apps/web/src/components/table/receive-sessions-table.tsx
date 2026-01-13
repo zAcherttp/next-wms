@@ -24,9 +24,11 @@ import {
   Funnel,
   MoreHorizontal,
 } from "lucide-react";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import * as React from "react";
-import { AddPurchaseOrderDialog } from "@/components/add-purchase-order-dialog";
-import { PurchaseOrderDetailDialog } from "@/components/purchase-order-detail-dialog";
+import { AddReceiveSessionDialog } from "@/components/add-receive-session-dialog";
+import { ReceiveSessionDetailDialog } from "@/components/receive-session-detail-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -66,22 +68,24 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import type { PurchaseOrder } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { MOCK_PO } from "@/mock/data/purchase-orders";
+import {
+  MOCK_RECEIVE_SESSIONS,
+  type ReceiveSession,
+} from "@/mock/data/receiving-sessions";
 
 const getBadgeStyleByStatus = (status: string) => {
   switch (status.toLowerCase()) {
+    case "receiving":
+      return "bg-orange-500/10 text-orange-600 border-orange-500/60";
+    case "completed":
+      return "bg-green-500/10 text-green-600 border-green-500/60";
     case "pending":
-      return "bg-yellow-500/5 text-yellow-500 border-yellow-500/60";
-    case "approved":
-      return "bg-green-500/5 text-green-500 border-green-500/60";
-    case "received":
-      return "bg-blue-500/5 text-blue-500 border-blue-500/60";
-    case "cancelled":
-      return "bg-gray-500/5 text-gray-500 border-gray-500/60";
+      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60";
+    case "returned":
+      return "bg-blue-500/10 text-blue-600 border-blue-500/60";
     default:
-      return "bg-orange-500/5 text-orange-500 border-orange-500/60";
+      return "bg-gray-500/10 text-gray-600 border-gray-500/60";
   }
 };
 
@@ -104,32 +108,28 @@ const FilterPopover = ({
 }: FilterPopoverProps) => {
   const [searchQuery, instantQuery, debouncedQuery] = useDebouncedInput(
     "",
-    100
+    100,
   );
 
-  // For single select
   const isFiltered =
     variant === "single"
       ? currentValue !== undefined && currentValue !== "default"
       : Array.isArray(currentValue) && currentValue.length > 0;
 
-  // For multi-select
   const selectedValues = Array.isArray(currentValue) ? currentValue : [];
   const allSelected = selectedValues.length === 0;
 
   const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(debouncedQuery.toLowerCase())
+    option.label.toLowerCase().includes(debouncedQuery.toLowerCase()),
   );
 
   const toggleSelection = (value: string, e?: React.MouseEvent) => {
-    console.log("Toggling selection for value:", value);
     e?.preventDefault();
     e?.stopPropagation();
     const currentArray = Array.isArray(currentValue) ? currentValue : [];
     const newSelected = currentArray.includes(value)
       ? currentArray.filter((v) => v !== value)
       : [...currentArray, value];
-    console.log("New selected values:", newSelected);
     onChange(newSelected.length === 0 ? undefined : newSelected);
   };
 
@@ -201,7 +201,7 @@ const FilterPopover = ({
                     key={option.value}
                     onSelect={() => {
                       onChange(
-                        option.value === "all" ? undefined : option.value
+                        option.value === "all" ? undefined : option.value,
                       );
                     }}
                     className="flex justify-between"
@@ -224,7 +224,7 @@ const FilterPopover = ({
   );
 };
 
-export const columns: ColumnDef<PurchaseOrder>[] = [
+export const columns: ColumnDef<ReceiveSession>[] = [
   {
     id: "select",
     header: ({ table }) => (
@@ -249,22 +249,21 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
   },
   {
     accessorKey: "code",
-    header: "PO-ID",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("code")}</div>,
+    header: "IO-ID",
+    cell: ({ row }) => <div className="font-medium">{row.getValue("code")}</div>,
   },
   {
-    id: "supplier.name",
-    accessorFn: (row) => row.supplier?.name,
+    accessorKey: "from",
     header: ({ column }) => {
       const suppliers = Array.from(
-        new Set(MOCK_PO.map((po) => po.supplier?.name).filter(Boolean))
-      ).map((name) => ({ label: name as string, value: name as string }));
+        new Set(MOCK_RECEIVE_SESSIONS.map((session) => session.from)),
+      ).map((name) => ({ label: name, value: name }));
 
       const currentFilter = column.getFilterValue() as string[] | undefined;
 
       return (
         <FilterPopover
-          label="Supplier"
+          label="From"
           options={suppliers}
           currentValue={currentFilter}
           onChange={(value) => column.setFilterValue(value)}
@@ -279,7 +278,41 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
         ? value.includes(rowValue)
         : rowValue === value;
     },
-    cell: ({ row }) => <div className="">{row.getValue("supplier.name")}</div>,
+    cell: ({ row }) => <div>{row.getValue("from")}</div>,
+  },
+  {
+    accessorKey: "totalItems",
+    header: ({ column }) => {
+      const sortOptions = [
+        { label: "Default", value: "default" },
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ];
+
+      const currentSort = column.getIsSorted();
+      const currentValue = currentSort ? String(currentSort) : "default";
+
+      return (
+        <div className="flex items-center justify-end">
+          <FilterPopover
+            label="Total items"
+            options={sortOptions}
+            currentValue={currentValue}
+            onChange={(value) => {
+              if (value === "default" || !value) {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(value === "desc", false);
+              }
+            }}
+            isSort
+          />
+        </div>
+      );
+    },
+    cell: ({ row }) => (
+      <div className="text-right font-medium">{row.getValue("totalItems")}</div>
+    ),
   },
   {
     accessorKey: "orderedAt",
@@ -323,13 +356,7 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
     },
   },
   {
-    id: "expectedAt",
-    accessorFn: (row) => {
-      const orderedAt = row.orderedAt;
-      const leadTimeDays = row.supplier?.defaultLeadTimeDays;
-      if (!leadTimeDays) return null;
-      return orderedAt + leadTimeDays * 24 * 60 * 60 * 1000;
-    },
+    accessorKey: "expectedBy",
     header: ({ column }) => {
       const sortOptions = [
         { label: "Default", value: "default" },
@@ -343,7 +370,7 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
       return (
         <div className="flex items-center justify-end">
           <FilterPopover
-            label="Expected at"
+            label="Expected by"
             options={sortOptions}
             currentValue={currentValue}
             onChange={(value) => {
@@ -359,31 +386,25 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
       );
     },
     cell: ({ row }) => {
-      const expectedTimestamp = row.getValue("expectedAt") as number | null;
-
-      if (!expectedTimestamp) {
-        return <div className="text-right font-medium">-</div>;
-      }
-
+      const timestamp = row.getValue("expectedBy") as number;
       const formatted = new Intl.DateTimeFormat("en-US", {
         year: "numeric",
         month: "2-digit",
         day: "2-digit",
-      }).format(new Date(expectedTimestamp));
+      }).format(new Date(timestamp));
 
       return <div className="text-right font-medium">{formatted}</div>;
     },
   },
   {
-    id: "purchaseOrderStatus.lookupValue",
-    accessorFn: (row) => row.purchaseOrderStatus?.lookupValue,
+    accessorKey: "status",
     header: ({ column }) => {
       const statusFilterOptions = [
         { label: "All", value: "all" },
+        { label: "Receiving", value: "receiving" },
         { label: "Pending", value: "pending" },
-        { label: "Approved", value: "approved" },
-        { label: "Received", value: "received" },
-        { label: "Cancelled", value: "cancelled" },
+        { label: "Completed", value: "completed" },
+        { label: "Returned", value: "returned" },
       ];
 
       const currentFilter = column.getFilterValue() as string | undefined;
@@ -407,14 +428,12 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
       <div className="text-center">
         <Badge
           className={cn(
-            "w-20 rounded-sm text-center",
-            getBadgeStyleByStatus(
-              row.getValue("purchaseOrderStatus.lookupValue")
-            )
+            "w-24 justify-center rounded-sm text-center text-xs",
+            getBadgeStyleByStatus(row.getValue("status")),
           )}
           variant={"outline"}
         >
-          {row.getValue("purchaseOrderStatus.lookupValue")}
+          {row.getValue("status")}
         </Badge>
       </div>
     ),
@@ -423,7 +442,7 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
     id: "actions",
     enableHiding: false,
     cell: ({ row }) => {
-      const purchaseOrder = row.original;
+      const session = row.original;
 
       return (
         <DropdownMenu>
@@ -436,18 +455,28 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Actions</DropdownMenuLabel>
             <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(purchaseOrder.code)}
+              onClick={() => navigator.clipboard.writeText(session.code)}
             >
-              Copy PO-ID
+              Copy IO-ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <PurchaseOrderDetailDialog
+            <ReceiveSessionDetailDialog
               trigger={
                 <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
                   View details
                 </DropdownMenuItem>
               }
             />
+            {(session.status === "Pending" ||
+              session.status === "Receiving") && (
+              <DropdownMenuItem asChild>
+                <Link
+                  href={`receiving-sessions/${session.id}/verifying`}
+                >
+                  Proceed
+                </Link>
+              </DropdownMenuItem>
+            )}
           </DropdownMenuContent>
         </DropdownMenu>
       );
@@ -455,10 +484,10 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
   },
 ];
 
-export function PurchaseOrdersTable() {
+export function ReceiveSessionsTable() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -468,7 +497,7 @@ export function PurchaseOrdersTable() {
     useDebouncedInput("", 300);
 
   const table = useReactTable({
-    data: MOCK_PO,
+    data: MOCK_RECEIVE_SESSIONS,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -504,7 +533,7 @@ export function PurchaseOrdersTable() {
       <div className="flex flex-row justify-between pb-4">
         <InputGroup className="max-w-[200px]">
           <InputGroupInput
-            placeholder="Filter PO-ID..."
+            placeholder="Filter IO-ID..."
             value={instantFilterValue}
             onChange={(event) => setFilterValue(event.target.value)}
           />
@@ -548,7 +577,7 @@ export function PurchaseOrdersTable() {
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
-          <AddPurchaseOrderDialog />
+          <AddReceiveSessionDialog />
         </div>
       </div>
       <div className="overflow-hidden rounded-md border">
@@ -563,7 +592,7 @@ export function PurchaseOrdersTable() {
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </TableHead>
                   );
@@ -582,7 +611,7 @@ export function PurchaseOrdersTable() {
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}

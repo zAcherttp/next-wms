@@ -18,7 +18,7 @@ export const seedAllTestData = mutation({
     // Purchase Order Status types
     const pendingStatusId = await ctx.db.insert("system_lookups", {
       lookupType: "PurchaseOrderStatus",
-      lookupCode: "PENDING",
+      lookupCode: "Pending",
       lookupValue: "Pending",
       description: "Purchase order is pending approval",
       sortOrder: 1,
@@ -26,7 +26,7 @@ export const seedAllTestData = mutation({
 
     const approvedStatusId = await ctx.db.insert("system_lookups", {
       lookupType: "PurchaseOrderStatus",
-      lookupCode: "APPROVED",
+      lookupCode: "Approved",
       lookupValue: "Approved",
       description: "Purchase order has been approved",
       sortOrder: 2,
@@ -34,7 +34,7 @@ export const seedAllTestData = mutation({
 
     const receivedStatusId = await ctx.db.insert("system_lookups", {
       lookupType: "PurchaseOrderStatus",
-      lookupCode: "RECEIVED",
+      lookupCode: "Received",
       lookupValue: "Received",
       description: "Purchase order has been received",
       sortOrder: 3,
@@ -42,10 +42,19 @@ export const seedAllTestData = mutation({
 
     const cancelledStatusId = await ctx.db.insert("system_lookups", {
       lookupType: "PurchaseOrderStatus",
-      lookupCode: "CANCELLED",
+      lookupCode: "Cancelled",
       lookupValue: "Cancelled",
       description: "Purchase order has been cancelled",
       sortOrder: 4,
+    });
+
+    // Add Partial status for partially received POs
+    const partialStatusId = await ctx.db.insert("system_lookups", {
+      lookupType: "PurchaseOrderStatus",
+      lookupCode: "Partial",
+      lookupValue: "Partial",
+      description: "Purchase order has been partially received",
+      sortOrder: 5,
     });
 
     // Outbound Order Status types
@@ -374,7 +383,7 @@ export const seedAllTestData = mutation({
         lookupValue: "Pending",
         description: "Receive session is pending",
         sortOrder: 1,
-      },
+      }
     );
 
     const receiveSessionInProgressStatusId = await ctx.db.insert(
@@ -385,7 +394,7 @@ export const seedAllTestData = mutation({
         lookupValue: "In Progress",
         description: "Receive session is in progress",
         sortOrder: 2,
-      },
+      }
     );
 
     const receiveSessionCompleteStatusId = await ctx.db.insert(
@@ -396,7 +405,7 @@ export const seedAllTestData = mutation({
         lookupValue: "Complete",
         description: "Receive session is complete",
         sortOrder: 3,
-      },
+      }
     );
 
     // Receive Session Item Status types
@@ -432,7 +441,7 @@ export const seedAllTestData = mutation({
         lookupValue: "Return Requested",
         description: "Return has been requested for this item",
         sortOrder: 4,
-      },
+      }
     );
 
     // Invitation Status types
@@ -535,7 +544,7 @@ export const seedAllTestData = mutation({
         lookupValue: "Reminder",
         description: "Reminder notifications",
         sortOrder: 3,
-      },
+      }
     );
 
     // Priority types
@@ -727,7 +736,7 @@ export const seedAllTestData = mutation({
       logo: undefined,
       authMetadata: JSON.stringify({ seed: true, createdBy: "seedMockData" }),
       authCreatedAt: now,
-      
+
       // Application-specific fields
       name: "Test Warehouse Corp",
       address: "123 Warehouse Street, District 1, Ho Chi Minh City",
@@ -746,7 +755,7 @@ export const seedAllTestData = mutation({
       logo: undefined,
       authMetadata: JSON.stringify({ seed: true, createdBy: "seedMockData" }),
       authCreatedAt: now,
-      
+
       // Application-specific fields
       name: "Secondary Distribution Inc",
       address: "456 Logistics Avenue, District 7, Ho Chi Minh City",
@@ -849,7 +858,7 @@ export const seedAllTestData = mutation({
       image: undefined,
       authCreatedAt: now,
       authUpdatedAt: now,
-      
+
       // Application-specific fields
       username: "testuser",
       fullName: "Test User",
@@ -866,7 +875,7 @@ export const seedAllTestData = mutation({
       image: undefined,
       authCreatedAt: now,
       authUpdatedAt: now,
-      
+
       // Application-specific fields
       username: "admin",
       fullName: "Admin User",
@@ -883,7 +892,7 @@ export const seedAllTestData = mutation({
       image: undefined,
       authCreatedAt: now,
       authUpdatedAt: now,
-      
+
       // Application-specific fields
       username: "manager",
       fullName: "Warehouse Manager",
@@ -900,7 +909,7 @@ export const seedAllTestData = mutation({
       image: undefined,
       authCreatedAt: now,
       authUpdatedAt: now,
-      
+
       // Application-specific fields
       username: "receiver",
       fullName: "Goods Receiver",
@@ -917,7 +926,7 @@ export const seedAllTestData = mutation({
       image: undefined,
       authCreatedAt: now,
       authUpdatedAt: now,
-      
+
       // Application-specific fields
       username: "picker",
       fullName: "Order Picker",
@@ -934,7 +943,7 @@ export const seedAllTestData = mutation({
       image: undefined,
       authCreatedAt: now,
       authUpdatedAt: now,
-      
+
       // Application-specific fields
       username: "auditor",
       fullName: "Inventory Auditor",
@@ -1868,7 +1877,7 @@ export const seedAllTestData = mutation({
       orderedAt: now - oneDay * 3,
       expectedDeliveryAt: now + oneDay * 5,
       createdByUserId: managerUserId,
-      purchaseOrderStatusTypeId: pendingStatusId,
+      purchaseOrderStatusTypeId: partialStatusId, // Has in-progress receive session
       isDeleted: false,
     });
 
@@ -1904,6 +1913,32 @@ export const seedAllTestData = mutation({
       orderedAt: now - oneWeek * 3,
       createdByUserId: adminUserId,
       purchaseOrderStatusTypeId: cancelledStatusId,
+      isDeleted: false,
+    });
+
+    // PO-2026-006: Pending PO with NO receive session (for testing dropdown selection)
+    const purchaseOrder6Id = await ctx.db.insert("purchase_orders", {
+      organizationId,
+      branchId,
+      code: "PO-2026-006",
+      supplierId: supplier4Id,
+      orderedAt: now - oneDay,
+      expectedDeliveryAt: now + oneDay * 7,
+      createdByUserId: managerUserId,
+      purchaseOrderStatusTypeId: pendingStatusId,
+      isDeleted: false,
+    });
+
+    // PO-2026-007: Another pending PO without receive session (for additional testing)
+    const purchaseOrder7Id = await ctx.db.insert("purchase_orders", {
+      organizationId,
+      branchId,
+      code: "PO-2026-007",
+      supplierId: supplier1Id,
+      orderedAt: now,
+      expectedDeliveryAt: now + oneDay * 10,
+      createdByUserId: adminUserId,
+      purchaseOrderStatusTypeId: pendingStatusId,
       isDeleted: false,
     });
 
@@ -1961,6 +1996,40 @@ export const seedAllTestData = mutation({
       skuId: variant9Id,
       quantityOrdered: 50,
       unitCost: 25.0,
+      quantityReceived: 0,
+    });
+
+    // Details for PO-2026-006 (pending, no receive session)
+    await ctx.db.insert("purchase_order_details", {
+      purchaseOrderId: purchaseOrder6Id,
+      skuId: variant8Id,
+      quantityOrdered: 40,
+      unitCost: 12.0,
+      quantityReceived: 0,
+    });
+
+    await ctx.db.insert("purchase_order_details", {
+      purchaseOrderId: purchaseOrder6Id,
+      skuId: variant6Id,
+      quantityOrdered: 25,
+      unitCost: 35.0,
+      quantityReceived: 0,
+    });
+
+    // Details for PO-2026-007 (pending, no receive session)
+    await ctx.db.insert("purchase_order_details", {
+      purchaseOrderId: purchaseOrder7Id,
+      skuId: variant2Id,
+      quantityOrdered: 60,
+      unitCost: 15.0,
+      quantityReceived: 0,
+    });
+
+    await ctx.db.insert("purchase_order_details", {
+      purchaseOrderId: purchaseOrder7Id,
+      skuId: variant11Id,
+      quantityOrdered: 35,
+      unitCost: 30.0,
       quantityReceived: 0,
     });
 
@@ -3022,14 +3091,15 @@ export const seedAllTestData = mutation({
         productVariants: 11,
         suppliers: 5,
         storageZones: 10,
-        purchaseOrders: 5,
+        purchaseOrders: 7,
         outboundOrders: 4,
         transferOrders: 3,
         inventoryBatches: 9,
         serialNumbers: 4,
         workSessions: 6,
+        receiveSessions: 3,
         notifications: 5,
-        systemLookups: "50+",
+        systemLookups: "55+",
       },
       ids: {
         // Organizations
@@ -3128,6 +3198,8 @@ export const seedAllTestData = mutation({
           purchaseOrder3Id,
           purchaseOrder4Id,
           purchaseOrder5Id,
+          purchaseOrder6Id,
+          purchaseOrder7Id,
         },
 
         // Outbound Orders
@@ -3159,7 +3231,7 @@ export const seedAllTestData = mutation({
         },
 
         // Work Sessions
-        sessions: {
+        workSessions: {
           receiveSession1Id,
           receiveSession2Id,
           pickSession1Id,
@@ -3168,12 +3240,20 @@ export const seedAllTestData = mutation({
           cycleCountSession2Id,
         },
 
+        // Receive Sessions
+        receiveSessions: {
+          receiveSessionRS1Id,
+          receiveSessionRS2Id,
+          receiveSessionRS3Id,
+        },
+
         // System Lookups - Status Types
         purchaseOrderStatuses: {
           pendingStatusId,
           approvedStatusId,
           receivedStatusId,
           cancelledStatusId,
+          partialStatusId,
         },
         outboundStatuses: {
           outboundPendingStatusId,

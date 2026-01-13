@@ -1,0 +1,270 @@
+"use client";
+
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { Loader2, Plus } from "lucide-react";
+import * as React from "react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { toast } from "sonner";
+import { useCurrentUser } from "@/hooks/use-current-user";
+
+interface AddReceiveSessionDialogProps {
+  trigger?: React.ReactNode;
+}
+
+/**
+ * TODO: Replace this hardcoded branchId with dynamic branch selection
+ * when branches feature is implemented.
+ * Current hardcoded value is for development/testing purposes only.
+ */
+const HARDCODED_BRANCH_ID =
+  "jx7bm140507ygfacwsnfezyz9d7z1yng" as Id<"branches">;
+
+export function AddReceiveSessionDialog({
+  trigger,
+}: AddReceiveSessionDialogProps) {
+  const [open, setOpen] = React.useState(false);
+  const [confirmOpen, setConfirmOpen] = React.useState(false);
+  const [selectedPOId, setSelectedPOId] = React.useState<string>("");
+  const { userId } = useCurrentUser();
+
+  // Fetch pending purchase orders for the dropdown
+  const {
+    data: pendingPOs,
+    isLoading: isLoadingPOs,
+    error: queryError,
+    isError,
+    status,
+  } = useQuery({
+    ...convexQuery(api.receiveSessions.getPendingPurchaseOrdersByBranch, {
+      branchId: HARDCODED_BRANCH_ID,
+    }),
+    enabled: open, // Only fetch when dialog is open
+  });
+
+  // Debug log
+  React.useEffect(() => {
+    if (open) {
+      console.log("Query Status:", status);
+      console.log("Is Loading:", isLoadingPOs);
+      console.log("Is Error:", isError);
+      console.log("Error:", queryError);
+      console.log("Branch ID:", HARDCODED_BRANCH_ID);
+      console.log("Pending POs data:", pendingPOs);
+      console.log("Is array:", Array.isArray(pendingPOs));
+      console.log("Length:", pendingPOs?.length);
+    }
+  }, [open, isLoadingPOs, pendingPOs, status, isError, queryError]);
+
+  // Mutation for creating receive session
+  const createReceiveSession = useConvexMutation(
+    api.receiveSessions.createReceiveSession
+  );
+
+  const { mutate: handleCreateSession, isPending: isCreating } = useMutation({
+    mutationFn: async () => {
+      if (!selectedPOId || !userId) {
+        throw new Error("Please select a purchase order");
+      }
+      return createReceiveSession({
+        purchaseOrderId: selectedPOId as Id<"purchase_orders">,
+        userId: userId as Id<"users">,
+      });
+    },
+    onSuccess: (result) => {
+      toast.success("Receive session created successfully");
+      setOpen(false);
+      setConfirmOpen(false);
+      setSelectedPOId("");
+    },
+    onError: (error) => {
+      toast.error("Failed to create receive session");
+      setConfirmOpen(false);
+    },
+  });
+
+  const selectedPO = pendingPOs?.find(
+    (po) => po.purchaseOrderId === selectedPOId
+  );
+
+  const handleConfirmClick = () => {
+    if (!selectedPOId) {
+      toast.error("Please select a purchase order");
+      return;
+    }
+    setConfirmOpen(true);
+  };
+
+  const formatDate = (timestamp?: number) => {
+    if (!timestamp) return "N/A";
+    return new Intl.DateTimeFormat("en-US", {
+      year: "numeric",
+      month: "short",
+      day: "numeric",
+    }).format(new Date(timestamp));
+  };
+
+  return (
+    <>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogTrigger asChild>
+          {trigger || (
+            <Button>
+              <Plus className="mr-1 size-4" />
+              Add New
+            </Button>
+          )}
+        </DialogTrigger>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Create Receive Session</DialogTitle>
+            <DialogDescription>
+              Select a pending purchase order to start a new receiving session.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="purchase-order">
+                Purchase Order <span className="text-destructive">*</span>
+              </Label>
+              <Select value={selectedPOId} onValueChange={setSelectedPOId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select a purchase order" />
+                </SelectTrigger>
+                <SelectContent position="popper" sideOffset={5}>
+                  {isLoadingPOs && (
+                    <div className="flex items-center justify-center py-4">
+                      <Loader2 className="size-4 animate-spin" />
+                      <span className="ml-2">Loading...</span>
+                    </div>
+                  )}
+                  {!isLoadingPOs && !pendingPOs && (
+                    <div className="py-4 text-center text-muted-foreground text-sm">
+                      No pending purchase orders available
+                    </div>
+                  )}
+                  {!isLoadingPOs &&
+                    pendingPOs &&
+                    pendingPOs.length > 0 &&
+                    pendingPOs.map((po) => (
+                      <SelectItem
+                        key={po.purchaseOrderId}
+                        value={po.purchaseOrderId}
+                      >
+                        {po.code}
+                        <span className="ml-2 text-muted-foreground">
+                          — {po.supplierName}
+                        </span>
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedPO && (
+              <div className="rounded-md border bg-muted/50 p-3">
+                <h4 className="mb-2 font-medium text-sm">
+                  Selected Order Details
+                </h4>
+                <div className="space-y-1 text-sm">
+                  <p>
+                    <span className="text-muted-foreground">Code:</span>{" "}
+                    {selectedPO.code}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Supplier:</span>{" "}
+                    {selectedPO.supplierName}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Ordered:</span>{" "}
+                    {formatDate(selectedPO.orderedAt)}
+                  </p>
+                  <p>
+                    <span className="text-muted-foreground">Expected:</span>{" "}
+                    {formatDate(selectedPO.expectedDeliveryAt)}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleConfirmClick} disabled={!selectedPOId}>
+              Create Session
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation Dialog */}
+      <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirm Create Receive Session</AlertDialogTitle>
+            <AlertDialogDescription>
+              You are about to create a new receive session for purchase order{" "}
+              <strong>{selectedPO?.code}</strong> from{" "}
+              <strong>{selectedPO?.supplierName}</strong>.
+              <br />
+              <br />
+              This will create a work session and copy all items from the
+              purchase order. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isCreating}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => {
+                e.preventDefault();
+                handleCreateSession();
+              }}
+              disabled={isCreating}
+            >
+              {isCreating ? (
+                <>
+                  <Loader2 className="mr-2 size-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                "Confirm"
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}

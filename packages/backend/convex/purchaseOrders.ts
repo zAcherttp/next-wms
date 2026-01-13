@@ -70,7 +70,7 @@ export const createPurchaseOrder = mutation({
         variantId: v.id("product_variants"),
         quantity: v.number(),
         unitPrice: v.number(),
-      }),
+      })
     ),
   },
   handler: async (ctx, args) => {
@@ -109,8 +109,8 @@ export const createPurchaseOrder = mutation({
       .filter((q) =>
         q.and(
           q.eq(q.field("lookupType"), "PurchaseOrderStatus"),
-          q.eq(q.field("lookupValue"), "Pending"),
-        ),
+          q.eq(q.field("lookupValue"), "Pending")
+        )
       )
       .first();
 
@@ -130,13 +130,13 @@ export const createPurchaseOrder = mutation({
     const todayOrders = await ctx.db
       .query("purchase_orders")
       .withIndex("organizationId", (q) =>
-        q.eq("organizationId", branch.organizationId),
+        q.eq("organizationId", branch.organizationId)
       )
       .filter((q) =>
         q.and(
           q.gte(q.field("orderedAt"), startOfDay),
-          q.lte(q.field("orderedAt"), endOfDay),
-        ),
+          q.lte(q.field("orderedAt"), endOfDay)
+        )
       )
       .collect();
 
@@ -208,7 +208,7 @@ export const listPurchaseOrders = query({
           branchName: branch?.name ?? "Unknown",
           statusName: status?.lookupValue ?? "Unknown",
         };
-      }),
+      })
     );
 
     return enrichedOrders;
@@ -233,7 +233,7 @@ export const getPurchaseOrderById = query({
     const details = await ctx.db
       .query("purchase_order_details")
       .withIndex("purchaseOrderId", (q) =>
-        q.eq("purchaseOrderId", args.orderId),
+        q.eq("purchaseOrderId", args.orderId)
       )
       .collect();
 
@@ -257,7 +257,7 @@ export const getPurchaseOrderById = query({
           skuCode: variant.skuCode,
           description: variant.description,
         };
-      }),
+      })
     );
 
     // Get related entities

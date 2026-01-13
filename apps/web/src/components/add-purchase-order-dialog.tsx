@@ -1,8 +1,24 @@
 "use client";
 
-import { FileSpreadsheet, MapPin, Pencil, Plus, Upload } from "lucide-react";
+import {
+  Check,
+  FileSpreadsheet,
+  MapPin,
+  Pencil,
+  Plus,
+  Trash2,
+  Upload,
+} from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
 import {
   Dialog,
   DialogContent,
@@ -13,6 +29,11 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -28,20 +49,51 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 import { MOCK_PO } from "@/mock/data/purchase-orders";
 
 // Extract unique suppliers from mock data
 const MOCK_SUPPLIERS = Array.from(
-  new Set(MOCK_PO.map((po) => po.supplier?.name).filter(Boolean)),
+  new Set(MOCK_PO.map((po) => po.supplier?.name).filter(Boolean))
 ) as string[];
 
 // Mock branches
 const MOCK_BRANCHES = ["Main Warehouse", "Branch A", "Branch B", "Branch C"];
 
+// Mock SKUs data
+const MOCK_SKUS = [
+  { id: "sku-1", code: "SKU-001A", name: "Industrial Bearing 6mm" },
+  { id: "sku-2", code: "SKU-002B", name: "Stainless Steel Bolt M8" },
+  { id: "sku-3", code: "SKU-003C", name: "Rubber Gasket 50mm" },
+  { id: "sku-4", code: "SKU-004D", name: "Copper Wire 2.5mm" },
+  { id: "sku-5", code: "SKU-005E", name: "Aluminum Sheet 1mm" },
+  { id: "sku-6", code: "SKU-006F", name: "Plastic Container 500ml" },
+  { id: "sku-7", code: "SKU-007G", name: "LED Light Bulb 12W" },
+  { id: "sku-8", code: "SKU-008H", name: "Electric Motor 1HP" },
+  { id: "sku-9", code: "SKU-009I", name: "PVC Pipe 2inch" },
+  { id: "sku-10", code: "SKU-010J", name: "Steel Cable 5mm" },
+];
+
+// Mock Zones data
+const MOCK_ZONES = [
+  { id: "zone-1", name: "Zone A - Receiving" },
+  { id: "zone-2", name: "Zone B - Storage" },
+  { id: "zone-3", name: "Zone C - Cold Storage" },
+  { id: "zone-4", name: "Zone D - Hazardous Materials" },
+  { id: "zone-5", name: "Zone E - Bulk Storage" },
+  { id: "zone-6", name: "Zone F - Fast Moving" },
+  { id: "zone-7", name: "Zone G - Overflow" },
+  { id: "zone-8", name: "Zone H - Returns" },
+];
+
 interface ProductItem {
   id: string;
-  name: string;
+  skuId: string;
+  skuCode: string;
+  skuName: string;
   quantity: number;
+  zoneId?: string;
+  zoneName?: string;
 }
 
 interface AddPurchaseOrderDialogProps {
@@ -56,26 +108,50 @@ export function AddPurchaseOrderDialog({
   const [isEditingCode, setIsEditingCode] = React.useState(false);
   const [receivingBranch, setReceivingBranch] = React.useState<string>("");
   const [supplier, setSupplier] = React.useState<string>("");
-  const [note, setNote] = React.useState("");
-  const [products, setProducts] = React.useState<ProductItem[]>([
-    { id: "1", name: "Dầu gội đầu", quantity: 3 },
-  ]);
+  const [products, setProducts] = React.useState<ProductItem[]>([]);
+  const [skuPopoverOpen, setSkuPopoverOpen] = React.useState(false);
+  const [zonePopoverOpenId, setZonePopoverOpenId] = React.useState<
+    string | null
+  >(null);
 
-  const handleAddProduct = () => {
+  // Get list of already selected SKU IDs
+  const selectedSkuIds = products.map((p) => p.skuId);
+
+  // Filter out already selected SKUs
+  const availableSkus = MOCK_SKUS.filter(
+    (sku) => !selectedSkuIds.includes(sku.id)
+  );
+
+  const handleAddProduct = (sku: (typeof MOCK_SKUS)[0]) => {
     const newProduct: ProductItem = {
-      id: String(products.length + 1),
-      name: "",
+      id: String(Date.now()),
+      skuId: sku.id,
+      skuCode: sku.code,
+      skuName: sku.name,
       quantity: 1,
     };
     setProducts([...products, newProduct]);
+    setSkuPopoverOpen(false);
   };
 
-  const handleUpdateProductName = (id: string, name: string) => {
-    setProducts(products.map((p) => (p.id === id ? { ...p, name } : p)));
+  const handleRemoveProduct = (id: string) => {
+    setProducts(products.filter((p) => p.id !== id));
   };
 
   const handleUpdateProductQuantity = (id: string, quantity: number) => {
     setProducts(products.map((p) => (p.id === id ? { ...p, quantity } : p)));
+  };
+
+  const handleSelectZone = (
+    productId: string,
+    zone: (typeof MOCK_ZONES)[0]
+  ) => {
+    setProducts(
+      products.map((p) =>
+        p.id === productId ? { ...p, zoneId: zone.id, zoneName: zone.name } : p
+      )
+    );
+    setZonePopoverOpenId(null);
   };
 
   const handleCreatePurchaseOrder = () => {
@@ -84,7 +160,6 @@ export function AddPurchaseOrderDialog({
       poCode,
       receivingBranch,
       supplier,
-      note,
       products,
     });
     setOpen(false);
@@ -100,7 +175,7 @@ export function AddPurchaseOrderDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+      <DialogContent className="max-h-[85vh] w-full max-w-[35vw] overflow-hidden flex flex-col">
         <DialogHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             {isEditingCode ? (
@@ -129,14 +204,10 @@ export function AddPurchaseOrderDialog({
               </>
             )}
           </div>
-          <Button variant="outline" size="sm" className="mr-8">
-            <FileSpreadsheet className="size-4" />
-            Import excel
-          </Button>
         </DialogHeader>
 
         {/* Form Fields */}
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label htmlFor="receiving-branch">
               Receiving Branch <span className="text-destructive">*</span>
@@ -172,77 +243,162 @@ export function AddPurchaseOrderDialog({
               </SelectContent>
             </Select>
           </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="note">Note</Label>
-            <Input
-              id="note"
-              placeholder="Note"
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-            />
-          </div>
         </div>
 
         {/* Products Table */}
-        <div className="mt-4">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[50%]">Products</TableHead>
-                <TableHead className="text-center">Quantity</TableHead>
-                <TableHead className="text-right" />
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {products.map((product) => (
-                <TableRow key={product.id}>
-                  <TableCell>
-                    <Input
-                      value={product.name}
-                      onChange={(e) =>
-                        handleUpdateProductName(product.id, e.target.value)
-                      }
-                      placeholder="Product name"
-                      className="border-none bg-transparent p-0 shadow-none focus-visible:ring-0"
-                    />
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Input
-                      type="number"
-                      value={product.quantity}
-                      onChange={(e) =>
-                        handleUpdateProductQuantity(
-                          product.id,
-                          Number.parseInt(e.target.value, 10) || 0,
-                        )
-                      }
-                      className="mx-auto w-20 border-none bg-transparent p-0 text-center shadow-none focus-visible:ring-0"
-                    />
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <Button variant="outline" size="sm">
-                      <MapPin className="mr-1 size-4" />
-                      Add location
-                    </Button>
-                  </TableCell>
+        <div className="mt-4 flex-1 overflow-hidden flex flex-col min-h-0">
+          <div className="overflow-y-auto max-h-[300px] rounded-md border">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[120px]">SKU Code</TableHead>
+                  <TableHead>Product Name</TableHead>
+                  <TableHead className="w-[100px] text-center">
+                    Quantity
+                  </TableHead>
+                  <TableHead className="w-[180px]">Location</TableHead>
+                  <TableHead className="w-[50px]" />
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {products.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="h-20 text-center text-muted-foreground"
+                    >
+                      No products added yet. Click "Add product" to add items.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  products.map((product) => (
+                    <TableRow key={product.id}>
+                      <TableCell className="font-medium text-blue-600">
+                        {product.skuCode}
+                      </TableCell>
+                      <TableCell>{product.skuName}</TableCell>
+                      <TableCell className="text-center">
+                        <Input
+                          type="number"
+                          min={1}
+                          value={product.quantity}
+                          onChange={(e) =>
+                            handleUpdateProductQuantity(
+                              product.id,
+                              Number.parseInt(e.target.value, 10) || 1
+                            )
+                          }
+                          className="mx-auto w-20 text-center"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Popover
+                          open={zonePopoverOpenId === product.id}
+                          onOpenChange={(isOpen) =>
+                            setZonePopoverOpenId(isOpen ? product.id : null)
+                          }
+                        >
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className={cn(
+                                "w-full justify-start",
+                                !product.zoneName && "text-muted-foreground"
+                              )}
+                            >
+                              <MapPin className="mr-1 size-4" />
+                              {product.zoneName || "Select zone"}
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent
+                            className="w-[250px] p-0"
+                            align="start"
+                          >
+                            <Command>
+                              <CommandInput placeholder="Search zones..." />
+                              <CommandList>
+                                <CommandEmpty>No zone found.</CommandEmpty>
+                                <CommandGroup>
+                                  {MOCK_ZONES.map((zone) => (
+                                    <CommandItem
+                                      key={zone.id}
+                                      value={zone.name}
+                                      onSelect={() =>
+                                        handleSelectZone(product.id, zone)
+                                      }
+                                    >
+                                      <Check
+                                        className={cn(
+                                          "mr-2 h-4 w-4",
+                                          product.zoneId === zone.id
+                                            ? "opacity-100"
+                                            : "opacity-0"
+                                        )}
+                                      />
+                                      {zone.name}
+                                    </CommandItem>
+                                  ))}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          variant="ghost"
+                          size="icon-sm"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => handleRemoveProduct(product.id)}
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
 
-          {/* Add Product Button */}
-          <Button variant="outline" className="mt-4" onClick={handleAddProduct}>
-            Add product <Plus className="size-4" />
-          </Button>
+          {/* Add Product Button with SKU Selection */}
+          <Popover open={skuPopoverOpen} onOpenChange={setSkuPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="mt-4">
+                Add product <Plus className="ml-1 size-4" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-[350px] p-0" align="start">
+              <Command>
+                <CommandInput placeholder="Search SKU code or name..." />
+                <CommandList>
+                  <CommandEmpty>No SKU found.</CommandEmpty>
+                  <CommandGroup heading="Available SKUs">
+                    {availableSkus.map((sku) => (
+                      <CommandItem
+                        key={sku.id}
+                        value={`${sku.code} ${sku.name}`}
+                        onSelect={() => handleAddProduct(sku)}
+                        className="flex flex-col items-start gap-1 py-2"
+                      >
+                        <span className="font-medium text-blue-600">
+                          {sku.code}
+                        </span>
+                        <span className="text-sm text-muted-foreground">
+                          {sku.name}
+                        </span>
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                </CommandList>
+              </Command>
+            </PopoverContent>
+          </Popover>
         </div>
 
         {/* Footer */}
         <DialogFooter className="mt-6">
-          <Button variant="outline">
-            <Upload className="size-4" />
-            Add File
-          </Button>
           <Button onClick={handleCreatePurchaseOrder}>
             Create Purchase Order
           </Button>
