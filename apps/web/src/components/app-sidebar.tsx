@@ -137,6 +137,10 @@ const data = {
           title: "Brands",
           url: "/master-data/brands",
         },
+        {
+          title: "Suppliers",
+          url: "/master-data/suppliers",
+        },
       ],
     },
     {

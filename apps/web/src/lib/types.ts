@@ -146,4 +146,8 @@ export type Product = Omit<Doc<"products">, "_id" | "organizationId"> & {
 
 export type Brand = Doc<"brands">;
 
+export type BrandWithProductCount = Brand & {
+  productCount: number;
+};
+
 export type Branch = Doc<"branches">;
