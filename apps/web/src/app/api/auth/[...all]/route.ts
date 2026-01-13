@@ -1,3 +1,3 @@
-import { GET, POST } from "@wms/backend/auth/handler";
+import { handler } from "@/lib/auth/server";
 
-export { GET, POST };
+export const { GET, POST } = handler;

@@ -93,6 +93,10 @@ const data = {
           title: "Transfers",
           url: "/inventory/transfers",
         },
+        {
+          title: "Cycle Count",
+          url: "/inventory/cycle-count",
+        },
       ],
     },
     {

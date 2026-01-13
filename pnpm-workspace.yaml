@@ -3,6 +3,7 @@ packages:
   - packages/*
 
 catalog:
+  '@convex-dev/better-auth': ^0.10.9
   '@trpc/client': ^11.5.0
   '@trpc/server': ^11.5.0
   '@types/node': 25.0.5
