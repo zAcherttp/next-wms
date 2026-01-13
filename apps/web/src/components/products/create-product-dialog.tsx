@@ -6,7 +6,6 @@ import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -180,7 +179,7 @@ function UnitAttributeDialog({
                   <span>Giá trị quy đổi</span>
                   <span>Giá bán</span>
                   <span>Mã vạch</span>
-                  <span></span>
+                  <span />
                 </div>
 
                 {unitConversions.map((unit) => (
@@ -277,7 +276,10 @@ function UnitAttributeDialog({
 
               <div className="space-y-3">
                 {attributes.map((attr, idx) => (
-                  <div key={attr.id} className="grid grid-cols-4 items-center gap-2">
+                  <div
+                    key={attr.id}
+                    className="grid grid-cols-4 items-center gap-2"
+                  >
                     <div className="flex items-center gap-2">
                       <span className="text-sm">Thuộc tính {idx + 1}:</span>
                       <Input
@@ -389,7 +391,9 @@ export function CreateProductDialog() {
   const [maxStock, setMaxStock] = React.useState(999999999);
 
   // Unit conversions & attributes (managed by sub-dialog)
-  const [unitConversions, setUnitConversions] = React.useState<UnitConversion[]>([]);
+  const [unitConversions, setUnitConversions] = React.useState<
+    UnitConversion[]
+  >([]);
   const [attributes, setAttributes] = React.useState<ProductAttribute[]>([]);
   const [variants, setVariants] = React.useState<ProductVariant[]>([]);
 
@@ -417,8 +421,8 @@ export function CreateProductDialog() {
     <>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogTrigger asChild>
-          <Button variant="default" className="bg-green-500 hover:bg-green-600">
-            <Plus className="mr-1 h-4 w-4" />
+          <Button>
+            <Plus />
             Add New
           </Button>
         </DialogTrigger>
@@ -561,7 +565,7 @@ export function CreateProductDialog() {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full border-dashed border-amber-400 text-amber-600"
+                className="w-full border-amber-400 border-dashed text-amber-600"
                 onClick={() => setUnitAttributeOpen(true)}
               >
                 <Settings2 className="mr-2 h-4 w-4" />
@@ -577,10 +581,7 @@ export function CreateProductDialog() {
               >
                 Hủy
               </Button>
-              <Button
-                type="submit"
-                className="bg-green-500 hover:bg-green-600"
-              >
+              <Button type="submit" className="bg-green-500 hover:bg-green-600">
                 Lưu sản phẩm
               </Button>
             </DialogFooter>

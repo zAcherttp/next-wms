@@ -13,9 +13,8 @@ import {
   ChevronsLeft,
   ChevronsRight,
   MoreHorizontal,
-  Plus,
 } from "lucide-react";
-import * as React from "react";
+import { CreateProductDialog } from "@/components/products/create-product-dialog";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -41,7 +40,6 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { CreateProductDialog } from "@/components/products/create-product-dialog";
 
 // Product type for the table
 export interface ProductTableItem {

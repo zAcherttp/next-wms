@@ -1,7 +1,7 @@
 "use client";
 
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useConvexMutation } from "@convex-dev/react-query";
+import { useMutation } from "@tanstack/react-query";
 import {
   type ColumnDef,
   flexRender,
@@ -10,6 +10,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ChevronLeft,
   ChevronRight,
@@ -92,8 +93,8 @@ function CreateBrandDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="default" className="bg-green-500 hover:bg-green-600">
-          <Plus className="mr-1 h-4 w-4" />
+        <Button>
+          <Plus />
           Add New
         </Button>
       </DialogTrigger>
@@ -354,7 +355,7 @@ export function BrandsTable() {
   // Mock data for testing
   const brands: BrandWithProductCount[] = [
     {
-      _id: "1" as any,
+      _id: "1" as Id<"brands">,
       _creationTime: Date.now(),
       organizationId: "org1",
       name: "BRAND-01",
@@ -362,7 +363,7 @@ export function BrandsTable() {
       productCount: 10,
     },
     {
-      _id: "2" as any,
+      _id: "2" as Id<"brands">,
       _creationTime: Date.now(),
       organizationId: "org1",
       name: "BRAND-02",
@@ -370,7 +371,7 @@ export function BrandsTable() {
       productCount: 10,
     },
     {
-      _id: "3" as any,
+      _id: "3" as Id<"brands">,
       _creationTime: Date.now(),
       organizationId: "org1",
       name: "BRAND-03",

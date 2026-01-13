@@ -1,11 +1,6 @@
 "use client";
 
-import {
-  ChevronDown,
-  ChevronRight,
-  MoreHorizontal,
-  Plus,
-} from "lucide-react";
+import { ChevronDown, ChevronRight, MoreHorizontal, Plus } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -61,8 +56,8 @@ function CreateCategoryDialog() {
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="default" className="bg-green-500 hover:bg-green-600">
-          <Plus className="mr-1 h-4 w-4" />
+        <Button>
+          <Plus />
           Add New
         </Button>
       </DialogTrigger>
@@ -171,7 +166,7 @@ function CategoryRow({
       </TableRow>
       {hasChildren &&
         isExpanded &&
-        category.children!.map((child) => (
+        category.children?.map((child) => (
           <CategoryRow
             key={child._id}
             category={child}
