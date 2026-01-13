@@ -1,9 +1,9 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import AvatarUpload from "@/components/avatar-upload";
+import { Spinner } from "@/components/ui/spinner";
 import type { FileWithPreview } from "@/hooks/use-file-upload";
 import { authClient } from "@/lib/auth/client";
 
@@ -88,7 +88,7 @@ export function AvatarUploadField({
       />
       {isUploading && (
         <div className="absolute inset-0 flex items-center justify-center rounded-lg bg-background/80">
-          <Loader2 className="size-6 animate-spin text-muted-foreground" />
+          <Spinner />
         </div>
       )}
     </div>

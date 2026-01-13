@@ -1,4 +1,7 @@
-import { createAccessControl } from "better-auth/plugins/access";
+import {
+  type AccessControl,
+  createAccessControl,
+} from "better-auth/plugins/access";
 import {
   adminAc,
   defaultStatements,
@@ -35,7 +38,7 @@ const statement = {
 /**
  * Access control instance with all permission statements.
  */
-export const ac = createAccessControl(statement);
+export const ac: AccessControl = createAccessControl(statement);
 
 /**
  * Owner role - Full access to everything

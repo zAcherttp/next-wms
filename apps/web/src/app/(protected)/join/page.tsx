@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { toast } from "sonner";
 import { CreateOrganizationForm } from "@/components/create-organization-form";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -16,7 +16,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { authClient, useListOrganizations } from "@/lib/auth/client";
 
-export default function Page() {
+function JoinPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { data: organizations, isPending } = useListOrganizations();
@@ -116,5 +116,19 @@ export default function Page() {
         )}
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-screen w-full items-center justify-center">
+          Loading...
+        </div>
+      }
+    >
+      <JoinPageContent />
+    </Suspense>
   );
 }

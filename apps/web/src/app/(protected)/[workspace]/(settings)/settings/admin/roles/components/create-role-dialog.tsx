@@ -1,9 +1,8 @@
 "use client";
 
-import { Plus } from "lucide-react";
-import { motion } from "motion/react";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { CreateNewButton } from "@/components/ui/create-new-button";
 import {
   Dialog,
   DialogContent,
@@ -29,32 +28,12 @@ import {
 } from "@/components/ui/select";
 
 export function CreateRoleDialog() {
-  const [isHovered, setIsHovered] = useState(false);
+  const [open, setOpen] = useState(false);
 
   return (
-    <Dialog>
+    <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant={"outline"}
-          className="overflow-hidden px-2.5 py-2"
-          onMouseEnter={() => setIsHovered(true)}
-          onMouseLeave={() => setIsHovered(false)}
-        >
-          <motion.div className="flex items-center">
-            <Plus />
-            <motion.span
-              initial={false}
-              animate={isHovered ? "hover" : "initial"}
-              variants={{
-                initial: { width: 0, opacity: 0, marginLeft: 0 },
-                hover: { width: "auto", opacity: 1, marginLeft: 8 },
-              }}
-              className="overflow-hidden whitespace-nowrap"
-            >
-              Create new role
-            </motion.span>
-          </motion.div>
-        </Button>
+        <CreateNewButton label="Create new role" />
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>

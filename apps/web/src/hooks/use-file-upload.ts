@@ -163,7 +163,8 @@ export const useFileUpload = (
         errors: [],
       };
 
-      onFilesChange?.(newState.files);
+      // Defer callback to avoid setState during render
+      queueMicrotask(() => onFilesChange?.(newState.files));
       return newState;
     });
   }, [onFilesChange]);
@@ -243,7 +244,8 @@ export const useFileUpload = (
           const newFiles = !multiple
             ? validFiles
             : [...prev.files, ...validFiles];
-          onFilesChange?.(newFiles);
+          // Defer callback to avoid setState during render
+          queueMicrotask(() => onFilesChange?.(newFiles));
           return {
             ...prev,
             files: newFiles,
@@ -291,7 +293,8 @@ export const useFileUpload = (
         }
 
         const newFiles = prev.files.filter((file) => file.id !== id);
-        onFilesChange?.(newFiles);
+        // Defer callback to avoid setState during render
+        queueMicrotask(() => onFilesChange?.(newFiles));
 
         return {
           ...prev,

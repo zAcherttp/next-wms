@@ -18,6 +18,16 @@ if (!convexUrl) {
 }
 const convex = convexUrl ? new ConvexHttpClient(convexUrl) : null;
 
+type DBHookUser = {
+  id: string;
+  createdAt: Date;
+  updatedAt: Date;
+  email: string;
+  emailVerified: boolean;
+  name: string;
+  image?: string | null | undefined;
+};
+
 // Get site URL from environment
 const siteUrl = process.env.SITE_URL || "";
 
@@ -235,7 +245,7 @@ const authConfig = {
   databaseHooks: {
     user: {
       create: {
-        after: async (user) => {
+        after: async (user: DBHookUser) => {
           // Sync new user to Convex
           if (convex) {
             try {
@@ -259,7 +269,7 @@ const authConfig = {
         },
       },
       update: {
-        after: async (user) => {
+        after: async (user: DBHookUser) => {
           // Sync user update to Convex
           if (convex) {
             try {

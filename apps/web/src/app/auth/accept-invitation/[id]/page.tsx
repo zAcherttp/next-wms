@@ -1,6 +1,6 @@
 "use client";
 
-import { Building2, CheckCircle, Loader2, XCircle } from "lucide-react";
+import { Building2, CheckCircle, XCircle } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -13,6 +13,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Spinner } from "@/components/ui/spinner";
 import { authClient, organization, useSession } from "@/lib/auth/client";
 
 type InvitationStatus =
@@ -175,9 +176,9 @@ export default function AcceptInvitationPage() {
 
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <Card className="w-[400px] max-w-md">
+        <Card className="w-100 max-w-md">
           <CardContent className="flex flex-col items-center gap-4 pt-6">
-            <Loader2 className="size-8 animate-spin text-primary" />
+            <Spinner />
             <p className="text-muted-foreground">
               {statusMessages[status as keyof typeof statusMessages]}
             </p>

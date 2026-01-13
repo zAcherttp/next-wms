@@ -1,8 +1,12 @@
 "use client";
 
+import { useConvexMutation } from "@convex-dev/react-query";
+import { useMutation } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
 import { Check, Pencil } from "lucide-react";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { toast } from "sonner";
+import AvatarUpload from "@/components/avatar-upload";
 import {
   Setting,
   SettingHeader,
@@ -17,13 +21,27 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
+import { Spinner } from "@/components/ui/spinner";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useFileStorage } from "@/hooks/use-file-storage";
+import type { FileWithPreview } from "@/hooks/use-file-upload";
 import { authClient } from "@/lib/auth/client";
 
 export default function ProfilePage() {
-  const { user } = useCurrentUser();
+  const { user, userId } = useCurrentUser();
   const [isEditingName, setIsEditingName] = useState(false);
   const [fullName, setFullName] = useState("");
+  const [imageFile, setImageFile] = useState<FileWithPreview | null>(null);
+
+  const handleImageChange = useCallback((file: FileWithPreview | null) => {
+    setImageFile(file);
+  }, []);
+
+  const { mutate: updateUserImage, isPending: isImageUpdating } = useMutation({
+    mutationFn: useConvexMutation(api.authSync.updateUserImage),
+  });
+
+  const { uploadFile, isUploading } = useFileStorage();
 
   const handleEditName = () => {
     setFullName(user?.fullName || "");
@@ -58,6 +76,55 @@ export default function ProfilePage() {
     setFullName("");
   };
 
+  const handleImageSave = async () => {
+    if (!userId || !imageFile) return;
+
+    try {
+      // Get the actual File from FileWithPreview
+      const file = imageFile.file instanceof File ? imageFile.file : null;
+      if (!file) {
+        toast.error("Invalid file");
+        return;
+      }
+
+      // Upload file to Convex storage
+      const { storageId } = await uploadFile(file);
+
+      // Update user in Convex with storage ID
+      updateUserImage(
+        { userId, storageId },
+        {
+          onSuccess: async ({ imageUrl }) => {
+            // Also update Better Auth database for coherency
+            try {
+              await authClient.updateUser({
+                image: imageUrl,
+              });
+              toast.success("Profile picture updated successfully");
+              setImageFile(null);
+            } catch (authError) {
+              console.error("Failed to update auth image:", authError);
+              toast.warning(
+                "Image updated in system but failed to sync with auth",
+              );
+            }
+          },
+          onError: (error) => {
+            toast.error(
+              error instanceof Error
+                ? error.message
+                : "Profile picture update failed",
+            );
+          },
+        },
+      );
+    } catch (error) {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to upload image",
+      );
+    }
+  };
+
   return (
     <Setting>
       <SettingHeader
@@ -74,11 +141,24 @@ export default function ProfilePage() {
             <ItemContent>
               <ItemTitle>Profile picture</ItemTitle>
             </ItemContent>
-            <ItemActions>
-              <Input disabled />
-              <Button variant={"ghost"} size={"icon"} disabled>
-                <Pencil />
-              </Button>
+            <ItemActions className="flex-col items-end gap-2">
+              <AvatarUpload
+                defaultAvatar={user?.image}
+                onFileChange={handleImageChange}
+              />
+              {imageFile && (
+                <Button
+                  size="sm"
+                  onClick={handleImageSave}
+                  disabled={isUploading || isImageUpdating}
+                >
+                  {isUploading || isImageUpdating ? (
+                    <Spinner />
+                  ) : (
+                    "Save Picture"
+                  )}
+                </Button>
+              )}
             </ItemActions>
           </Item>
           <Separator />

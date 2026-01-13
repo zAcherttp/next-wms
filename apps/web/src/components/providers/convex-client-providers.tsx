@@ -6,7 +6,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { ConvexProvider, ConvexReactClient } from "convex/react";
 import type { ReactNode } from "react";
 
-const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL ?? "", {
+const convex = new ConvexReactClient(process.env.NEXT_PUBLIC_CONVEX_URL || "", {
   verbose: false,
 });
 
@@ -24,7 +24,6 @@ const queryClient = new QueryClient({
       staleTime: 5 * 60 * 1000, // 5 minutes
       gcTime: 30 * 60 * 1000, // 30 minutes
       refetchOnWindowFocus: false, // Convex handles real-time updates
-      retry: 2,
     },
   },
 });

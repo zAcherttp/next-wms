@@ -2,6 +2,7 @@
   "name": "@wms/backend",
   "version": "1.0.0",
   "type": "module",
+  "private": true,
   "exports": {
     "./auth": {
       "types": "./auth/index.ts",
@@ -33,12 +34,8 @@
     }
   },
   "scripts": {
-    "db:app:dev": "convex dev",
-    "db:app:setup": "convex dev --configure --until-success && convex dashboard",
-    "db:auth:generate": "drizzle-kit generate",
-    "db:auth:migrate": "drizzle-kit migrate",
-    "db:auth:push": "drizzle-kit push",
-    "db:auth:studio": "drizzle-kit studio",
+    "db:dev": "convex dev",
+    "db:setup": "convex dev --configure --until-success && convex dashboard",
     "dev:email": "email dev -p 3001"
   },
   "author": "",
@@ -46,21 +43,20 @@
   "description": "",
   "devDependencies": {
     "@react-email/preview-server": "4.3.2",
-    "@types/node": "^24.10.1",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "drizzle-kit": "^0.31.8",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-email": "4.3.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.2"
+    "typescript": "catalog:"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.2",
+    "@convex-dev/better-auth": "^0.10.9",
+    "@convex-dev/resend": "^0.2.3",
     "better-auth": "catalog:",
     "convex": "catalog:",
-    "drizzle-orm": "^0.45.0",
     "resend": "^6.5.2"
   }
 }
