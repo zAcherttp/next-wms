@@ -132,9 +132,9 @@ export function PurchaseOrderDetailDialog({
           </span>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold">
+          <DialogTitle className="text-2xl font-bold ">
             {MOCK_PO_DETAIL.code}
           </DialogTitle>
         </DialogHeader>

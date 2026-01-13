@@ -144,7 +144,7 @@ export function ReceiveSessionDetailDialog({
           </span>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl">
+      <DialogContent className="max-w-5xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-semibold">
             {MOCK_RECEIVE_SESSION_DETAIL.code}
