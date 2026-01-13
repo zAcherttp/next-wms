@@ -37,16 +37,10 @@ export const adjustInventory = mutation({
     const identity = await ctx.auth.getUserIdentity();
     let userId: Id<"users"> | undefined;
     if (identity) {
-      // Assuming we store the convex user ID in the token or can look it up
-      // For now, we'll try to find the user by subject/tokenIdentifier if needed
-      // But typically in this schema, we need a valid User ID.
-      // We will query the user table by the token identifier (subject)
+      // Query user by email (Better Auth identity email)
       const user = await ctx.db
         .query("users")
-        .withIndex("organizationId", (q) =>
-          q.eq("organizationId", batch.organizationId),
-        ) // Optimization hint
-        .filter((q) => q.eq(q.field("email"), identity.email)) // Fallback to email matching
+        .withIndex("email", (q) => q.eq("email", identity.email ?? ""))
         .first();
       userId = user?._id;
     }
@@ -157,15 +151,17 @@ export const checkInventoryExpiration = internalMutation({
 
       // Find users to notify in the organization
       // In a real app, we might want to notify only specific roles (e.g. Warehouse Manager)
-      const users = await ctx.db
-        .query("users")
+      // Query members table to find users in this organization
+      const members = await ctx.db
+        .query("members")
         .withIndex("organizationId", (q) =>
           q.eq("organizationId", batch.organizationId),
         )
         .collect();
 
-      for (const user of users) {
-        if (user.isDeleted || !user.isActive) continue;
+      for (const member of members) {
+        const user = await ctx.db.get(member.userId);
+        if (!user || user.isDeleted || !user.isActive) continue;
 
         // Check if we already notified this user about this batch recently?
         // For simplicity, we'll just create the notification.

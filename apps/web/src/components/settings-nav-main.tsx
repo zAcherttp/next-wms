@@ -1,6 +1,8 @@
 "use client";
 
+import type { Route } from "next";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import {
   SidebarGroup,
   SidebarGroupLabel,
@@ -13,6 +15,8 @@ import {
 import type { SettingNavGroup } from "./settings-sidebar";
 
 export function SettingsNavMain({ items }: { items: SettingNavGroup[] }) {
+  const pathname = usePathname();
+
   return (
     <SidebarGroup>
       <SidebarMenu>
@@ -24,16 +28,22 @@ export function SettingsNavMain({ items }: { items: SettingNavGroup[] }) {
               </SidebarGroupLabel>
             )}
             <SidebarMenuSub className="border-0 pl-0">
-              {item.items?.map((subItem) => (
-                <SidebarMenuSubItem key={subItem.title}>
-                  <SidebarMenuSubButton asChild>
-                    <Link href={subItem.url}>
-                      {subItem.icon && <subItem.icon />}
-                      <span>{subItem.title}</span>
-                    </Link>
-                  </SidebarMenuSubButton>
-                </SidebarMenuSubItem>
-              ))}
+              {item.items?.map((subItem) => {
+                const isActive = pathname === subItem.url;
+                return (
+                  <SidebarMenuSubItem key={subItem.title}>
+                    <SidebarMenuSubButton
+                      className={isActive ? "bg-accent" : ""}
+                      asChild
+                    >
+                      <Link href={subItem.url as Route}>
+                        {subItem.icon && <subItem.icon />}
+                        <span>{subItem.title}</span>
+                      </Link>
+                    </SidebarMenuSubButton>
+                  </SidebarMenuSubItem>
+                );
+              })}
             </SidebarMenuSub>
           </SidebarMenuItem>
         ))}

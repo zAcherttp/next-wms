@@ -717,8 +717,18 @@ export const seedAllTestData = mutation({
     // ================================================================
     // 2. ORGANIZATIONS
     // ================================================================
+    // NOTE: In production, organizations should be created via Better Auth
+    // These are test/seed data with mock auth IDs
 
     const organizationId = await ctx.db.insert("organizations", {
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_org_test_warehouse_001",
+      slug: "test-warehouse-corp",
+      logo: undefined,
+      authMetadata: JSON.stringify({ seed: true, createdBy: "seedMockData" }),
+      authCreatedAt: now,
+      
+      // Application-specific fields
       name: "Test Warehouse Corp",
       address: "123 Warehouse Street, District 1, Ho Chi Minh City",
       contactInfo: {
@@ -730,6 +740,14 @@ export const seedAllTestData = mutation({
     });
 
     const organization2Id = await ctx.db.insert("organizations", {
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_org_secondary_dist_002",
+      slug: "secondary-distribution-inc",
+      logo: undefined,
+      authMetadata: JSON.stringify({ seed: true, createdBy: "seedMockData" }),
+      authCreatedAt: now,
+      
+      // Application-specific fields
       name: "Secondary Distribution Inc",
       address: "456 Logistics Avenue, District 7, Ho Chi Minh City",
       contactInfo: {
@@ -820,11 +838,20 @@ export const seedAllTestData = mutation({
     // ================================================================
     // 4. USERS
     // ================================================================
+    // NOTE: In production, users should be created via Better Auth first,
+    // then linked to Convex. These are test/seed data with mock auth IDs.
+    // Passwords are managed by Better Auth, not stored here.
 
     const userId = await ctx.db.insert("users", {
-      organizationId,
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_testuser_001",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       username: "testuser",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Test User",
       email: "testuser@testwarehouse.com",
       isActive: true,
@@ -833,9 +860,15 @@ export const seedAllTestData = mutation({
     });
 
     const adminUserId = await ctx.db.insert("users", {
-      organizationId,
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_admin_002",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       username: "admin",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Admin User",
       email: "admin@testwarehouse.com",
       isActive: true,
@@ -844,9 +877,15 @@ export const seedAllTestData = mutation({
     });
 
     const managerUserId = await ctx.db.insert("users", {
-      organizationId,
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_manager_003",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       username: "manager",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Warehouse Manager",
       email: "manager@testwarehouse.com",
       isActive: true,
@@ -855,9 +894,15 @@ export const seedAllTestData = mutation({
     });
 
     const receiverUserId = await ctx.db.insert("users", {
-      organizationId,
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_receiver_004",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       username: "receiver",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Goods Receiver",
       email: "receiver@testwarehouse.com",
       isActive: true,
@@ -866,9 +911,15 @@ export const seedAllTestData = mutation({
     });
 
     const pickerUserId = await ctx.db.insert("users", {
-      organizationId,
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_picker_005",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       username: "picker",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Order Picker",
       email: "picker@testwarehouse.com",
       isActive: true,
@@ -877,9 +928,15 @@ export const seedAllTestData = mutation({
     });
 
     const auditorUserId = await ctx.db.insert("users", {
-      organizationId,
+      // Auth fields (normally synced from Better Auth)
+      authId: "seed_user_auditor_006",
+      emailVerified: true,
+      image: undefined,
+      authCreatedAt: now,
+      authUpdatedAt: now,
+      
+      // Application-specific fields
       username: "auditor",
-      passwordHash: "hashed_password_placeholder",
       fullName: "Inventory Auditor",
       email: "auditor@testwarehouse.com",
       isActive: true,
@@ -888,7 +945,53 @@ export const seedAllTestData = mutation({
     });
 
     // ================================================================
-    // 5. ROLES & PERMISSIONS
+    // 5. MEMBERS (Link users to organizations)
+    // ================================================================
+
+    await ctx.db.insert("members", {
+      userId,
+      organizationId,
+      userAuthId: "seed_user_testuser_001",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    await ctx.db.insert("members", {
+      userId: adminUserId,
+      organizationId,
+      userAuthId: "seed_user_admin_002",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    await ctx.db.insert("members", {
+      userId: managerUserId,
+      organizationId,
+      userAuthId: "seed_user_manager_003",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    await ctx.db.insert("members", {
+      userId: receiverUserId,
+      organizationId,
+      userAuthId: "seed_user_receiver_004",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    await ctx.db.insert("members", {
+      userId: pickerUserId,
+      organizationId,
+      userAuthId: "seed_user_picker_005",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    await ctx.db.insert("members", {
+      userId: auditorUserId,
+      organizationId,
+      userAuthId: "seed_user_auditor_006",
+      organizationAuthId: "seed_org_test_warehouse_001",
+    });
+
+    // ================================================================
+    // 6. ROLES & PERMISSIONS
     // ================================================================
 
     const adminRoleId = await ctx.db.insert("roles", {
@@ -1075,22 +1178,22 @@ export const seedAllTestData = mutation({
       assignedAt: now,
     });
 
-    // Workspace Invitations
-    const invitationId = await ctx.db.insert("workspace_invitations", {
-      organizationId,
-      invitationCode: "INV-2026-001",
-      createdByUserId: adminUserId,
-      expiresAt: now + oneWeek,
-      statusTypeId: invitationPendingStatusId,
-    });
+    // // Workspace Invitations
+    // const invitationId = await ctx.db.insert("workspace_invitations", {
+    //   organizationId,
+    //   invitationCode: "INV-2026-001",
+    //   createdByAuthUserId: adminUserId,
+    //   expiresAt: now + oneWeek,
+    //   statusTypeId: invitationPendingStatusId,
+    // });
 
-    await ctx.db.insert("workspace_invitations", {
-      organizationId,
-      invitationCode: "INV-2026-002",
-      createdByUserId: adminUserId,
-      expiresAt: now + oneWeek * 2,
-      statusTypeId: invitationPendingStatusId,
-    });
+    // await ctx.db.insert("workspace_invitations", {
+    //   organizationId,
+    //   invitationCode: "INV-2026-002",
+    //   createdByAuthUserId: adminUserId,
+    //   expiresAt: now + oneWeek * 2,
+    //   statusTypeId: invitationPendingStatusId,
+    // });
 
     // ================================================================
     // 6. BRANDS
@@ -3209,7 +3312,7 @@ export const clearAllTestData = mutation({
       "users",
 
       // Workspace Invitations
-      "workspace_invitations",
+      // "workspace_invitations",
 
       // Branch Settings
       "branch_settings",
@@ -3328,7 +3431,7 @@ export const clearAllDatabaseData = mutation({
       "users",
 
       // Workspace Invitations
-      "workspace_invitations",
+      // "workspace_invitations",
 
       // Branch Settings
       "branch_settings",

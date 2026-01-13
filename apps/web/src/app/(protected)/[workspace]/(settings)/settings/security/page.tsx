@@ -20,14 +20,15 @@ import {
   ItemSeparator,
   ItemTitle,
 } from "@/components/ui/item";
-import { useListSessions } from "@/hooks/use-list-sessions";
-import { authClient } from "@/lib/auth/client";
+import { useListSessions } from "@/hooks/use-list-session";
+import { authClient, useSession } from "@/lib/auth/client";
 import { parseUserAgent } from "@/lib/user-agent";
 
 export default function SecurityPage() {
+  const { data: activeSession } = useSession();
+  const { sessions, isLoading } = useListSessions(activeSession?.user.id);
+
   const router = useRouter();
-  const { data: activeSession } = authClient.useSession();
-  const { sessions, isLoading } = useListSessions();
 
   return (
     <Setting>
@@ -40,7 +41,7 @@ export default function SecurityPage() {
         title="Sessions"
         description="Device logged into your account"
       >
-        <ItemGroup className="rounded-md border border-primary/10 dark:bg-primary/5">
+        <ItemGroup className="rounded-md border border-border dark:bg-primary/5">
           {sessions.map((session, index) => (
             <Fragment key={session.id}>
               <Item className="group">
@@ -68,16 +69,17 @@ export default function SecurityPage() {
                 <ItemActions className="opacity-100 transition-opacity md:opacity-0 md:group-hover:opacity-100">
                   <Button
                     variant="ghost"
-                    onClick={async () => {
-                      await session.revoke();
-                      // If this is the current session, refresh to trigger middleware
+                    onClick={() => {
                       if (session.id === activeSession?.session.id) {
-                        router.refresh();
+                        authClient.signOut();
+                        router.push("/");
+                      } else {
+                        session.revoke();
                       }
                     }}
                     disabled={isLoading}
                   >
-                    {isLoading ? "Logging out..." : "Log out"}
+                    Log out
                   </Button>
                 </ItemActions>
               </Item>

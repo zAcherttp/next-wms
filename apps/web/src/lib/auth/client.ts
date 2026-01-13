@@ -1,4 +1,4 @@
-import { convexClient } from "@convex-dev/better-auth/client/plugins";
+import { ac, admin, member, owner } from "@wms/backend/lib/permissions";
 import { emailOTPClient, organizationClient } from "better-auth/client/plugins";
 import { createAuthClient } from "better-auth/react";
 import { toast } from "sonner";
@@ -6,6 +6,12 @@ import { toast } from "sonner";
 export const authClient = createAuthClient({
   plugins: [
     organizationClient({
+      ac,
+      roles: {
+        owner,
+        admin,
+        member,
+      },
       dynamicAccessControl: {
         enabled: true,
       },

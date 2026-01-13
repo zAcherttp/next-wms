@@ -1,4 +1,7 @@
-import { createAccessControl } from "better-auth/plugins/access";
+import {
+  type AccessControl,
+  createAccessControl,
+} from "better-auth/plugins/access";
 import {
   adminAc,
   defaultStatements,
@@ -16,14 +19,8 @@ const statement = {
   // Include default Better Auth statements for organization management
   ...defaultStatements,
 
-  // Member management (extends defaults)
-  member: ["create", "read", "update", "delete", "invite", "kick"],
-
   // Role management (for dynamic access control)
   role: ["create", "read", "update", "delete"],
-
-  // Invitation management
-  invitation: ["create", "read", "cancel"],
 
   // Settings access control
   settings: ["profile", "security", "admin", "members", "roles"],
@@ -41,7 +38,7 @@ const statement = {
 /**
  * Access control instance with all permission statements.
  */
-export const ac = createAccessControl(statement);
+export const ac: AccessControl = createAccessControl(statement);
 
 /**
  * Owner role - Full access to everything
@@ -98,6 +95,15 @@ export const member = ac.newRole({
 });
 
 /**
+ * Default roles configuration for UI
+ */
+export const DEFAULT_ROLES = [
+  { id: "owner", name: "Owner", role: owner, isDefault: true },
+  { id: "admin", name: "Admin", role: admin, isDefault: true },
+  { id: "member", name: "Member", role: member, isDefault: true },
+] as const;
+
+/**
  * Permission display configuration for UI
  * Maps raw permissions to user-friendly display names and groups
  */
@@ -120,10 +126,6 @@ export const permissionDisplayConfig = {
     label: "Members",
     permissions: {
       create: { label: "Add members", description: "Add new members directly" },
-      read: {
-        label: "View members",
-        description: "See member list and profiles",
-      },
       update: {
         label: "Update members",
         description: "Modify member information",
@@ -132,18 +134,9 @@ export const permissionDisplayConfig = {
         label: "Remove members",
         description: "Remove members from workspace",
       },
-      invite: {
-        label: "Invite members",
-        description: "Send invitation emails",
-      },
-      kick: {
-        label: "Kick members",
-        description: "Force remove members",
-        dangerous: true,
-      },
     },
     groups: {
-      manage: ["create", "read", "update", "delete"],
+      manage: ["create", "update", "delete"],
     },
   },
   role: {
@@ -167,10 +160,6 @@ export const permissionDisplayConfig = {
       create: {
         label: "Create invitations",
         description: "Send new invitations",
-      },
-      read: {
-        label: "View invitations",
-        description: "See pending invitations",
       },
       cancel: {
         label: "Cancel invitations",
@@ -261,3 +250,90 @@ export type PermissionResource = keyof typeof statement;
  */
 export type PermissionAction<R extends PermissionResource> =
   (typeof statement)[R][number];
+
+/**
+ * Type for permission display config keys
+ */
+export type PermissionDisplayResource = keyof typeof permissionDisplayConfig;
+
+/**
+ * Type for role statements - maps resources to readonly arrays of actions
+ */
+export type RoleStatements = {
+  [K in PermissionResource]?: readonly string[];
+};
+
+/**
+ * Helper type to extract permissions from a role
+ */
+export type RolePermissions<T extends { statements: RoleStatements }> =
+  T["statements"];
+
+/**
+ * Type guard to check if a key is a valid permission display resource
+ */
+export function isPermissionDisplayResource(
+  key: string,
+): key is PermissionDisplayResource {
+  return key in permissionDisplayConfig;
+}
+
+/**
+ * Helper to get permission display config keys in a type-safe way
+ */
+export function getPermissionDisplayKeys(): PermissionDisplayResource[] {
+  return Object.keys(permissionDisplayConfig) as PermissionDisplayResource[];
+}
+
+// ============================================================================
+// Permission Check Types & Helpers
+// ============================================================================
+
+/**
+ * Type-safe permissions object for permission checks.
+ * Maps resources to arrays of their valid actions.
+ */
+export type Permissions = {
+  [K in PermissionResource]?: readonly PermissionAction<K>[];
+};
+
+/**
+ * Loose permissions type for API calls (accepts string arrays).
+ */
+export type PermissionsInput = Record<string, string[]>;
+
+/**
+ * Creates a stable, sorted cache key from a permissions object.
+ * Used for consistent TanStack Query cache keys.
+ *
+ * @example
+ * ```ts
+ * getPermissionCacheKey({ settings: ["admin"], project: ["create", "read"] })
+ * // Returns: "project:create,read|settings:admin"
+ * ```
+ */
+export function getPermissionCacheKey(permissions: PermissionsInput): string {
+  return Object.keys(permissions)
+    .sort()
+    .map(
+      (resource) =>
+        `${resource}:${[...(permissions[resource] ?? [])].sort().join(",")}`,
+    )
+    .join("|");
+}
+
+/**
+ * Creates a TanStack Query key for permission checks.
+ *
+ * @example
+ * ```ts
+ * getPermissionQueryKey("user123", { settings: ["admin"] })
+ * // Returns: ["user123", "hasPerms", "settings:admin"]
+ * ```
+ */
+export function getPermissionQueryKey(
+  userId: string,
+  permissions: PermissionsInput,
+): readonly [string, "hasPerms", string] {
+  return [userId, "hasPerms", getPermissionCacheKey(permissions)] as const;
+}

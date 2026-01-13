@@ -1,3 +1,4 @@
+import type { Route } from "next";
 import Link from "next/link";
 import {
   Item,
@@ -5,15 +6,15 @@ import {
   ItemDescription,
   ItemTitle,
 } from "@/components/ui/item";
-import type { NotificationItem } from "@/lib/auth/types";
 import { formatRelativeTime } from "@/lib/format-date";
+import type { NotificationItem } from "@/lib/types";
 
 export default function NotificationsItem({
   notification,
   href,
 }: {
   notification: NotificationItem;
-  href: string;
+  href: Route;
 }) {
   return (
     <Item asChild className="mx-2 my-1 px-2 py-1">

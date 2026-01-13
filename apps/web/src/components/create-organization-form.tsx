@@ -1,7 +1,9 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import { useCallback, useTransition } from "react";
+import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
 import z from "zod";
+import { useFileStorage } from "@/hooks/use-file-storage";
+import type { FileWithPreview } from "@/hooks/use-file-upload";
 import { authClient } from "@/lib/auth/client";
 import AvatarUpload from "./avatar-upload";
 import { Button } from "./ui/button";
@@ -42,6 +44,12 @@ export function CreateOrganizationForm({
   formId = "org-create-form",
 }: CreateOrganizationFormProps) {
   const [isPending, startTransition] = useTransition();
+  const [logoFile, setLogoFile] = useState<FileWithPreview | null>(null);
+  const { uploadFile, isUploading } = useFileStorage();
+
+  const handleLogoChange = useCallback((file: FileWithPreview | null) => {
+    setLogoFile(file);
+  }, []);
 
   const validateOrgForm = useCallback(async (value: OrgCreateForm) => {
     const result = ORG_CREATE_SCHEMA.safeParse(value);
@@ -99,9 +107,24 @@ export function CreateOrganizationForm({
     }),
     onSubmit: async ({ value }) => {
       startTransition(async () => {
+        // Upload logo if selected
+        let logoUrl: string | undefined;
+        if (logoFile?.file instanceof File) {
+          try {
+            const { storageId } = await uploadFile(logoFile.file);
+            // We'll store the storage ID as the logo for now
+            // The org settings page can handle URL resolution
+            logoUrl = storageId;
+          } catch {
+            toast.error("Failed to upload logo");
+            return;
+          }
+        }
+
         const { data, error } = await authClient.organization.create({
           name: value.orgName,
           slug: value.orgSlug,
+          logo: logoUrl,
         });
         if (error) {
           toast.error(error.message || "Failed to create organization");
@@ -175,7 +198,7 @@ export function CreateOrganizationForm({
       </createOrgForm.Field>
       <Field>
         <FieldLabel>Logo (Optional)</FieldLabel>
-        <AvatarUpload />
+        <AvatarUpload onFileChange={handleLogoChange} />
       </Field>
       {showActions && (
         <div className="flex justify-end gap-2">
@@ -184,8 +207,8 @@ export function CreateOrganizationForm({
               Cancel
             </Button>
           )}
-          <Button type="submit" disabled={isPending}>
-            {isPending ? <Spinner /> : "Create"}
+          <Button type="submit" disabled={isPending || isUploading}>
+            {isPending || isUploading ? <Spinner /> : "Create"}
           </Button>
         </div>
       )}

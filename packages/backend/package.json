@@ -2,6 +2,7 @@
   "name": "@wms/backend",
   "version": "1.0.0",
   "type": "module",
+  "private": true,
   "exports": {
     "./auth": {
       "types": "./auth/index.ts",
@@ -42,14 +43,14 @@
   "description": "",
   "devDependencies": {
     "@react-email/preview-server": "4.3.2",
-    "@types/node": "^24.10.1",
+    "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-email": "4.3.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.2"
+    "typescript": "catalog:"
   },
   "dependencies": {
     "@convex-dev/better-auth": "^0.10.9",

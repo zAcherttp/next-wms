@@ -5,13 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { ArrowLeft } from "lucide-react";
+import type { Route } from "next";
 import { useParams, useRouter } from "next/navigation";
 import NotificationsItem from "@/components/notification-item";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { useSession } from "@/lib/auth/client";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 export default function NotificationDetailPage() {
   const router = useRouter();
@@ -19,12 +20,12 @@ export default function NotificationDetailPage() {
   const workspace = params.workspace as string;
   const notiId = params.notiId as string;
 
-  const { data: sessionData } = useSession();
-  const userId = sessionData?.user.id;
+  const { userId, organizationId } = useCurrentUser();
 
   const { data: notifications } = useQuery({
     ...convexQuery(api.notifications.listDetailed, {
       userId: userId as Id<"users">,
+      organizationId: organizationId as Id<"organizations">,
     }),
     enabled: !!userId,
   });
@@ -32,7 +33,6 @@ export default function NotificationDetailPage() {
   const selectedNotification = notifications?.find((n) => n._id === notiId);
 
   const handleBack = () => {
-    // @ts-expect-error - dynamic route param
     router.push(`/${workspace}/notifications`);
   };
 
@@ -53,7 +53,7 @@ export default function NotificationDetailPage() {
             <NotificationsItem
               key={notification._id}
               notification={notification}
-              href={`/${workspace}/notifications/${notification._id}`}
+              href={`/${workspace}/notifications/${notification._id}` as Route}
             />
           ))}
         </ScrollArea>

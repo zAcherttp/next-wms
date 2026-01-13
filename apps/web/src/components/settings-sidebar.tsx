@@ -7,8 +7,10 @@ import {
   CircleUserRound,
   KeyRound,
   Settings2,
+  TableProperties,
   UserRound,
   Users2,
+  Warehouse,
 } from "lucide-react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
@@ -28,7 +30,8 @@ type SettingNavItem = {
   title: string;
   url: string;
   icon: LucideIcon;
-  isAdmin?: boolean;
+  /** Permission required to view this item. Format: "resource:action" */
+  requiredPermission?: "settings:admin";
 };
 
 export type SettingNavGroup = {
@@ -67,42 +70,71 @@ const settingsNavs: SettingNavGroup[] = [
     showTitle: true,
     items: [
       {
-        title: "Workspace",
+        title: "Organization",
         icon: Building,
         url: "admin/workspace",
-        isAdmin: true,
+        requiredPermission: "settings:admin",
       },
       {
         title: "Members",
         icon: Users2,
         url: "admin/members",
-        isAdmin: true,
+        requiredPermission: "settings:admin",
       },
       {
         title: "Roles & Permissions",
         icon: CircleUserRound,
         url: "admin/roles",
-        isAdmin: true,
+        requiredPermission: "settings:admin",
+      },
+      {
+        title: "Branches",
+        icon: Warehouse,
+        url: "admin/branches",
+        requiredPermission: "settings:admin",
+      },
+      {
+        title: "System Lookups",
+        icon: TableProperties,
+        url: "admin/lookups",
+        requiredPermission: "settings:admin",
       },
     ],
   },
 ];
 
-type SettingsSidebarProps = React.ComponentProps<typeof Sidebar>;
+type SettingsSidebarProps = React.ComponentProps<typeof Sidebar> & {
+  canAccessAdminSettings: boolean;
+};
 
-export function SettingsSidebar({ ...props }: SettingsSidebarProps) {
+export function SettingsSidebar({
+  canAccessAdminSettings,
+  ...props
+}: SettingsSidebarProps) {
   const isMobile = useIsMobile();
   const params = useParams<{ workspace: string }>();
   const workspace = params.workspace;
 
-  // Build full URLs with workspace
-  const navWithUrls = settingsNavs.map((group) => ({
-    ...group,
-    items: group.items.map((item) => ({
-      ...item,
-      url: `/${workspace}/settings/${item.url}`,
-    })),
-  }));
+  // Permission check helper
+  const hasPermission = (permission?: "settings:admin") => {
+    if (!permission) return true;
+    if (permission === "settings:admin") return canAccessAdminSettings;
+    return false;
+  };
+
+  // Filter nav items based on permissions and build full URLs
+  const navWithUrls = settingsNavs
+    .map((group) => ({
+      ...group,
+      items: group.items
+        .filter((item) => hasPermission(item.requiredPermission))
+        .map((item) => ({
+          ...item,
+          url: `/${workspace}/settings/${item.url}`,
+        })),
+    }))
+    // Filter out empty groups
+    .filter((group) => group.items.length > 0);
 
   return (
     <Sidebar collapsible={isMobile ? "offcanvas" : "none"} {...props}>

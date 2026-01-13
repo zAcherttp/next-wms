@@ -141,7 +141,7 @@ export default function AvatarUpload({
 
                 <motion.p
                   layout
-                  className="truncate text-muted-foreground text-sm"
+                  className="truncate pr-2 text-muted-foreground text-sm"
                 >
                   Choose or drop file here
                 </motion.p>

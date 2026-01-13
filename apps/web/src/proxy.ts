@@ -1,8 +1,56 @@
-import { api } from "@wms/backend/convex/_generated/api";
-import { fetchQuery } from "convex/nextjs";
+import { QueryClient } from "@tanstack/react-query";
+import { auth } from "@wms/backend/auth";
+import {
+  getPermissionQueryKey,
+  type PermissionsInput,
+} from "@wms/backend/lib/permissions";
 import { headers } from "next/headers";
 import { type NextRequest, NextResponse } from "next/server";
 import { getToken, preloadAuthQuery } from "@/lib/auth/server";
+
+/**
+ * Server-side QueryClient singleton for permission caching in middleware.
+ */
+let middlewareQueryClient: QueryClient | null = null;
+
+function getMiddlewareQueryClient(): QueryClient {
+  if (!middlewareQueryClient) {
+    middlewareQueryClient = new QueryClient({
+      defaultOptions: {
+        queries: {
+          staleTime: 5 * 60 * 1000,
+          gcTime: 30 * 60 * 1000,
+        },
+      },
+    });
+  }
+  return middlewareQueryClient;
+}
+
+/**
+ * Check permissions with TanStack Query caching.
+ */
+async function checkPermissionCached(
+  userId: string,
+  permissions: PermissionsInput,
+  requestHeaders: Headers,
+): Promise<boolean> {
+  return getMiddlewareQueryClient().fetchQuery({
+    queryKey: getPermissionQueryKey(userId, permissions),
+    queryFn: async () => {
+      try {
+        const result = await auth.api.hasPermission({
+          headers: requestHeaders,
+          body: { permissions },
+        });
+        return result.success === true;
+      } catch {
+        return false;
+      }
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+}
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
@@ -97,6 +145,32 @@ export async function proxy(request: NextRequest) {
     //     console.error("Failed to set active organization:", error);
     //   }
     // }
+
+    // 5. Check permissions for protected admin routes
+    //
+    // Admin settings routes require the "settings:admin" permission.
+    // This prevents unauthorized users from accessing admin pages via direct URL.
+    const isAdminSettingsRoute = pathname.includes("/settings/admin/");
+
+    if (isAdminSettingsRoute) {
+      const userId = getSessionResponse.user.id;
+      const requestHeaders = await headers();
+
+      const canAccessAdminSettings = await checkPermissionCached(
+        userId,
+        { settings: ["admin"] },
+        requestHeaders,
+      );
+
+      if (!canAccessAdminSettings) {
+        // Redirect to settings home if no permission
+        const url = new URL(
+          `/${workspaceSlug}/settings/preferences`,
+          request.url,
+        );
+        return NextResponse.redirect(url);
+      }
+    }
 
     // User has access - allow request to continue
     return NextResponse.next();

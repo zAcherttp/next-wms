@@ -83,18 +83,26 @@ export const list = query({
 
 export const listDetailed = query({
   args: {
-    userId: v.id("users"),
+    userId: v.optional(v.id("users")),
+    organizationId: v.optional(v.id("organizations")),
     unreadOnly: v.optional(v.boolean()),
     // Add topK parameter with a default value of 10
     limit: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
+    // Early return if required args are missing
+    if (!args.userId || !args.organizationId) {
+      return [];
+    }
+
     const limit = args.limit ?? 10;
 
     // Use .take(limit) instead of .collect() or .paginate()
+    // TypeScript: userId and organizationId are guaranteed to be defined here
     const notifications = await ctx.db
       .query("notifications")
-      .withIndex("recipientUserId", (q) => q.eq("recipientUserId", args.userId))
+      .withIndex("recipientUserId", (q) => q.eq("recipientUserId", args.userId!))
+      .filter((q) => q.eq(q.field("organizationId"), args.organizationId!))
       .order("desc")
       .take(limit);
 

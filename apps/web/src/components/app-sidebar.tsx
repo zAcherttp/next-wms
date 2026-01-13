@@ -61,11 +61,11 @@ const data = {
       items: [
         {
           title: "Orders",
-          url: "#",
+          url: "/orders",
         },
         {
           title: "Picking Sessions",
-          url: "#",
+          url: "/picking-sessions",
         },
       ],
     },
@@ -75,23 +75,23 @@ const data = {
       items: [
         {
           title: "Stock",
-          url: "#",
+          url: "/inventory/stock",
         },
         {
           title: "Batches",
-          url: "#",
+          url: "/inventory/batches",
         },
         {
           title: "Serials",
-          url: "#",
+          url: "/inventory/serials",
         },
         {
           title: "Adjustments",
-          url: "#",
+          url: "/inventory/adjustments",
         },
         {
           title: "Transfers",
-          url: "#",
+          url: "/inventory/transfers",
         },
       ],
     },
@@ -101,11 +101,11 @@ const data = {
       items: [
         {
           title: "Zones",
-          url: "#",
+          url: "/warehouses-ops/zones",
         },
         {
           title: "Work Sessions",
-          url: "#",
+          url: "/warehouses-ops/work-sessions",
         },
       ],
     },
@@ -115,23 +115,23 @@ const data = {
       items: [
         {
           title: "Products",
-          url: "#",
+          url: "/master-data/products",
         },
         {
           title: "SKUs",
-          url: "#",
+          url: "/master-data/skus",
         },
         {
           title: "Categories",
-          url: "#",
+          url: "/master-data/categories",
         },
         {
           title: "UoMs",
-          url: "#",
+          url: "/master-data/uoms",
         },
         {
           title: "Brands",
-          url: "#",
+          url: "/master-data/brands",
         },
       ],
     },
@@ -141,15 +141,15 @@ const data = {
       items: [
         {
           title: "Inventory",
-          url: "#",
+          url: "/reports/inventory",
         },
         {
           title: "Inbound",
-          url: "#",
+          url: "/reports/inbound",
         },
         {
           title: "Outbound",
-          url: "#",
+          url: "/reports/outbound",
         },
       ],
     },
@@ -159,7 +159,7 @@ const data = {
       items: [
         {
           title: "Traceability",
-          url: "#",
+          url: "/system/traceability",
         },
       ],
     },

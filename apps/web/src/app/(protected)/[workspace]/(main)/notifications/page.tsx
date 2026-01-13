@@ -5,6 +5,7 @@ import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { Bell } from "lucide-react";
+import type { Route } from "next";
 import { useParams } from "next/navigation";
 import NotificationsItem from "@/components/notification-item";
 import {
@@ -16,19 +17,19 @@ import {
 } from "@/components/ui/empty";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
-import { useSession } from "@/lib/auth/client";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 export default function NotificationsPage() {
-  const { data: sessionData } = useSession();
-  const userId = sessionData?.user.id;
+  const { userId, organizationId } = useCurrentUser();
   const params = useParams();
   const workspace = params.workspace as string;
 
   const { data: notifications } = useQuery({
     ...convexQuery(api.notifications.listDetailed, {
       userId: userId as Id<"users">,
+      organizationId: organizationId as Id<"organizations">,
     }),
-    enabled: !!userId,
+    enabled: !!userId && !!organizationId,
   });
 
   return (
@@ -45,7 +46,9 @@ export default function NotificationsPage() {
               <NotificationsItem
                 key={notification._id}
                 notification={notification}
-                href={`/${workspace}/notifications/${notification._id}`}
+                href={
+                  `/${workspace}/notifications/${notification._id}` as Route
+                }
               />
             ))}
           </ScrollArea>
