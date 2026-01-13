@@ -104,7 +104,7 @@ const FilterPopover = ({
 }: FilterPopoverProps) => {
   const [searchQuery, instantQuery, debouncedQuery] = useDebouncedInput(
     "",
-    100
+    100,
   );
 
   // For single select
@@ -118,7 +118,7 @@ const FilterPopover = ({
   const allSelected = selectedValues.length === 0;
 
   const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(debouncedQuery.toLowerCase())
+    option.label.toLowerCase().includes(debouncedQuery.toLowerCase()),
   );
 
   const toggleSelection = (value: string, e?: React.MouseEvent) => {
@@ -201,7 +201,7 @@ const FilterPopover = ({
                     key={option.value}
                     onSelect={() => {
                       onChange(
-                        option.value === "all" ? undefined : option.value
+                        option.value === "all" ? undefined : option.value,
                       );
                     }}
                     className="flex justify-between"
@@ -257,7 +257,7 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
     accessorFn: (row) => row.supplier?.name,
     header: ({ column }) => {
       const suppliers = Array.from(
-        new Set(MOCK_PO.map((po) => po.supplier?.name).filter(Boolean))
+        new Set(MOCK_PO.map((po) => po.supplier?.name).filter(Boolean)),
       ).map((name) => ({ label: name as string, value: name as string }));
 
       const currentFilter = column.getFilterValue() as string[] | undefined;
@@ -409,8 +409,8 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
           className={cn(
             "w-20 rounded-sm text-center",
             getBadgeStyleByStatus(
-              row.getValue("purchaseOrderStatus.lookupValue")
-            )
+              row.getValue("purchaseOrderStatus.lookupValue"),
+            ),
           )}
           variant={"outline"}
         >
@@ -458,7 +458,7 @@ export const columns: ColumnDef<PurchaseOrder>[] = [
 export function PurchaseOrdersTable() {
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -563,7 +563,7 @@ export function PurchaseOrdersTable() {
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </TableHead>
                   );
@@ -582,7 +582,7 @@ export function PurchaseOrdersTable() {
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}

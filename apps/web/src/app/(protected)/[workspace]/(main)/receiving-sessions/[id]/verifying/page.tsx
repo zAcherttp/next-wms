@@ -8,16 +8,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  MOCK_VERIFYING_SESSION,
   getTotalExpected,
   getTotalRecorded,
+  MOCK_VERIFYING_SESSION,
   type VerifyingSessionItem,
 } from "@/mock/data/receiving-session-verifying";
 
 export default function VerifyingPage() {
   const [skuInput, setSkuInput] = React.useState("");
   const [foundItem, setFoundItem] = React.useState<VerifyingSessionItem | null>(
-    null
+    null,
   );
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
 
@@ -30,7 +30,7 @@ export default function VerifyingPage() {
 
     // Find matching item
     const matchedItem = session.items.find(
-      (item) => item.skuCode.toLowerCase() === skuInput.toLowerCase()
+      (item) => item.skuCode.toLowerCase() === skuInput.toLowerCase(),
     );
 
     if (matchedItem) {
@@ -52,11 +52,11 @@ export default function VerifyingPage() {
   };
 
   return (
-    <div className="flex flex-col gap-4 p-4 max-w-md mx-auto">
+    <div className="mx-auto flex max-w-md flex-col gap-4 p-4">
       {/* Total Progress Card */}
       <Card>
         <CardContent className="py-4">
-          <p className="text-lg font-medium">
+          <p className="font-medium text-lg">
             Total Progress: {totalRecorded} / {totalExpected}
           </p>
         </CardContent>
@@ -64,9 +64,10 @@ export default function VerifyingPage() {
 
       {/* Session Info Card */}
       <Card className="bg-muted/50">
-        <CardContent className="py-4 space-y-1">
+        <CardContent className="space-y-1 py-4">
           <p className="text-sm">
-            Session ID: <span className="font-semibold">{session.sessionId}</span>
+            Session ID:{" "}
+            <span className="font-semibold">{session.sessionId}</span>
           </p>
           <p className="text-sm">
             Linked PO: <span className="font-semibold">{session.linkedPO}</span>
@@ -75,7 +76,7 @@ export default function VerifyingPage() {
             <span className="text-sm">Status:</span>
             <Badge
               variant="outline"
-              className="bg-primary/10 text-primary border-primary/60 font-medium"
+              className="border-primary/60 bg-primary/10 font-medium text-primary"
             >
               {session.status}
             </Badge>
@@ -92,7 +93,7 @@ export default function VerifyingPage() {
 
         {/* Scanner Placeholder */}
         <Card>
-          <CardContent className="py-8 flex flex-col items-center justify-center text-muted-foreground">
+          <CardContent className="flex flex-col items-center justify-center py-8 text-muted-foreground">
             <div className="text-center">
               <p>No camera detected</p>
             </div>
@@ -122,20 +123,17 @@ export default function VerifyingPage() {
       {/* Expected Items Card */}
       <Card>
         <CardContent className="py-4">
-          <h3 className="font-semibold mb-4">Expected Items</h3>
+          <h3 className="mb-4 font-semibold">Expected Items</h3>
           <div className="space-y-4">
             {session.items.map((item) => (
-              <div
-                key={item.id}
-                className="flex items-center justify-between"
-              >
+              <div key={item.id} className="flex items-center justify-between">
                 <div>
                   <p className="font-medium">{item.skuCode}</p>
-                  <p className="text-sm text-muted-foreground">
+                  <p className="text-muted-foreground text-sm">
                     Exp: {item.expectedQty}
                   </p>
                 </div>
-                <div className="text-sm text-muted-foreground border rounded-md px-3 py-1">
+                <div className="rounded-md border px-3 py-1 text-muted-foreground text-sm">
                   Record: {item.recordedQty}
                 </div>
               </div>

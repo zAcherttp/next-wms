@@ -104,11 +104,11 @@ export function ChartDataCard({
   // Generate unique IDs for gradients to avoid conflicts between multiple cards
   const gradientId = useMemo(
     () => `fillValue-${title.replace(/\s+/g, "-").toLowerCase()}`,
-    [title]
+    [title],
   );
   const projectedGradientId = useMemo(
     () => `fillProjected-${title.replace(/\s+/g, "-").toLowerCase()}`,
-    [title]
+    [title],
   );
 
   const chartConfig: ChartConfig = {
@@ -128,7 +128,7 @@ export function ChartDataCard({
     <div
       className={cn(
         "flex-1 rounded-xl border border-border bg-card p-5",
-        className
+        className,
       )}
     >
       {/* Header */}
@@ -154,7 +154,7 @@ export function ChartDataCard({
                 <div
                   className={cn(
                     "flex items-center gap-0.5",
-                    isPositive ? "text-emerald-500" : "text-red-500"
+                    isPositive ? "text-emerald-500" : "text-red-500",
                   )}
                 >
                   {changePercent >= 0 ? (

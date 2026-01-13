@@ -42,8 +42,10 @@ export function FoundSkuDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-xl">Found SKU: {item.skuCode}</DialogTitle>
-          <p className="text-sm text-muted-foreground">{item.productName}</p>
+          <DialogTitle className="text-xl">
+            Found SKU: {item.skuCode}
+          </DialogTitle>
+          <p className="text-muted-foreground text-sm">{item.productName}</p>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
@@ -74,13 +76,13 @@ export function FoundSkuDialog({
           {/* Attachments */}
           <div className="space-y-2">
             <Label>Attachments</Label>
-            <div className="border rounded-md p-4 min-h-[80px] flex items-center justify-center text-muted-foreground">
+            <div className="flex min-h-[80px] items-center justify-center rounded-md border p-4 text-muted-foreground">
               Add attachment
             </div>
           </div>
         </div>
 
-        <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2">
+        <DialogFooter className="flex flex-row justify-between gap-2 sm:justify-between">
           <DialogClose asChild>
             <Button variant="outline" onClick={onClose}>
               Close

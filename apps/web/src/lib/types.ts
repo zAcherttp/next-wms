@@ -42,7 +42,10 @@ export type ReceiveSessionGeneral = Omit<
   Doc<"receive_sessions">,
   "purchaseOrderId" | "branchId" | "receiveSessionStatusTypeId"
 > & {
-  receiveSessionStatus: Pick<SystemLookups, "lookupValue" | "lookupCode"> | null;
+  receiveSessionStatus: Pick<
+    SystemLookups,
+    "lookupValue" | "lookupCode"
+  > | null;
   purchaseOrder: {
     code: string;
     expectedDeliveryAt?: number;
@@ -61,7 +64,10 @@ export type ReceiveSessionGeneral = Omit<
  */
 export type ReceiveSessionDetailItem = Omit<
   Doc<"receive_sessions_details">,
-  "receiveSessionId" | "skuId" | "recommendedZoneId" | "receiveSessionItemStatusTypeId"
+  | "receiveSessionId"
+  | "skuId"
+  | "recommendedZoneId"
+  | "receiveSessionItemStatusTypeId"
 > & {
   sku: {
     skuCode: string;
@@ -92,7 +98,10 @@ export type ReceiveSessionDetailed = Omit<
   Doc<"receive_sessions">,
   "branchId" | "receiveSessionStatusTypeId"
 > & {
-  receiveSessionStatus: Pick<SystemLookups, "lookupValue" | "lookupCode"> | null;
+  receiveSessionStatus: Pick<
+    SystemLookups,
+    "lookupValue" | "lookupCode"
+  > | null;
   purchaseOrder: {
     _id: string;
     code: string;

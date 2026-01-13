@@ -82,10 +82,10 @@ interface InfoItemProps {
 function InfoItem({ label, value }: InfoItemProps) {
   return (
     <div className="space-y-1">
-      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+      <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
         {label}
       </p>
-      <div className="text-sm font-medium text-foreground">{value}</div>
+      <div className="font-medium text-foreground text-sm">{value}</div>
     </div>
   );
 }
@@ -103,7 +103,7 @@ export function PurchaseOrderDetailDialog({
   const totalItems = MOCK_PO_DETAIL.items.length;
   const totalQuantityOrdered = MOCK_PO_DETAIL.items.reduce(
     (sum, item) => sum + item.quantityOrdered,
-    0
+    0,
   );
 
   const formatDate = (date: Date) => {
@@ -132,15 +132,15 @@ export function PurchaseOrderDetailDialog({
           </span>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="text-2xl font-bold ">
+          <DialogTitle className="font-bold text-2xl">
             {MOCK_PO_DETAIL.code}
           </DialogTitle>
         </DialogHeader>
 
         {/* Order Information Card */}
-        <Card className="py-4">
+        <Card className="flex py-4">
           <CardContent className="px-6 py-0">
             <div className="grid grid-cols-3 gap-x-8 gap-y-4">
               {/* Column 1: User & Status */}
@@ -156,7 +156,7 @@ export function PurchaseOrderDetailDialog({
                       variant="outline"
                       className={cn(
                         "font-medium",
-                        getBadgeStyleByStatus(MOCK_PO_DETAIL.status)
+                        getBadgeStyleByStatus(MOCK_PO_DETAIL.status),
                       )}
                     >
                       {MOCK_PO_DETAIL.status}
@@ -201,7 +201,7 @@ export function PurchaseOrderDetailDialog({
 
         {/* Detailed Item Info Section */}
         <div className="space-y-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+          <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">
             Detailed Item Info
           </h3>
 
@@ -240,15 +240,15 @@ export function PurchaseOrderDetailDialog({
           <div className="flex justify-end">
             <div className="inline-flex items-center gap-4 rounded-lg border bg-card px-4 py-2.5 shadow-sm">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">Items:</span>
-                <span className="text-sm font-semibold">{totalItems}</span>
+                <span className="text-muted-foreground text-sm">Items:</span>
+                <span className="font-semibold text-sm">{totalItems}</span>
               </div>
               <div className="h-4 w-px bg-border" />
               <div className="flex items-center gap-2">
-                <span className="text-sm text-muted-foreground">
+                <span className="text-muted-foreground text-sm">
                   Total Qty:
                 </span>
-                <span className="text-sm font-bold text-blue-600">
+                <span className="font-bold text-blue-600 text-sm">
                   {totalQuantityOrdered}
                 </span>
               </div>

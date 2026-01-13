@@ -24,8 +24,8 @@ import {
   Funnel,
   MoreHorizontal,
 } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
-import { useParams } from "next/navigation";
 import * as React from "react";
 import { AddReceiveSessionDialog } from "@/components/add-receive-session-dialog";
 import { ReceiveSessionDetailDialog } from "@/components/receive-session-detail-dialog";
@@ -250,7 +250,9 @@ export const columns: ColumnDef<ReceiveSession>[] = [
   {
     accessorKey: "code",
     header: "IO-ID",
-    cell: ({ row }) => <div className="font-medium">{row.getValue("code")}</div>,
+    cell: ({ row }) => (
+      <div className="font-medium">{row.getValue("code")}</div>
+    ),
   },
   {
     accessorKey: "from",
@@ -471,7 +473,7 @@ export const columns: ColumnDef<ReceiveSession>[] = [
               session.status === "Receiving") && (
               <DropdownMenuItem asChild>
                 <Link
-                  href={`receiving-sessions/${session.id}/verifying`}
+                  href={`receiving-sessions/${session.id}/verifying` as Route}
                 >
                   Proceed
                 </Link>

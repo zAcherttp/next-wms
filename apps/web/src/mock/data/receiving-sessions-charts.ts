@@ -381,7 +381,10 @@ function generateReceiveSessionCardsForPreset(
 }
 
 // Export receiving sessions cards data by preset
-export const receiveSessionCardsData: Record<PresetName, ReceiveSessionCardData[]> = {
+export const receiveSessionCardsData: Record<
+  PresetName,
+  ReceiveSessionCardData[]
+> = {
   last7: generateReceiveSessionCardsForPreset("last7"),
   last14: generateReceiveSessionCardsForPreset("last14"),
   last30: generateReceiveSessionCardsForPreset("last30"),

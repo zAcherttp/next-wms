@@ -50,7 +50,9 @@ export const MOCK_VERIFYING_SESSION: VerifyingSession = {
 };
 
 // Helper to get session by ID (for future use)
-export const getVerifyingSessionById = (id: string): VerifyingSession | undefined => {
+export const getVerifyingSessionById = (
+  id: string,
+): VerifyingSession | undefined => {
   // For now, return the mock data for any ID
   return { ...MOCK_VERIFYING_SESSION, id };
 };

@@ -1,14 +1,6 @@
 "use client";
 
-import {
-  Check,
-  FileSpreadsheet,
-  MapPin,
-  Pencil,
-  Plus,
-  Trash2,
-  Upload,
-} from "lucide-react";
+import { Check, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,7 +46,7 @@ import { MOCK_PO } from "@/mock/data/purchase-orders";
 
 // Extract unique suppliers from mock data
 const MOCK_SUPPLIERS = Array.from(
-  new Set(MOCK_PO.map((po) => po.supplier?.name).filter(Boolean))
+  new Set(MOCK_PO.map((po) => po.supplier?.name).filter(Boolean)),
 ) as string[];
 
 // Mock branches
@@ -119,7 +111,7 @@ export function AddPurchaseOrderDialog({
 
   // Filter out already selected SKUs
   const availableSkus = MOCK_SKUS.filter(
-    (sku) => !selectedSkuIds.includes(sku.id)
+    (sku) => !selectedSkuIds.includes(sku.id),
   );
 
   const handleAddProduct = (sku: (typeof MOCK_SKUS)[0]) => {
@@ -144,12 +136,12 @@ export function AddPurchaseOrderDialog({
 
   const handleSelectZone = (
     productId: string,
-    zone: (typeof MOCK_ZONES)[0]
+    zone: (typeof MOCK_ZONES)[0],
   ) => {
     setProducts(
       products.map((p) =>
-        p.id === productId ? { ...p, zoneId: zone.id, zoneName: zone.name } : p
-      )
+        p.id === productId ? { ...p, zoneId: zone.id, zoneName: zone.name } : p,
+      ),
     );
     setZonePopoverOpenId(null);
   };
@@ -175,7 +167,7 @@ export function AddPurchaseOrderDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-h-[85vh] w-full max-w-[35vw] overflow-hidden flex flex-col">
+      <DialogContent className="flex max-h-[85vh] w-full max-w-[35vw] flex-col overflow-hidden">
         <DialogHeader className="flex flex-row items-center justify-between">
           <div className="flex items-center gap-2">
             {isEditingCode ? (
@@ -246,8 +238,8 @@ export function AddPurchaseOrderDialog({
         </div>
 
         {/* Products Table */}
-        <div className="mt-4 flex-1 overflow-hidden flex flex-col min-h-0">
-          <div className="overflow-y-auto max-h-[300px] rounded-md border">
+        <div className="mt-4 flex min-h-0 flex-1 flex-col overflow-hidden">
+          <div className="max-h-[300px] overflow-y-auto rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -285,7 +277,7 @@ export function AddPurchaseOrderDialog({
                           onChange={(e) =>
                             handleUpdateProductQuantity(
                               product.id,
-                              Number.parseInt(e.target.value, 10) || 1
+                              Number.parseInt(e.target.value, 10) || 1,
                             )
                           }
                           className="mx-auto w-20 text-center"
@@ -304,7 +296,7 @@ export function AddPurchaseOrderDialog({
                               size="sm"
                               className={cn(
                                 "w-full justify-start",
-                                !product.zoneName && "text-muted-foreground"
+                                !product.zoneName && "text-muted-foreground",
                               )}
                             >
                               <MapPin className="mr-1 size-4" />
@@ -333,7 +325,7 @@ export function AddPurchaseOrderDialog({
                                           "mr-2 h-4 w-4",
                                           product.zoneId === zone.id
                                             ? "opacity-100"
-                                            : "opacity-0"
+                                            : "opacity-0",
                                         )}
                                       />
                                       {zone.name}
@@ -385,7 +377,7 @@ export function AddPurchaseOrderDialog({
                         <span className="font-medium text-blue-600">
                           {sku.code}
                         </span>
-                        <span className="text-sm text-muted-foreground">
+                        <span className="text-muted-foreground text-sm">
                           {sku.name}
                         </span>
                       </CommandItem>

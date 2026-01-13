@@ -6,6 +6,7 @@ import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { Loader2, Plus } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -34,7 +35,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { toast } from "sonner";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface AddReceiveSessionDialogProps {
@@ -87,7 +87,7 @@ export function AddReceiveSessionDialog({
 
   // Mutation for creating receive session
   const createReceiveSession = useConvexMutation(
-    api.receiveSessions.createReceiveSession
+    api.receiveSessions.createReceiveSession,
   );
 
   const { mutate: handleCreateSession, isPending: isCreating } = useMutation({
@@ -100,20 +100,20 @@ export function AddReceiveSessionDialog({
         userId: userId as Id<"users">,
       });
     },
-    onSuccess: (result) => {
+    onSuccess: (_result) => {
       toast.success("Receive session created successfully");
       setOpen(false);
       setConfirmOpen(false);
       setSelectedPOId("");
     },
-    onError: (error) => {
+    onError: (_error) => {
       toast.error("Failed to create receive session");
       setConfirmOpen(false);
     },
   });
 
   const selectedPO = pendingPOs?.find(
-    (po) => po.purchaseOrderId === selectedPOId
+    (po) => po.purchaseOrderId === selectedPOId,
   );
 
   const handleConfirmClick = () => {

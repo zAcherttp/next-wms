@@ -2,7 +2,7 @@
 
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -93,8 +93,8 @@ interface InfoItemProps {
 function InfoItem({ label, value }: InfoItemProps) {
   return (
     <div className="space-y-0.5">
-      <p className="text-sm text-muted-foreground">{label}</p>
-      <div className="text-sm font-medium text-foreground">{value}</div>
+      <p className="text-muted-foreground text-sm">{label}</p>
+      <div className="font-medium text-foreground text-sm">{value}</div>
     </div>
   );
 }
@@ -112,11 +112,11 @@ export function ReceiveSessionDetailDialog({
   const totalSKUs = MOCK_RECEIVE_SESSION_DETAIL.items.length;
   const totalExpectedQty = MOCK_RECEIVE_SESSION_DETAIL.items.reduce(
     (sum, item) => sum + item.expectedQty,
-    0
+    0,
   );
   const totalReceivedQty = MOCK_RECEIVE_SESSION_DETAIL.items.reduce(
     (sum, item) => sum + item.receivedQty,
-    0
+    0,
   );
 
   const formatDateTime = (date: Date) => {
@@ -144,16 +144,16 @@ export function ReceiveSessionDetailDialog({
           </span>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-5xl">
+      <DialogContent className="sm:max-w-xl">
         <DialogHeader>
-          <DialogTitle className="text-xl font-semibold">
+          <DialogTitle className="font-semibold text-xl">
             {MOCK_RECEIVE_SESSION_DETAIL.code}
           </DialogTitle>
         </DialogHeader>
 
         {/* Work Session Details Card */}
-        <Card className="py-3">
-          <CardContent className="px-4 py-0">
+        <Card className="py-6">
+          <CardContent>
             <div className="grid grid-cols-3 gap-x-8 gap-y-4">
               {/* Row 1 */}
               <InfoItem
@@ -172,8 +172,8 @@ export function ReceiveSessionDetailDialog({
                     className={cn(
                       "font-medium",
                       getSessionStatusBadgeStyle(
-                        MOCK_RECEIVE_SESSION_DETAIL.status
-                      )
+                        MOCK_RECEIVE_SESSION_DETAIL.status,
+                      ),
                     )}
                   >
                     {MOCK_RECEIVE_SESSION_DETAIL.status}
@@ -196,58 +196,51 @@ export function ReceiveSessionDetailDialog({
         </Card>
 
         {/* Items Card */}
-        <Card className="py-3">
-          <CardContent className="px-4 py-0">
-            <div className="rounded-md border">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[100px]">SKU</TableHead>
-                    <TableHead className="w-[150px]">Name</TableHead>
-                    <TableHead className="w-[100px] text-center">
-                      Exp Qty
-                    </TableHead>
-                    <TableHead className="w-[100px] text-center">
-                      Received
-                    </TableHead>
-                    <TableHead>Note</TableHead>
-                    <TableHead className="w-[120px] text-center">
-                      Status
-                    </TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {MOCK_RECEIVE_SESSION_DETAIL.items.map((item) => (
-                    <TableRow key={item.id}>
-                      <TableCell className="font-medium">{item.sku}</TableCell>
-                      <TableCell>{item.productName}</TableCell>
-                      <TableCell className="text-center">
-                        {item.expectedQty}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {item.receivedQty}
-                      </TableCell>
-                      <TableCell className="text-muted-foreground">
-                        {item.note}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant="outline"
-                          className={cn(
-                            "font-medium",
-                            getItemStatusBadgeStyle(item.status)
-                          )}
-                        >
-                          {item.status}
-                        </Badge>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
+
+        <div className="rounded-xl border p-2 shadow-sm">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[100px]">SKU</TableHead>
+                <TableHead className="w-[150px]">Name</TableHead>
+                <TableHead className="w-[100px] text-center">Exp Qty</TableHead>
+                <TableHead className="w-[100px] text-center">
+                  Received
+                </TableHead>
+                <TableHead>Note</TableHead>
+                <TableHead className="w-[120px] text-center">Status</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {MOCK_RECEIVE_SESSION_DETAIL.items.map((item) => (
+                <TableRow key={item.id}>
+                  <TableCell className="font-medium">{item.sku}</TableCell>
+                  <TableCell>{item.productName}</TableCell>
+                  <TableCell className="text-center">
+                    {item.expectedQty}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {item.receivedQty}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {item.note}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "font-medium",
+                        getItemStatusBadgeStyle(item.status),
+                      )}
+                    >
+                      {item.status}
+                    </Badge>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
       </DialogContent>
     </Dialog>
   );
