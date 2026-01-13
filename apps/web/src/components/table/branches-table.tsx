@@ -1,7 +1,7 @@
 "use client";
 
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useConvexMutation } from "@convex-dev/react-query";
+import { useMutation } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -72,6 +72,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { Branch } from "@/lib/types";
@@ -385,16 +386,9 @@ export const columns: ColumnDef<Branch>[] = [
 export function BranchesTable() {
   const { organizationId } = useCurrentUser();
 
-  const { data: branches, isLoading } = useQuery({
-    ...convexQuery(
-      api.branches.listAll,
-      organizationId
-        ? {
-            organizationId: organizationId as Id<"organizations">,
-            includeDeleted: true,
-          }
-        : "skip",
-    ),
+  const { data: branches, isLoading } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: true,
   });
 
   const [sorting, setSorting] = React.useState<SortingState>([]);

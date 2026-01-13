@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,9 +14,8 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-// import { convexQuery } from "@convex-dev/react-query";
-// import { useQuery } from "@tanstack/react-query";
-// import { api } from "@wms/backend/convex/_generated/api";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ArrowUpDown,
   Check,
@@ -70,11 +71,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-// import { useCurrentUser } from "@/hooks/use-current-user";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { ReturnRequestListItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { MOCK_RETURN_REQUESTS } from "@/mock/data/return-requests";
 
 const getBadgeStyleByStatus = (status: string) => {
   switch (status.toLowerCase()) {
@@ -156,7 +157,7 @@ const FilterPopover = ({
           {isSort ? <ArrowUpDown /> : <Funnel />}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
+      <PopoverContent className="w-50 p-0">
         <Command shouldFilter={false}>
           {variant === "multi-select" && (
             <CommandInput
@@ -181,7 +182,7 @@ const FilterPopover = ({
                     <span>All</span>
                   </CommandItem>
                 </CommandGroup>
-                <ScrollArea className="h-[200px]">
+                <ScrollArea className="h-50">
                   <CommandGroup>
                     {filteredOptions.map((option) => (
                       <CommandItem
@@ -233,24 +234,25 @@ const FilterPopover = ({
 export function ReturnRequestsTable() {
   const params = useParams();
   const workspace = params.workspace as string;
-  // const { organizationId } = useCurrentUser();
+  const { organizationId } = useCurrentUser();
 
-  // TODO: Get actual branchId from user's selected branch
-  // For now, we'll use a placeholder - in a real app, this would come from user context
-  // const branchId = organizationId; // Placeholder - should be actual branch ID
+  const { currentBranch } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: false,
+  });
 
-  // COMMENTED OUT: Convex query - using mock data instead
-  // const { data: returnRequests, isPending } = useQuery({
-  //   ...convexQuery(api.returnRequest.listWithDetails, {
-  //     organizationId: organizationId ?? "",
-  //     branchId: branchId ?? "",
-  //   }),
-  //   enabled: !!organizationId && !!branchId,
-  // });
-
-  // Using mock data instead of Convex
-  const returnRequests = MOCK_RETURN_REQUESTS;
-  const isPending = false;
+  const { data: returnRequests, isPending } = useQuery({
+    ...convexQuery(
+      api.returnRequest.listWithDetails,
+      organizationId && currentBranch
+        ? {
+            organizationId: organizationId as Id<"organizations">,
+            branchId: currentBranch._id,
+          }
+        : "skip",
+    ),
+    enabled: !!organizationId && !!currentBranch,
+  });
 
   const columns: ColumnDef<ReturnRequestListItem>[] = React.useMemo(
     () => [
@@ -513,8 +515,8 @@ export function ReturnRequestsTable() {
     return (
       <div className="w-full space-y-4">
         <div className="flex flex-row justify-between pb-4">
-          <div className="h-10 w-[200px] animate-pulse rounded bg-muted" />
-          <div className="h-10 w-[100px] animate-pulse rounded bg-muted" />
+          <div className="h-10 w-50 animate-pulse rounded bg-muted" />
+          <div className="h-10 w-25 animate-pulse rounded bg-muted" />
         </div>
         <div className="overflow-hidden rounded-md border">
           <div className="bg-card p-4">
@@ -533,7 +535,7 @@ export function ReturnRequestsTable() {
   return (
     <div className="w-full">
       <div className="flex flex-row justify-between pb-4">
-        <InputGroup className="max-w-[200px]">
+        <InputGroup className="max-w-50">
           <InputGroupInput
             placeholder="Filter Request ID..."
             value={instantFilterValue}
