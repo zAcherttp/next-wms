@@ -23,7 +23,7 @@ import { Switch } from "./switch";
 //   type WheelPickerOption,
 // } from "@/components/wheel-picker";
 
-export type DateRangePickerProps {
+export type DateRangePickerProps = {
   /** Click handler for applying the updates from DateRangePicker. */
   onUpdate?: (values: {
     range: DateRange;
@@ -71,7 +71,7 @@ const getDateAdjustedForTimezone = (dateInput: Date | string): Date => {
   return dateInput;
 };
 
-export type DateRange {
+export type DateRange = {
   from: Date;
   to: Date | undefined;
 }
@@ -85,7 +85,7 @@ export type PresetName =
   | "thisMonth"
   | "lastMonth";
 
-export type Preset {
+export type Preset = {
   name: PresetName;
   label: string;
 }
@@ -360,7 +360,7 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
       }}
     >
       <PopoverTrigger asChild>
-        <Button size={"lg"} variant="outline">
+        <Button size={"sm"} variant="outline">
           <div className="text-right">
             <div className="py-1">
               <div>{`${formatDate(range.from, locale)}${
@@ -378,7 +378,7 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
               </div>
             )}
           </div>
-          <div className="-mr-2 scale-125 pl-1 opacity-60">
+          <div className="scale-125 pl-1 opacity-60">
             {isOpen ? (
               <ChevronUpIcon width={24} />
             ) : (
