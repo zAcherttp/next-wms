@@ -29,6 +29,7 @@ import {
 import * as React from "react";
 import { CreateCycleCountSessionDialog } from "@/components/create-cycle-count-session-dialog";
 import { CycleCountSessionDetailDialog } from "@/components/cycle-count-session-detail-dialog";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,24 +69,8 @@ import {
 } from "@/components/ui/table";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { CycleCountSessionListItem } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 import { MOCK_CYCLE_COUNT_SESSIONS } from "@/mock/data/cycle-count";
-
-const getBadgeStyleByStatus = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "active":
-    case "in progress":
-      return "bg-green-500/10 text-green-600 border-green-500/60";
-    case "completed":
-      return "bg-blue-500/10 text-blue-600 border-blue-500/60";
-    case "pending":
-      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60";
-    case "cancelled":
-      return "bg-red-500/10 text-red-600 border-red-500/60";
-    default:
-      return "bg-gray-500/10 text-gray-600 border-gray-500/60";
-  }
-};
 
 interface FilterPopoverProps {
   label: string;
@@ -250,42 +235,17 @@ export function CycleCountSessionsTable() {
   const columns: ColumnDef<CycleCountSessionListItem>[] = React.useMemo(
     () => [
       {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={
-              table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && "indeterminate")
-            }
-            onCheckedChange={(value) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      },
-      {
         accessorKey: "sessionCode",
         header: "Session ID",
         cell: ({ row }) => (
-          <button
-            type="button"
+          <TableCellFirst
             onClick={() =>
               handleViewDetailsCallback(row.original._id.toString())
             }
-            className="font-medium text-primary hover:underline"
+            className="cursor-pointer text-primary hover:underline"
           >
             {row.getValue("sessionCode")}
-          </button>
+          </TableCellFirst>
         ),
       },
       {

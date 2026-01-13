@@ -27,6 +27,7 @@ import {
 import * as React from "react";
 import { AddPurchaseOrderDialog } from "@/components/add-purchase-order-dialog";
 import { PurchaseOrderDetailDialog } from "@/components/purchase-order-detail-dialog";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -67,7 +68,7 @@ import {
 } from "@/components/ui/table";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { PurchaseOrder } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 import { MOCK_PO } from "@/mock/data/purchase-orders";
 
 const getBadgeStyleByStatus = (status: string) => {
@@ -226,31 +227,13 @@ const FilterPopover = ({
 
 export const columns: ColumnDef<PurchaseOrder>[] = [
   {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
     accessorKey: "code",
     header: "PO-ID",
-    cell: ({ row }) => <div className="capitalize">{row.getValue("code")}</div>,
+    cell: ({ row }) => (
+      <TableCellFirst className="capitalize">
+        {row.getValue("code")}
+      </TableCellFirst>
+    ),
   },
   {
     id: "supplier.name",

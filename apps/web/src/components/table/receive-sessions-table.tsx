@@ -29,6 +29,7 @@ import Link from "next/link";
 import * as React from "react";
 import { AddReceiveSessionDialog } from "@/components/add-receive-session-dialog";
 import { ReceiveSessionDetailDialog } from "@/components/receive-session-detail-dialog";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -68,26 +69,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import { cn } from "@/lib/utils";
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 import {
   MOCK_RECEIVE_SESSIONS,
   type ReceiveSession,
 } from "@/mock/data/receiving-sessions";
-
-const getBadgeStyleByStatus = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "receiving":
-      return "bg-orange-500/10 text-orange-600 border-orange-500/60";
-    case "completed":
-      return "bg-green-500/10 text-green-600 border-green-500/60";
-    case "pending":
-      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60";
-    case "returned":
-      return "bg-blue-500/10 text-blue-600 border-blue-500/60";
-    default:
-      return "bg-gray-500/10 text-gray-600 border-gray-500/60";
-  }
-};
 
 interface FilterPopoverProps {
   label: string;
@@ -226,33 +212,9 @@ const FilterPopover = ({
 
 export const columns: ColumnDef<ReceiveSession>[] = [
   {
-    id: "select",
-    header: ({ table }) => (
-      <Checkbox
-        checked={
-          table.getIsAllPageRowsSelected() ||
-          (table.getIsSomePageRowsSelected() && "indeterminate")
-        }
-        onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-        aria-label="Select all"
-      />
-    ),
-    cell: ({ row }) => (
-      <Checkbox
-        checked={row.getIsSelected()}
-        onCheckedChange={(value) => row.toggleSelected(!!value)}
-        aria-label="Select row"
-      />
-    ),
-    enableSorting: false,
-    enableHiding: false,
-  },
-  {
     accessorKey: "code",
     header: "IO-ID",
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("code")}</div>
-    ),
+    cell: ({ row }) => <TableCellFirst>{row.getValue("code")}</TableCellFirst>,
   },
   {
     accessorKey: "from",

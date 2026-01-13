@@ -32,6 +32,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import * as React from "react";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -75,26 +76,7 @@ import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { ReturnRequestListItem } from "@/lib/types";
-import { cn } from "@/lib/utils";
-
-const getBadgeStyleByStatus = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "waiting":
-    case "pending":
-      return "bg-yellow-500/5 text-yellow-500 border-yellow-500/60";
-    case "approved":
-    case "accepted":
-      return "bg-green-500/5 text-green-500 border-green-500/60";
-    case "returned":
-    case "completed":
-      return "bg-blue-500/5 text-blue-500 border-blue-500/60";
-    case "rejected":
-    case "cancelled":
-      return "bg-red-500/5 text-red-500 border-red-500/60";
-    default:
-      return "bg-orange-500/5 text-orange-500 border-orange-500/60";
-  }
-};
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 
 interface FilterPopoverProps {
   label: string;
@@ -257,34 +239,10 @@ export function ReturnRequestsTable() {
   const columns: ColumnDef<ReturnRequestListItem>[] = React.useMemo(
     () => [
       {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={
-              table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && "indeterminate")
-            }
-            onCheckedChange={(value) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      },
-      {
         accessorKey: "requestCode",
         header: "Request ID",
         cell: ({ row }) => (
-          <div className="font-medium">{row.getValue("requestCode")}</div>
+          <TableCellFirst>{row.getValue("requestCode")}</TableCellFirst>
         ),
       },
       {

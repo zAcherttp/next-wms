@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 
 // Mock data for purchase order details
 const MOCK_PO_DETAIL = {
@@ -56,22 +56,6 @@ const MOCK_PO_DETAIL = {
       location: "Zone C - Cold Storage",
     },
   ],
-};
-
-const getBadgeStyleByStatus = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "pending":
-      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60";
-    case "confirmed":
-    case "approved":
-      return "bg-blue-500/10 text-blue-600 border-blue-500/60";
-    case "received":
-      return "bg-green-500/10 text-green-600 border-green-500/60";
-    case "cancelled":
-      return "bg-gray-500/10 text-gray-500 border-gray-500/60";
-    default:
-      return "bg-orange-500/10 text-orange-500 border-orange-500/60";
-  }
 };
 
 interface InfoItemProps {

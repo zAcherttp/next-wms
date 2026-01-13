@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { InviteUserDialog } from "@/components/settings/invite-user-dialog";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -161,7 +162,7 @@ export const columns: ColumnDef<Member>[] = [
       const member = row.original;
       const user = member.user;
       return (
-        <div className="flex items-center gap-3">
+        <TableCellFirst className="flex items-center gap-3">
           <Avatar className="size-8">
             <AvatarImage
               src={user?.image ?? undefined}
@@ -177,7 +178,7 @@ export const columns: ColumnDef<Member>[] = [
               {user?.email ?? ""}
             </span>
           </div>
-        </div>
+        </TableCellFirst>
       );
     },
     filterFn: (row, _id, value) => {

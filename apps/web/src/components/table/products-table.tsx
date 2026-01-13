@@ -15,6 +15,7 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import { CreateProductDialog } from "@/components/products/create-product-dialog";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -84,7 +85,9 @@ export const columns: ColumnDef<ProductTableItem>[] = [
   {
     accessorKey: "barcode",
     header: () => <span className="font-medium">Barcode</span>,
-    cell: ({ row }) => <div>{row.getValue("barcode")}</div>,
+    cell: ({ row }) => (
+      <TableCellFirst>{row.getValue("barcode")}</TableCellFirst>
+    ),
   },
   {
     accessorKey: "sku",

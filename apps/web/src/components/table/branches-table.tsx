@@ -30,6 +30,7 @@ import * as React from "react";
 import { toast } from "sonner";
 import { BranchDetailsDialog } from "@/components/table/branch-details-dialog";
 import { CreateBranchDialog } from "@/components/table/create-branch-dialog";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -144,9 +145,7 @@ export const columns: ColumnDef<Branch>[] = [
     header: () => {
       return <span className="pl-1">Branch</span>;
     },
-    cell: ({ row }) => (
-      <div className="pl-1 font-medium">{row.getValue("name")}</div>
-    ),
+    cell: ({ row }) => <TableCellFirst>{row.getValue("name")}</TableCellFirst>,
     filterFn: (row, _id, value) => {
       const name = row.getValue("name") as string;
       return name.toLowerCase().includes(value.toLowerCase());

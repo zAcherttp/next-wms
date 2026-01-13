@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -308,9 +309,7 @@ export const columns: ColumnDef<BrandWithProductCount>[] = [
     header: () => {
       return <span className="font-medium">Name</span>;
     },
-    cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("name")}</div>
-    ),
+    cell: ({ row }) => <TableCellFirst>{row.getValue("name")}</TableCellFirst>,
   },
   {
     accessorKey: "productCount",

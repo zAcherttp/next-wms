@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import * as React from "react";
+import TableCellFirst from "@/components/table/table-cell-first";
 // import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,28 +47,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import { cn } from "@/lib/utils";
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 // import { useConvex } from "convex/react";
 import { getReturnRequestById } from "@/mock/data/return-requests";
-
-const getBadgeStyleByStatus = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "waiting":
-    case "pending":
-      return "bg-yellow-500/5 text-yellow-500 border-yellow-500/60";
-    case "approved":
-    case "accepted":
-      return "bg-green-500/5 text-green-500 border-green-500/60";
-    case "returned":
-    case "completed":
-      return "bg-blue-500/5 text-blue-500 border-blue-500/60";
-    case "rejected":
-    case "cancelled":
-      return "bg-red-500/5 text-red-500 border-red-500/60";
-    default:
-      return "bg-orange-500/5 text-orange-500 border-orange-500/60";
-  }
-};
 
 // Define the detail item type based on what the API returns
 type DetailItem = {
@@ -86,7 +68,7 @@ const columns: ColumnDef<DetailItem>[] = [
     accessorKey: "skuCode",
     header: "SKU",
     cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("skuCode")}</div>
+      <TableCellFirst>{row.getValue("skuCode")}</TableCellFirst>
     ),
   },
   {

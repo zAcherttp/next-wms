@@ -24,6 +24,7 @@ import {
   Funnel,
 } from "lucide-react";
 import * as React from "react";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -60,24 +61,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import { cn } from "@/lib/utils";
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 import {
   type LocationAdjustmentRequest,
   MOCK_LOCATION_ADJUSTMENTS,
 } from "@/mock/data/adjustments";
-
-const getBadgeStyleByStatus = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "pending":
-      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60";
-    case "approved":
-      return "bg-green-500/10 text-green-600 border-green-500/60";
-    case "rejected":
-      return "bg-red-500/10 text-red-600 border-red-500/60";
-    default:
-      return "bg-gray-500/10 text-gray-600 border-gray-500/60";
-  }
-};
 
 interface FilterPopoverProps {
   label: string;
@@ -246,34 +234,12 @@ export function LocationAdjustmentsTable({
 
   const columns: ColumnDef<LocationAdjustmentRequest>[] = [
     {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
-    {
       accessorKey: "requestCode",
       header: "Request ID",
       cell: ({ row }) => (
-        <span className="font-medium text-primary">
+        <TableCellFirst className="text-primary">
           {row.getValue("requestCode")}
-        </span>
+        </TableCellFirst>
       ),
     },
     {
