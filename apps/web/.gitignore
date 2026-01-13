@@ -58,3 +58,8 @@ dev-dist
 .dev.vars*
 
 .open-next
+
+# Convex generated files
+convex/_generated/
+**/convex/_generated/
+packages/backend/convex/_generated/
