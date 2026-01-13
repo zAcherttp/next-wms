@@ -3,7 +3,7 @@
  * Status values: 'Receiving', 'Pending', 'Returned', 'Completed'
  */
 
-export interface ReceiveSession {
+export type ReceiveSession = {
   id: string;
   code: string; // IO-ID format like "OO-00001"
   from: string; // Supplier/source name
@@ -12,7 +12,7 @@ export interface ReceiveSession {
   expectedBy: number; // Timestamp
   status: "Receiving" | "Pending" | "Returned" | "Completed";
   createdAt: number;
-}
+};
 
 // Helper to generate dates
 const daysAgo = (days: number) => Date.now() - days * 24 * 60 * 60 * 1000;

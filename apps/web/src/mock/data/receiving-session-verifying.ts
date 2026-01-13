@@ -2,21 +2,21 @@
  * Mock data for receiving session verifying page
  */
 
-export interface VerifyingSessionItem {
+export type VerifyingSessionItem = {
   id: string;
   skuCode: string;
   productName: string;
   expectedQty: number;
   recordedQty: number;
-}
+};
 
-export interface VerifyingSession {
+export type VerifyingSession = {
   id: string;
   sessionId: string;
   linkedPO: string;
   status: "SESSION STARTED" | "IN PROGRESS" | "COMPLETED";
   items: VerifyingSessionItem[];
-}
+};
 
 // Mock data matching the design reference
 export const MOCK_VERIFYING_SESSION: VerifyingSession = {

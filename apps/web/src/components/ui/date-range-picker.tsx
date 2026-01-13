@@ -23,7 +23,7 @@ import { Switch } from "./switch";
 //   type WheelPickerOption,
 // } from "@/components/wheel-picker";
 
-export interface DateRangePickerProps {
+export type DateRangePickerProps {
   /** Click handler for applying the updates from DateRangePicker. */
   onUpdate?: (values: {
     range: DateRange;
@@ -71,7 +71,7 @@ const getDateAdjustedForTimezone = (dateInput: Date | string): Date => {
   return dateInput;
 };
 
-export interface DateRange {
+export type DateRange {
   from: Date;
   to: Date | undefined;
 }
@@ -85,7 +85,7 @@ export type PresetName =
   | "thisMonth"
   | "lastMonth";
 
-export interface Preset {
+export type Preset {
   name: PresetName;
   label: string;
 }

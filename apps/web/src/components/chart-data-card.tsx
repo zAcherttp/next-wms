@@ -17,14 +17,14 @@ import {
 import { cn } from "@/lib/utils";
 import { useChartStore } from "@/store/chart";
 
-export interface ChartDataPoint {
+export type ChartDataPoint = {
   label: string;
   value: number;
   /** True if this is a projected/estimated value (not actual data) */
   isProjected?: boolean;
-}
+};
 
-export interface ChartDataCardProps {
+export type ChartDataCardProps = {
   /** Card title (e.g., "Total Completed", "Active Orders") */
   title: string;
   /** Current period value to display */
@@ -41,7 +41,7 @@ export interface ChartDataCardProps {
   color: string;
   /** Optional class name for the container */
   className?: string;
-}
+};
 
 /**
  * A general-purpose data card with a mini chart visualization.

@@ -46,6 +46,7 @@
   "license": "ISC",
   "description": "",
   "devDependencies": {
+    "@react-email/components": "^1.0.4",
     "@react-email/preview-server": "4.3.2",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

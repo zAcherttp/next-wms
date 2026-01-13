@@ -5,10 +5,10 @@ import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { useCallback, useEffect, useState } from "react";
 import type { Branch } from "@/lib/types";
 
-export interface UseBranchesOptions {
+export type UseBranchesOptions = {
   organizationId?: Id<"organizations">;
   includeDeleted?: boolean;
-}
+};
 
 const STORAGE_KEY = "wms:selected-branch";
 

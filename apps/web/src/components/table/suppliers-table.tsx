@@ -54,11 +54,11 @@ import {
 } from "@/components/ui/table";
 
 // Supplier type for the table
-export interface SupplierTableItem {
+export type SupplierTableItem = {
   _id: string;
   name: string;
   isActive: boolean;
-}
+};
 
 // CreateSupplierDialog component
 function CreateSupplierDialog() {

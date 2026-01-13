@@ -1,13 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { authClient } from "@/lib/auth/client";
 
-export interface UseMembersOptions {
+export type UseMembersOptions = {
   organizationId?: string;
   limit?: number;
   offset?: number;
   sortBy?: string;
   sortDirection?: "asc" | "desc";
-}
+};
 
 export function useMembers(options: UseMembersOptions = {}) {
   const {

@@ -43,7 +43,7 @@ import {
 } from "@/components/ui/table";
 
 // Product type for the table
-export interface ProductTableItem {
+export type ProductTableItem = {
   _id: string;
   barcode: string;
   sku: string;
@@ -53,7 +53,7 @@ export interface ProductTableItem {
   variant: string;
   zoneType: string;
   itemType: string;
-}
+};
 
 // Actions Cell Component
 function ActionsCell({ product }: { product: ProductTableItem }) {

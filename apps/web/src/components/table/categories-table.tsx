@@ -32,13 +32,13 @@ import {
 } from "@/components/ui/table";
 
 // Category type with hierarchy
-export interface CategoryItem {
+export type CategoryItem = {
   _id: string;
   name: string;
   parentId: string | null;
   isActive: boolean;
   children?: CategoryItem[];
-}
+};
 
 // CreateCategoryDialog component
 function CreateCategoryDialog() {

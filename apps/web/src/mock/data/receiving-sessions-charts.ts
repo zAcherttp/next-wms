@@ -10,14 +10,14 @@ import type { PresetName } from "@/components/ui/date-range-picker";
  * 4. Total Returned - Count of sessions changed to "Returned"
  */
 
-export interface ReceiveSessionCardData {
+export type ReceiveSessionCardData = {
   title: string;
   value: number;
   changePercent: number;
   isPositive: boolean;
   color: string;
   data: ChartDataPoint[];
-}
+};
 
 // Day labels for weeks (Monday-Sunday)
 const WEEK_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];

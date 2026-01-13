@@ -5,14 +5,14 @@ import type { PresetName } from "@/components/ui/date-range-picker";
  * Chart data organized by preset for dashboard cards.
  * Each card has data for different time periods.
  */
-export interface ChartCardData {
+export type ChartCardData = {
   title: string;
   value: number;
   changePercent: number;
   isPositive: boolean;
   color: string;
   data: ChartDataPoint[];
-}
+};
 
 // Day labels for weeks (Monday-Sunday)
 const WEEK_LABELS = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
