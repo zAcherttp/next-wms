@@ -117,7 +117,7 @@ export function CreateBrandDialog({ onSuccess }: CreateBrandDialogProps) {
                 <div className="space-y-2">
                   <Label htmlFor="brand-name">Brand Name</Label>
                   <div className="relative">
-                    <Package className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Package className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
                     <Input
                       id="brand-name"
                       placeholder="Enter brand name"

@@ -123,7 +123,7 @@ export function CreateBranchDialog({ onSuccess }: CreateBranchDialogProps) {
                 <div className="space-y-2">
                   <Label htmlFor="branch-name">Branch Name</Label>
                   <div className="relative">
-                    <Building2 className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Building2 className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
                     <Input
                       id="branch-name"
                       placeholder="Enter branch name"
@@ -157,7 +157,7 @@ export function CreateBranchDialog({ onSuccess }: CreateBranchDialogProps) {
                 <div className="space-y-2">
                   <Label htmlFor="branch-address">Address</Label>
                   <div className="relative">
-                    <MapPin className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <MapPin className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
                     <Input
                       id="branch-address"
                       placeholder="Enter branch address"
@@ -191,7 +191,7 @@ export function CreateBranchDialog({ onSuccess }: CreateBranchDialogProps) {
                 <div className="space-y-2">
                   <Label htmlFor="branch-phone">Phone Number</Label>
                   <div className="relative">
-                    <Phone className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Phone className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
                     <Input
                       id="branch-phone"
                       placeholder="Enter phone number"

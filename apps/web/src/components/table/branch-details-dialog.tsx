@@ -165,7 +165,7 @@ export function BranchDetailsDialog({
                 <div className="space-y-2">
                   <Label htmlFor="details-name">Branch Name</Label>
                   <div className="relative">
-                    <Building2 className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Building2 className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
                     <Input
                       id="details-name"
                       className="pl-9"
@@ -187,7 +187,7 @@ export function BranchDetailsDialog({
                 <div className="space-y-2">
                   <Label htmlFor="details-address">Address</Label>
                   <div className="relative">
-                    <MapPin className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <MapPin className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
                     <Input
                       id="details-address"
                       className="pl-9"
@@ -209,7 +209,7 @@ export function BranchDetailsDialog({
                 <div className="space-y-2">
                   <Label htmlFor="details-phone">Phone Number</Label>
                   <div className="relative">
-                    <Phone className="absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                    <Phone className="-translate-y-1/2 absolute top-1/2 left-3 size-4 text-muted-foreground" />
                     <Input
                       id="details-phone"
                       className="pl-9"
