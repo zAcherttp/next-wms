@@ -122,7 +122,7 @@ export function ChartDataCard({
     },
   };
 
-  const formattedValue = value.toLocaleString();
+  const formattedValue = value.toLocaleString("en-US");
 
   return (
     <div

@@ -12,7 +12,7 @@ import { mutation, query } from "./_generated/server";
  */
 async function generateReceiveSessionCode(
   ctx: any,
-  branchId: Id<"branches">,
+  branchId: Id<"branches">
 ): Promise<string> {
   const now = Date.now();
   const date = new Date(now);
@@ -28,8 +28,8 @@ async function generateReceiveSessionCode(
     .filter((q: any) =>
       q.and(
         q.gte(q.field("receivedAt"), startOfDay),
-        q.lte(q.field("receivedAt"), endOfDay),
-      ),
+        q.lte(q.field("receivedAt"), endOfDay)
+      )
     )
     .collect();
 
@@ -43,7 +43,7 @@ async function generateReceiveSessionCode(
  */
 async function generateWorkSessionCode(
   ctx: any,
-  branchId: Id<"branches">,
+  branchId: Id<"branches">
 ): Promise<string> {
   const now = Date.now();
   const date = new Date(now);
@@ -58,8 +58,8 @@ async function generateWorkSessionCode(
     .filter((q: any) =>
       q.and(
         q.gte(q.field("startedAt"), startOfDay),
-        q.lte(q.field("startedAt"), endOfDay),
-      ),
+        q.lte(q.field("startedAt"), endOfDay)
+      )
     )
     .collect();
 
@@ -73,12 +73,12 @@ async function generateWorkSessionCode(
 async function getSystemLookup(
   ctx: any,
   lookupType: string,
-  lookupCode: string,
+  lookupCode: string
 ): Promise<Id<"system_lookups"> | null> {
   const lookup = await ctx.db
     .query("system_lookups")
     .withIndex("lookupType_lookupCode", (q: any) =>
-      q.eq("lookupType", lookupType).eq("lookupCode", lookupCode),
+      q.eq("lookupType", lookupType).eq("lookupCode", lookupCode)
     )
     .first();
 
@@ -93,7 +93,7 @@ async function ensureSystemLookup(
   lookupType: string,
   lookupCode: string,
   lookupValue: string,
-  description: string,
+  description: string
 ): Promise<Id<"system_lookups">> {
   const existingLookup = await getSystemLookup(ctx, lookupType, lookupCode);
 
@@ -119,7 +119,7 @@ async function ensureSystemLookup(
 async function getRandomStorageZone(
   ctx: any,
   branchId: Id<"branches">,
-  zoneTypeCode?: string,
+  zoneTypeCode?: string
 ): Promise<Id<"storage_zones"> | null> {
   let zones = await ctx.db
     .query("storage_zones")
@@ -152,13 +152,13 @@ async function ensureWorkSession(
   organizationId: Id<"organizations">,
   branchId: Id<"branches">,
   receiveSessionId: Id<"receive_sessions">,
-  assignedUserId: Id<"users">,
+  assignedUserId: Id<"users">
 ): Promise<Id<"work_sessions">> {
   // Check if work session already exists for this receive session
   const existingSession = await ctx.db
     .query("work_sessions")
     .withIndex("receiveSessionId", (q: any) =>
-      q.eq("receiveSessionId", receiveSessionId),
+      q.eq("receiveSessionId", receiveSessionId)
     )
     .first();
 
@@ -172,7 +172,7 @@ async function ensureWorkSession(
     "SessionType",
     "INBOUND",
     "Inbound Receiving",
-    "Work session for receiving inbound goods",
+    "Work session for receiving inbound goods"
   );
 
   const sessionStatusId = await ensureSystemLookup(
@@ -180,7 +180,7 @@ async function ensureWorkSession(
     "SessionStatus",
     "IN_PROGRESS",
     "In Progress",
-    "Session is currently in progress",
+    "Session is currently in progress"
   );
 
   // Generate work session code
@@ -208,57 +208,67 @@ async function ensureWorkSession(
 // ================================================================
 
 /**
- * Get purchase orders by branch (for dropdown selection)
- * Returns PO code and ID for the specified branch
+ * Get pending purchase orders by branch (for dropdown selection when creating receive session)
+ * Returns only POs with "Pending" status that don't already have a receive session
  */
-export const getPurchaseOrdersByBranch = query({
+export const getPendingPurchaseOrdersByBranch = query({
   args: {
     branchId: v.id("branches"),
   },
   handler: async (ctx, args) => {
-    // Get pending/partial status to filter active POs
+    // Get only pending status (not partial, as partial already has receive sessions)
     const pendingStatus = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "Pending"),
+        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "Pending")
       )
       .first();
 
-    const partialStatus = await ctx.db
-      .query("system_lookups")
-      .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "Partial"),
-      )
-      .first();
+    if (!pendingStatus) {
+      return [];
+    }
 
-    const statusIds = [pendingStatus?._id, partialStatus?._id].filter(Boolean);
-
+    // Get all purchase orders with pending status for this branch
     const purchaseOrders = await ctx.db
       .query("purchase_orders")
       .withIndex("branchId", (q) => q.eq("branchId", args.branchId))
-      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("isDeleted"), false),
+          q.eq(q.field("purchaseOrderStatusTypeId"), pendingStatus._id)
+        )
+      )
       .collect();
 
-    // Filter by status and enrich with supplier name
+    // Get all existing receive sessions for this branch to exclude POs that already have one
+    const existingReceiveSessions = await ctx.db
+      .query("receive_sessions")
+      .withIndex("branchId", (q) => q.eq("branchId", args.branchId))
+      .collect();
+
+    const existingPOIds = new Set(
+      existingReceiveSessions.map((rs) => rs.purchaseOrderId)
+    );
+
+    // Filter out POs that already have receive sessions and enrich with supplier name
     const filteredOrders = [];
     for (const order of purchaseOrders) {
-      // Include orders that are pending or partial
-      if (
-        statusIds.length === 0 ||
-        statusIds.includes(order.purchaseOrderStatusTypeId)
-      ) {
-        const supplier = await ctx.db.get(order.supplierId);
-        const status = await ctx.db.get(order.purchaseOrderStatusTypeId);
-
-        filteredOrders.push({
-          purchaseOrderId: order._id,
-          code: order.code,
-          supplierName: supplier?.name ?? "Unknown",
-          statusName: status?.lookupValue ?? "Unknown",
-          orderedAt: order.orderedAt,
-          expectedDeliveryAt: order.expectedDeliveryAt,
-        });
+      // Skip if this PO already has a receive session
+      if (existingPOIds.has(order._id)) {
+        continue;
       }
+
+      const supplier = await ctx.db.get(order.supplierId);
+      const status = await ctx.db.get(order.purchaseOrderStatusTypeId);
+
+      filteredOrders.push({
+        purchaseOrderId: order._id,
+        code: order.code,
+        supplierName: supplier?.name ?? "Unknown",
+        statusName: status?.lookupValue ?? "Unknown",
+        orderedAt: order.orderedAt,
+        expectedDeliveryAt: order.expectedDeliveryAt,
+      });
     }
 
     return filteredOrders;
@@ -307,7 +317,7 @@ export const getReceiveSessionDetailed = query({
     const details = await ctx.db
       .query("receive_sessions_details")
       .withIndex("receiveSessionId", (q) =>
-        q.eq("receiveSessionId", args.receiveSessionId),
+        q.eq("receiveSessionId", args.receiveSessionId)
       )
       .collect();
 
@@ -317,7 +327,7 @@ export const getReceiveSessionDetailed = query({
         const variant = await ctx.db.get(detail.skuId);
         const product = variant ? await ctx.db.get(variant.productId) : null;
         const itemStatus = await ctx.db.get(
-          detail.receiveSessionItemStatusTypeId,
+          detail.receiveSessionItemStatusTypeId
         );
         const zone = detail.recommendedZoneId
           ? await ctx.db.get(detail.recommendedZoneId)
@@ -336,14 +346,14 @@ export const getReceiveSessionDetailed = query({
           recommendedZone: zone?.name ?? null,
           recommendedZoneId: detail.recommendedZoneId,
         };
-      }),
+      })
     );
 
     // Get linked work session
     const workSession = await ctx.db
       .query("work_sessions")
       .withIndex("receiveSessionId", (q) =>
-        q.eq("receiveSessionId", args.receiveSessionId),
+        q.eq("receiveSessionId", args.receiveSessionId)
       )
       .first();
 
@@ -374,11 +384,11 @@ export const getReceiveSessionDetailed = query({
     const totalSku = enrichedDetails.length;
     const totalExpectedQuantity = enrichedDetails.reduce(
       (sum, d) => sum + d.quantityExpected,
-      0,
+      0
     );
     const totalReceivedQuantity = enrichedDetails.reduce(
       (sum, d) => sum + d.quantityReceived,
-      0,
+      0
     );
 
     return {
@@ -422,7 +432,7 @@ export const getReceiveSessionProgress = query({
     const details = await ctx.db
       .query("receive_sessions_details")
       .withIndex("receiveSessionId", (q) =>
-        q.eq("receiveSessionId", args.receiveSessionId),
+        q.eq("receiveSessionId", args.receiveSessionId)
       )
       .collect();
 
@@ -431,7 +441,7 @@ export const getReceiveSessionProgress = query({
       details.map(async (detail) => {
         const variant = await ctx.db.get(detail.skuId);
         const itemStatus = await ctx.db.get(
-          detail.receiveSessionItemStatusTypeId,
+          detail.receiveSessionItemStatusTypeId
         );
 
         return {
@@ -445,16 +455,16 @@ export const getReceiveSessionProgress = query({
           statusCode: itemStatus?.lookupCode ?? "UNKNOWN",
           isComplete: detail.quantityReceived >= detail.quantityExpected,
         };
-      }),
+      })
     );
 
     const totalExpectedQuantity = items.reduce(
       (sum, i) => sum + i.quantityExpected,
-      0,
+      0
     );
     const totalReceivedQuantity = items.reduce(
       (sum, i) => sum + i.quantityReceived,
-      0,
+      0
     );
     const completedItems = items.filter((i) => i.isComplete).length;
     const progressPercentage =
@@ -497,13 +507,13 @@ export const listReceiveSessions = query({
         .withIndex("lookupType_lookupCode", (q) =>
           q
             .eq("lookupType", "ReceiveSessionStatus")
-            .eq("lookupCode", args.statusFilter!),
+            .eq("lookupCode", args.statusFilter!)
         )
         .first();
 
       if (statusLookup) {
         sessions = sessions.filter(
-          (s) => s.receiveSessionStatusTypeId === statusLookup._id,
+          (s) => s.receiveSessionStatusTypeId === statusLookup._id
         );
       }
     }
@@ -521,17 +531,17 @@ export const listReceiveSessions = query({
         const details = await ctx.db
           .query("receive_sessions_details")
           .withIndex("receiveSessionId", (q) =>
-            q.eq("receiveSessionId", session._id),
+            q.eq("receiveSessionId", session._id)
           )
           .collect();
 
         const totalExpected = details.reduce(
           (sum, d) => sum + d.quantityExpected,
-          0,
+          0
         );
         const totalReceived = details.reduce(
           (sum, d) => sum + d.quantityReceived,
-          0,
+          0
         );
 
         return {
@@ -550,7 +560,7 @@ export const listReceiveSessions = query({
               ? Math.round((totalReceived / totalExpected) * 100)
               : 0,
         };
-      }),
+      })
     );
 
     return enrichedSessions;
@@ -592,13 +602,13 @@ export const createReceiveSession = mutation({
     const existingSession = await ctx.db
       .query("receive_sessions")
       .withIndex("purchaseOrderId", (q) =>
-        q.eq("purchaseOrderId", args.purchaseOrderId),
+        q.eq("purchaseOrderId", args.purchaseOrderId)
       )
       .first();
 
     if (existingSession) {
       throw new Error(
-        `A receive session already exists for this purchase order: ${existingSession.receiveSessionCode}`,
+        `A receive session already exists for this purchase order: ${existingSession.receiveSessionCode}`
       );
     }
 
@@ -606,7 +616,7 @@ export const createReceiveSession = mutation({
     const poDetails = await ctx.db
       .query("purchase_order_details")
       .withIndex("purchaseOrderId", (q) =>
-        q.eq("purchaseOrderId", args.purchaseOrderId),
+        q.eq("purchaseOrderId", args.purchaseOrderId)
       )
       .collect();
 
@@ -620,7 +630,7 @@ export const createReceiveSession = mutation({
       "ReceiveSessionStatus",
       "PENDING",
       "Pending",
-      "Receive session is pending",
+      "Receive session is pending"
     );
 
     const pendingItemStatusId = await ensureSystemLookup(
@@ -628,13 +638,13 @@ export const createReceiveSession = mutation({
       "ReceiveSessionItemStatus",
       "PENDING",
       "Pending",
-      "Item is pending receiving",
+      "Item is pending receiving"
     );
 
     // Generate receive session code
     const receiveSessionCode = await generateReceiveSessionCode(
       ctx,
-      purchaseOrder.branchId,
+      purchaseOrder.branchId
     );
 
     // Create receive session
@@ -663,7 +673,7 @@ export const createReceiveSession = mutation({
       branch.organizationId,
       purchaseOrder.branchId,
       receiveSessionId,
-      args.userId,
+      args.userId
     );
 
     return {
@@ -723,16 +733,16 @@ export const processReceiveItem = mutation({
       newStatusCode === "COMPLETE"
         ? "Complete"
         : newStatusCode === "PARTIAL"
-          ? "Partial"
-          : "Pending",
-      `Item receiving is ${newStatusCode.toLowerCase()}`,
+        ? "Partial"
+        : "Pending",
+      `Item receiving is ${newStatusCode.toLowerCase()}`
     );
 
     // Get a random storage zone recommendation from the same branch
     const recommendedZoneId = await getRandomStorageZone(
       ctx,
       session.branchId,
-      "STORAGE", // Filter for storage type zones
+      "STORAGE" // Filter for storage type zones
     );
 
     // Update the detail record
@@ -747,7 +757,7 @@ export const processReceiveItem = mutation({
     const allDetails = await ctx.db
       .query("receive_sessions_details")
       .withIndex("receiveSessionId", (q) =>
-        q.eq("receiveSessionId", detail.receiveSessionId),
+        q.eq("receiveSessionId", detail.receiveSessionId)
       )
       .collect();
 
@@ -782,9 +792,9 @@ export const processReceiveItem = mutation({
       sessionStatusCode === "COMPLETE"
         ? "Complete"
         : sessionStatusCode === "IN_PROGRESS"
-          ? "In Progress"
-          : "Pending",
-      `Receive session is ${sessionStatusCode.toLowerCase().replace("_", " ")}`,
+        ? "In Progress"
+        : "Pending",
+      `Receive session is ${sessionStatusCode.toLowerCase().replace("_", " ")}`
     );
 
     await ctx.db.patch(detail.receiveSessionId, {
@@ -797,7 +807,7 @@ export const processReceiveItem = mutation({
       const poDetails = await ctx.db
         .query("purchase_order_details")
         .withIndex("purchaseOrderId", (q) =>
-          q.eq("purchaseOrderId", session.purchaseOrderId),
+          q.eq("purchaseOrderId", session.purchaseOrderId)
         )
         .filter((q) => q.eq(q.field("skuId"), detail.skuId))
         .first();
@@ -885,8 +895,8 @@ export const createReturnFromReceiveSession = mutation({
       .filter((q) =>
         q.and(
           q.gte(q.field("requestedAt"), startOfDay),
-          q.lte(q.field("requestedAt"), endOfDay),
-        ),
+          q.lte(q.field("requestedAt"), endOfDay)
+        )
       )
       .collect();
 
@@ -899,7 +909,7 @@ export const createReturnFromReceiveSession = mutation({
       "ReturnStatus",
       "PENDING",
       "Pending",
-      "Return request is pending",
+      "Return request is pending"
     );
 
     // Create return request
@@ -931,7 +941,7 @@ export const createReturnFromReceiveSession = mutation({
       "ReceiveSessionItemStatus",
       "RETURN_REQUESTED",
       "Return Requested",
-      "Return has been requested for this item",
+      "Return has been requested for this item"
     );
 
     await ctx.db.patch(args.receiveSessionDetailId, {
@@ -968,7 +978,7 @@ export const updateReceiveSessionStatus = mutation({
       args.statusCode,
       args.statusCode.charAt(0).toUpperCase() +
         args.statusCode.slice(1).toLowerCase().replace("_", " "),
-      `Receive session status: ${args.statusCode}`,
+      `Receive session status: ${args.statusCode}`
     );
 
     await ctx.db.patch(args.receiveSessionId, {
@@ -980,7 +990,7 @@ export const updateReceiveSessionStatus = mutation({
       const workSession = await ctx.db
         .query("work_sessions")
         .withIndex("receiveSessionId", (q) =>
-          q.eq("receiveSessionId", args.receiveSessionId),
+          q.eq("receiveSessionId", args.receiveSessionId)
         )
         .first();
 
@@ -990,7 +1000,7 @@ export const updateReceiveSessionStatus = mutation({
           "SessionStatus",
           "COMPLETED",
           "Completed",
-          "Session has been completed",
+          "Session has been completed"
         );
 
         await ctx.db.patch(workSession._id, {
@@ -1029,7 +1039,7 @@ export const completeReceiveSession = mutation({
       "ReceiveSessionStatus",
       "COMPLETE",
       "Complete",
-      "Receive session is complete",
+      "Receive session is complete"
     );
 
     // Update session status
@@ -1041,7 +1051,7 @@ export const completeReceiveSession = mutation({
     const workSession = await ctx.db
       .query("work_sessions")
       .withIndex("receiveSessionId", (q) =>
-        q.eq("receiveSessionId", args.receiveSessionId),
+        q.eq("receiveSessionId", args.receiveSessionId)
       )
       .first();
 
@@ -1051,7 +1061,7 @@ export const completeReceiveSession = mutation({
         "SessionStatus",
         "COMPLETED",
         "Completed",
-        "Session has been completed",
+        "Session has been completed"
       );
 
       await ctx.db.patch(workSession._id, {
@@ -1070,7 +1080,7 @@ export const completeReceiveSession = mutation({
         "PurchaseOrderStatus",
         "Received",
         "Received",
-        "Purchase order has been received",
+        "Purchase order has been received"
       );
 
       await ctx.db.patch(session.purchaseOrderId, {
