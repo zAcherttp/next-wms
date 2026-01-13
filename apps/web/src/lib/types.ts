@@ -72,3 +72,69 @@ export type ReturnRequestWithDetails = {
   totalExpectedCredit: number;
   details: ReturnRequestDetailItem[];
 };
+
+// ============================================================================
+// CYCLE COUNT TYPES
+// ============================================================================
+
+/**
+ * Cycle count session list item - used in the cycle count sessions table
+ */
+export type CycleCountSessionListItem = {
+  _id: Id<"work_sessions">;
+  sessionCode: string;
+  name: string;
+  cycleCountType: Pick<SystemLookups, "lookupValue"> | null;
+  sessionStatus: Pick<SystemLookups, "lookupValue"> | null;
+  createdByUser: Pick<User, "fullName"> | null;
+  zonesCount: number;
+  createdAt: number;
+};
+
+/**
+ * Cycle count stats - summary statistics for the cycle count dashboard
+ */
+export type CycleCountStats = {
+  activeSessions: number;
+  totalZones: number;
+  completedSessions: number;
+  verificationRate: number;
+};
+
+/**
+ * Cycle count session line item - individual product count in a session
+ */
+export type CycleCountLineItem = {
+  _id: Id<"session_line_items">;
+  productId: string;
+  productName: string;
+  expectedQuantity: number;
+  actualQuantity: number;
+  variance: number;
+};
+
+/**
+ * Cycle count zone detail - zone information with assigned worker and line items
+ */
+export type CycleCountZoneDetail = {
+  zoneId: string;
+  zoneName: string;
+  assignedWorker: Pick<User, "fullName"> | null;
+  lineItems: CycleCountLineItem[];
+  matchedCount: number;
+  totalCount: number;
+};
+
+/**
+ * Cycle count session with full details - used in the detail view dialog
+ */
+export type CycleCountSessionWithDetails = {
+  _id: Id<"work_sessions">;
+  sessionCode: string;
+  name: string;
+  cycleCountType: Pick<SystemLookups, "lookupValue"> | null;
+  sessionStatus: Pick<SystemLookups, "lookupValue"> | null;
+  createdByUser: Pick<User, "fullName"> | null;
+  createdAt: number;
+  zones: CycleCountZoneDetail[];
+};
