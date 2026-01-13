@@ -12,13 +12,9 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-// import { convexQuery } from "@convex-dev/react-query";
-// import { useQuery } from "@tanstack/react-query";
-// import { api } from "@wms/backend/convex/_generated/api";
 import {
   ArrowUpDown,
   Check,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -27,10 +23,12 @@ import {
   Filter,
   Funnel,
   MoreHorizontal,
+  Play,
+  Trash2,
 } from "lucide-react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import * as React from "react";
+import { CreateCycleCountSessionDialog } from "@/components/create-cycle-count-session-dialog";
+import { CycleCountSessionDetailDialog } from "@/components/cycle-count-session-detail-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -43,7 +41,6 @@ import {
 } from "@/components/ui/command";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
@@ -61,7 +58,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
-// import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -70,28 +66,24 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-// import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import type { ReturnRequestListItem } from "@/lib/types";
+import type { CycleCountSessionListItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { MOCK_RETURN_REQUESTS } from "@/mock/data/return-requests";
+import { MOCK_CYCLE_COUNT_SESSIONS } from "@/mock/data/cycle-count";
 
 const getBadgeStyleByStatus = (status: string) => {
   switch (status.toLowerCase()) {
-    case "waiting":
-    case "pending":
-      return "bg-yellow-500/5 text-yellow-500 border-yellow-500/60";
-    case "approved":
-    case "accepted":
-      return "bg-green-500/5 text-green-500 border-green-500/60";
-    case "returned":
+    case "active":
+    case "in progress":
+      return "bg-green-500/10 text-green-600 border-green-500/60";
     case "completed":
-      return "bg-blue-500/5 text-blue-500 border-blue-500/60";
-    case "rejected":
+      return "bg-blue-500/10 text-blue-600 border-blue-500/60";
+    case "pending":
+      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60";
     case "cancelled":
-      return "bg-red-500/5 text-red-500 border-red-500/60";
+      return "bg-red-500/10 text-red-600 border-red-500/60";
     default:
-      return "bg-orange-500/5 text-orange-500 border-orange-500/60";
+      return "bg-gray-500/10 text-gray-600 border-gray-500/60";
   }
 };
 
@@ -151,7 +143,9 @@ const FilterPopover = ({
         <Button variant={isFiltered ? "default" : "ghost"} size={"sm"}>
           {label}
           {variant === "multi-select" && selectedValues.length > 0 && (
-            <span className="ml-1">({selectedValues.length})</span>
+            <span className="ml-1 rounded-full bg-primary-foreground px-1.5 text-primary text-xs">
+              {selectedValues.length}
+            </span>
           )}
           {isSort ? <ArrowUpDown /> : <Funnel />}
         </Button>
@@ -167,62 +161,64 @@ const FilterPopover = ({
             />
           )}
           <CommandList>
-            {variant === "multi-select" ? (
-              <>
-                <CommandGroup>
+            <ScrollArea className="max-h-[200px]">
+              <CommandGroup>
+                {variant === "multi-select" && (
                   <CommandItem
                     onSelect={() => toggleAll()}
-                    className="flex cursor-pointer items-center gap-2"
+                    className="cursor-pointer"
                   >
-                    <Checkbox
-                      checked={allSelected}
-                      className="pointer-events-none"
-                    />
-                    <span>All</span>
+                    <div
+                      className={cn(
+                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                        allSelected
+                          ? "bg-primary text-primary-foreground"
+                          : "opacity-50",
+                      )}
+                    >
+                      {allSelected && <Check className="h-3 w-3" />}
+                    </div>
+                    All
                   </CommandItem>
-                </CommandGroup>
-                <ScrollArea className="h-[200px]">
-                  <CommandGroup>
-                    {filteredOptions.map((option) => (
+                )}
+                {filteredOptions.map((option) => {
+                  if (variant === "multi-select") {
+                    const isSelected = selectedValues.includes(option.value);
+                    return (
                       <CommandItem
                         key={option.value}
-                        value={option.value}
                         onSelect={() => toggleSelection(option.value)}
-                        className="flex cursor-pointer items-center gap-2"
+                        className="cursor-pointer"
                       >
-                        <Checkbox
-                          checked={selectedValues.includes(option.value)}
-                          className="pointer-events-none"
-                        />
-                        <span>{option.label}</span>
+                        <div
+                          className={cn(
+                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                            isSelected
+                              ? "bg-primary text-primary-foreground"
+                              : "opacity-50",
+                          )}
+                        >
+                          {isSelected && <Check className="h-3 w-3" />}
+                        </div>
+                        {option.label}
                       </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </ScrollArea>
-              </>
-            ) : (
-              <CommandGroup>
-                {options.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    onSelect={() => {
-                      onChange(
-                        option.value === "all" ? undefined : option.value,
-                      );
-                    }}
-                    className="flex justify-between"
-                  >
-                    {option.label}
-                    {(currentValue === option.value ||
-                      (currentValue === "default" &&
-                        option.value === "default") ||
-                      (!currentValue && option.value === "all")) && (
-                      <Check className="h-4 w-4" />
-                    )}
-                  </CommandItem>
-                ))}
+                    );
+                  }
+                  return (
+                    <CommandItem
+                      key={option.value}
+                      onSelect={() => onChange(option.value)}
+                      className="cursor-pointer"
+                    >
+                      {option.label}
+                      {currentValue === option.value && (
+                        <Check className="ml-auto h-4 w-4" />
+                      )}
+                    </CommandItem>
+                  );
+                })}
               </CommandGroup>
-            )}
+            </ScrollArea>
           </CommandList>
         </Command>
       </PopoverContent>
@@ -230,29 +226,28 @@ const FilterPopover = ({
   );
 };
 
-export function ReturnRequestsTable() {
-  const params = useParams();
-  const workspace = params.workspace as string;
-  // const { organizationId } = useCurrentUser();
-
-  // TODO: Get actual branchId from user's selected branch
-  // For now, we'll use a placeholder - in a real app, this would come from user context
-  // const branchId = organizationId; // Placeholder - should be actual branch ID
-
-  // COMMENTED OUT: Convex query - using mock data instead
-  // const { data: returnRequests, isPending } = useQuery({
-  //   ...convexQuery(api.returnRequest.listWithDetails, {
-  //     organizationId: organizationId ?? "",
-  //     branchId: branchId ?? "",
-  //   }),
-  //   enabled: !!organizationId && !!branchId,
-  // });
-
+export function CycleCountSessionsTable() {
   // Using mock data instead of Convex
-  const returnRequests = MOCK_RETURN_REQUESTS;
+  const cycleCountSessions = MOCK_CYCLE_COUNT_SESSIONS;
   const isPending = false;
 
-  const columns: ColumnDef<ReturnRequestListItem>[] = React.useMemo(
+  // Detail dialog state
+  const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
+  const [selectedSessionId, setSelectedSessionId] = React.useState<
+    string | null
+  >(null);
+
+  const _handleViewDetails = (sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setDetailDialogOpen(true);
+  };
+
+  const handleViewDetailsCallback = React.useCallback((sessionId: string) => {
+    setSelectedSessionId(sessionId);
+    setDetailDialogOpen(true);
+  }, []);
+
+  const columns: ColumnDef<CycleCountSessionListItem>[] = React.useMemo(
     () => [
       {
         id: "select",
@@ -279,116 +274,86 @@ export function ReturnRequestsTable() {
         enableHiding: false,
       },
       {
-        accessorKey: "requestCode",
-        header: "Request ID",
+        accessorKey: "sessionCode",
+        header: "Session ID",
         cell: ({ row }) => (
-          <div className="font-medium">{row.getValue("requestCode")}</div>
+          <button
+            type="button"
+            onClick={() =>
+              handleViewDetailsCallback(row.original._id.toString())
+            }
+            className="font-medium text-primary hover:underline"
+          >
+            {row.getValue("sessionCode")}
+          </button>
         ),
       },
       {
-        id: "supplier.name",
-        accessorFn: (row) => row.supplier?.name,
+        accessorKey: "name",
+        header: "Name",
+        cell: ({ row }) => (
+          <div className="max-w-[300px] truncate">{row.getValue("name")}</div>
+        ),
+      },
+      {
+        id: "cycleCountType.lookupValue",
+        accessorFn: (row) => row.cycleCountType?.lookupValue,
         header: ({ column }) => {
-          const suppliers = returnRequests
-            ? Array.from(
-                new Set(
-                  returnRequests.map((rr) => rr.supplier?.name).filter(Boolean),
-                ),
-              ).map((name) => ({
-                label: name as string,
-                value: name as string,
-              }))
-            : [];
+          const typeOptions = [
+            { label: "All", value: "all" },
+            { label: "Daily", value: "daily" },
+            { label: "Weekly", value: "weekly" },
+            { label: "Monthly", value: "monthly" },
+            { label: "Quarterly", value: "quarterly" },
+          ];
 
-          const currentFilter = column.getFilterValue() as string[] | undefined;
+          const currentFilter = column.getFilterValue() as string | undefined;
 
           return (
             <FilterPopover
-              label="Supplier"
-              options={suppliers}
+              label="Type"
+              options={typeOptions}
               currentValue={currentFilter}
-              onChange={(value) => column.setFilterValue(value)}
-              variant="multi-select"
+              onChange={(value) =>
+                column.setFilterValue(value === "all" ? undefined : value)
+              }
             />
           );
         },
         filterFn: (row, id, value) => {
-          if (!value || (Array.isArray(value) && value.length === 0))
-            return true;
+          if (!value || value === "all") return true;
           const rowValue = row.getValue(id) as string;
-          return Array.isArray(value)
-            ? value.includes(rowValue)
-            : rowValue === value;
+          return rowValue?.toLowerCase() === value?.toLowerCase();
         },
         cell: ({ row }) => (
-          <div className="">{row.getValue("supplier.name") ?? "-"}</div>
+          <div className="text-center">
+            {row.getValue("cycleCountType.lookupValue") ?? "-"}
+          </div>
         ),
       },
       {
-        accessorKey: "totalSKUs",
-        header: "Total SKUs",
-        cell: ({ row }) => (
-          <div className="text-center">{row.getValue("totalSKUs")}</div>
-        ),
-      },
-      {
-        accessorKey: "totalItems",
-        header: "Total Items",
-        cell: ({ row }) => (
-          <div className="text-center">{row.getValue("totalItems")}</div>
-        ),
-      },
-      {
-        accessorKey: "requestedAt",
-        header: ({ column }) => {
-          const sortOptions = [
-            { label: "Default", value: "default" },
-            { label: "Ascending", value: "asc" },
-            { label: "Descending", value: "desc" },
-          ];
-
-          const currentSort = column.getIsSorted();
-          const currentValue = currentSort ? String(currentSort) : "default";
-
+        accessorKey: "zonesCount",
+        header: "Zones",
+        cell: ({ row }) => {
+          const count = row.getValue("zonesCount") as number;
           return (
-            <div className="flex items-center justify-end">
-              <FilterPopover
-                label="Requested at"
-                options={sortOptions}
-                currentValue={currentValue}
-                onChange={(value) => {
-                  if (value === "default" || !value) {
-                    column.clearSorting();
-                  } else {
-                    column.toggleSorting(value === "desc", false);
-                  }
-                }}
-                isSort
-              />
+            <div className="text-center">
+              {count} {count === 1 ? "zone" : "zones"}
             </div>
           );
         },
-        cell: ({ row }) => {
-          const timestamp = row.getValue("requestedAt") as number;
-          const formatted = new Intl.DateTimeFormat("en-US", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-          }).format(new Date(timestamp));
-
-          return <div className="text-right font-medium">{formatted}</div>;
-        },
       },
       {
-        id: "returnStatus.lookupValue",
-        accessorFn: (row) => row.returnStatus?.lookupValue,
+        id: "sessionStatus.lookupValue",
+        accessorFn: (row) => row.sessionStatus?.lookupValue,
         header: ({ column }) => {
-          const statusFilterOptions = [
+          const statusOptions = [
             { label: "All", value: "all" },
-            { label: "Waiting", value: "waiting" },
-            { label: "Approved", value: "approved" },
-            { label: "Returned", value: "returned" },
-            { label: "Rejected", value: "rejected" },
+            { label: "Active", value: "active" },
+            { label: "In Progress", value: "in progress" },
+            { label: "Pending", value: "pending" },
+            { label: "Completed", value: "completed" },
+            { label: "Cancelled", value: "cancelled" },
           ];
 
           const currentFilter = column.getFilterValue() as string | undefined;
@@ -397,24 +362,27 @@ export function ReturnRequestsTable() {
             <div className="flex items-center justify-center">
               <FilterPopover
                 label="Status"
-                options={statusFilterOptions}
+                options={statusOptions}
                 currentValue={currentFilter}
-                onChange={(value) => column.setFilterValue(value)}
+                onChange={(value) =>
+                  column.setFilterValue(value === "all" ? undefined : value)
+                }
               />
             </div>
           );
         },
         filterFn: (row, id, value) => {
+          if (!value || value === "all") return true;
           const rowValue = row.getValue(id) as string;
           return rowValue?.toLowerCase() === value?.toLowerCase();
         },
         cell: ({ row }) => {
-          const status = row.getValue("returnStatus.lookupValue") as string;
+          const status = row.getValue("sessionStatus.lookupValue") as string;
           return (
             <div className="text-center">
               <Badge
                 className={cn(
-                  "w-20 rounded-sm text-center",
+                  "rounded-sm text-center",
                   getBadgeStyleByStatus(status ?? ""),
                 )}
                 variant={"outline"}
@@ -426,10 +394,21 @@ export function ReturnRequestsTable() {
         },
       },
       {
+        id: "createdByUser.fullName",
+        accessorFn: (row) => row.createdByUser?.fullName,
+        header: "Created By",
+        cell: ({ row }) => (
+          <div className="">
+            {row.getValue("createdByUser.fullName") ?? "-"}
+          </div>
+        ),
+      },
+      {
         id: "actions",
         enableHiding: false,
         cell: ({ row }) => {
-          const returnRequest = row.original;
+          const session = row.original;
+          const status = session.sessionStatus?.lookupValue?.toLowerCase();
 
           return (
             <DropdownMenu>
@@ -441,21 +420,24 @@ export function ReturnRequestsTable() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                {status === "active" || status === "pending" ? (
+                  <DropdownMenuItem>
+                    <Play className="mr-2 h-4 w-4" />
+                    Proceed
+                  </DropdownMenuItem>
+                ) : null}
                 <DropdownMenuItem
                   onClick={() =>
-                    navigator.clipboard.writeText(returnRequest.requestCode)
+                    handleViewDetailsCallback(session._id.toString())
                   }
                 >
-                  Copy Request ID
+                  <Eye className="mr-2 h-4 w-4" />
+                  View Details
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={`/${workspace}/return-requests/${returnRequest._id as string}`}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View details
-                  </Link>
+                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -463,7 +445,7 @@ export function ReturnRequestsTable() {
         },
       },
     ],
-    [returnRequests, workspace],
+    [handleViewDetailsCallback],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -478,7 +460,7 @@ export function ReturnRequestsTable() {
     useDebouncedInput("", 300);
 
   const table = useReactTable({
-    data: returnRequests ?? [],
+    data: cycleCountSessions ?? [],
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -497,7 +479,7 @@ export function ReturnRequestsTable() {
   });
 
   React.useEffect(() => {
-    table.getColumn("requestCode")?.setFilterValue(debouncedFilterValue);
+    table.getColumn("sessionCode")?.setFilterValue(debouncedFilterValue);
   }, [debouncedFilterValue, table]);
 
   const activeFiltersCount =
@@ -518,10 +500,10 @@ export function ReturnRequestsTable() {
         </div>
         <div className="overflow-hidden rounded-md border">
           <div className="bg-card p-4">
-            {[1, 2, 3, 4, 5].map((i) => (
+            {[...Array(5)].map((_, i) => (
               <div
-                key={i}
-                className="mb-2 h-12 w-full animate-pulse rounded bg-muted"
+                key={`skeleton-${i.toString()}`}
+                className="mb-2 h-12 animate-pulse rounded bg-muted"
               />
             ))}
           </div>
@@ -532,10 +514,17 @@ export function ReturnRequestsTable() {
 
   return (
     <div className="w-full">
+      {/* Detail Dialog */}
+      <CycleCountSessionDetailDialog
+        sessionId={selectedSessionId}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
+
       <div className="flex flex-row justify-between pb-4">
-        <InputGroup className="max-w-[200px]">
+        <InputGroup className="max-w-[250px]">
           <InputGroupInput
-            placeholder="Filter Request ID..."
+            placeholder="Search by session name or ID..."
             value={instantFilterValue}
             onChange={(event) => setFilterValue(event.target.value)}
           />
@@ -546,39 +535,15 @@ export function ReturnRequestsTable() {
         <div className="flex items-center gap-2">
           {activeFiltersCount >= 2 && (
             <Button
-              variant={"default"}
-              className=""
+              variant="ghost"
+              size="sm"
               onClick={handleClearAllFilters}
+              className="text-muted-foreground"
             >
-              Clear filters ({activeFiltersCount})
+              Clear all filters
             </Button>
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                Columns <ChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <CreateCycleCountSessionDialog />
         </div>
       </div>
       <div className="overflow-hidden rounded-md border">
@@ -624,7 +589,7 @@ export function ReturnRequestsTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No return requests found.
+                  No results.
                 </TableCell>
               </TableRow>
             )}
