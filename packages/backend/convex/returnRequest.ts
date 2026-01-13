@@ -1,5 +1,62 @@
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+
+// ================================================================
+// HELPER FUNCTIONS
+// ================================================================
+
+/**
+ * Get supplier by ID (handles string ID from return_requests table)
+ */
+async function getSupplierById(ctx: any, supplierId: string) {
+  try {
+    const supplier = await ctx.db.get(supplierId as Id<"suppliers">);
+    return supplier;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get user by ID (handles string ID from return_requests table)
+ */
+async function getUserById(ctx: any, userId: string) {
+  try {
+    const user = await ctx.db.get(userId as Id<"users">);
+    return user;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get system lookup by ID
+ */
+async function getSystemLookup(ctx: any, lookupId: string) {
+  try {
+    const lookup = await ctx.db.get(lookupId as Id<"system_lookups">);
+    return lookup;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Get product variant by ID
+ */
+async function getProductVariant(ctx: any, skuId: string) {
+  try {
+    const variant = await ctx.db.get(skuId as Id<"product_variants">);
+    return variant;
+  } catch {
+    return null;
+  }
+}
+
+// ================================================================
+// QUERIES
+// ================================================================
 
 /**
  * getAllReturnRequest
@@ -37,6 +94,85 @@ export const getAllReturnRequest = query({
 
     // Step 3: Return all active return requests
     return returnRequests;
+  },
+});
+
+/**
+ * listWithDetails
+ *
+ * Purpose: Retrieves all active return requests with related data (supplier, user, status)
+ *
+ * Process:
+ * 1. Queries the return_requests table using the organizationId index
+ * 2. Filters results to only include non-deleted records
+ * 3. Enriches each request with supplier name, user name, and status
+ * 4. Counts total SKUs and items for each request
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const listWithDetails = query({
+  args: {
+    organizationId: v.string(),
+    branchId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Query return_requests table filtered by organization
+    const returnRequests = await ctx.db
+      .query("return_requests")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("branchId"), args.branchId),
+          q.eq(q.field("isDeleted"), false),
+        ),
+      )
+      .order("desc")
+      .collect();
+
+    // Step 2: Enrich each request with related data
+    const enrichedRequests = await Promise.all(
+      returnRequests.map(async (request) => {
+        // Get supplier
+        const supplier = await getSupplierById(ctx, request.supplierId);
+
+        // Get requested by user
+        const requestedByUser = await getUserById(ctx, request.requestedByUserId);
+
+        // Get status
+        const status = await getSystemLookup(ctx, request.returnStatusTypeId);
+
+        // Get details to count total SKUs and items
+        const details = await ctx.db
+          .query("return_request_details")
+          .withIndex("returnRequestId", (q) =>
+            q.eq("returnRequestId", request._id),
+          )
+          .collect();
+
+        const totalSKUs = details.length;
+        const totalItems = details.reduce(
+          (sum, detail) => sum + detail.quantityToReturn,
+          0,
+        );
+
+        return {
+          _id: request._id,
+          requestCode: request.requestCode,
+          requestedAt: request.requestedAt,
+          supplier: supplier ? { name: supplier.name } : null,
+          requestedByUser: requestedByUser
+            ? { fullName: requestedByUser.fullName }
+            : null,
+          returnStatus: status ? { lookupValue: status.lookupValue } : null,
+          totalSKUs,
+          totalItems,
+        };
+      }),
+    );
+
+    return enrichedRequests;
   },
 });
 
@@ -121,6 +257,100 @@ export const getReturnRequestById = query({
     return {
       ...returnRequest,
       details: returnDetails,
+    };
+  },
+});
+
+/**
+ * getReturnRequestWithDetails
+ *
+ * Purpose: Retrieves a specific return request by its ID with all enriched data
+ *
+ * Process:
+ * 1. Fetches the return request from the database
+ * 2. Enriches with supplier, user, and status information
+ * 3. Enriches each detail line with SKU/product info and reason
+ * 4. Returns the complete return request with all related data
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const getReturnRequestWithDetails = query({
+  args: {
+    returnRequestId: v.id("return_requests"),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Fetch the return request by ID
+    const returnRequest = await ctx.db.get(args.returnRequestId);
+
+    // Step 2: Validate request exists and is not deleted
+    if (!returnRequest || returnRequest.isDeleted) {
+      return null;
+    }
+
+    // Step 3: Get related data for the header
+    const supplier = await getSupplierById(ctx, returnRequest.supplierId);
+    const requestedByUser = await getUserById(ctx, returnRequest.requestedByUserId);
+    const status = await getSystemLookup(ctx, returnRequest.returnStatusTypeId);
+
+    // Step 4: Query all associated return request details
+    const returnDetails = await ctx.db
+      .query("return_request_details")
+      .withIndex("returnRequestId", (q) =>
+        q.eq("returnRequestId", args.returnRequestId),
+      )
+      .collect();
+
+    // Step 5: Enrich each detail with product/SKU info and reason
+    const enrichedDetails = await Promise.all(
+      returnDetails.map(async (detail) => {
+        const productVariant = await getProductVariant(ctx, detail.skuId);
+        const reason = await getSystemLookup(ctx, detail.reasonTypeId);
+
+        // Get product name if variant exists
+        let productName: string | null = null;
+        if (productVariant) {
+          const product = await ctx.db.get(productVariant.productId as Id<"products">);
+          productName = (product as { name?: string } | null)?.name ?? null;
+        }
+
+        return {
+          _id: detail._id,
+          skuCode: productVariant?.skuCode ?? "Unknown SKU",
+          productName,
+          quantityToReturn: detail.quantityToReturn,
+          expectedCreditAmount: detail.expectedCreditAmount,
+          reason: reason ? { lookupValue: reason.lookupValue } : null,
+          customReasonNotes: detail.customReasonNotes,
+          batchId: detail.batchId,
+        };
+      }),
+    );
+
+    // Calculate totals
+    const totalSKUs = returnDetails.length;
+    const totalExpectedQuantity = returnDetails.reduce(
+      (sum, detail) => sum + detail.quantityToReturn,
+      0,
+    );
+    const totalExpectedCredit = returnDetails.reduce(
+      (sum, detail) => sum + detail.expectedCreditAmount,
+      0,
+    );
+
+    // Step 6: Return the complete return request with enriched details
+    return {
+      _id: returnRequest._id,
+      requestCode: returnRequest.requestCode,
+      requestedAt: returnRequest.requestedAt,
+      supplier: supplier ? { name: supplier.name } : null,
+      requestedByUser: requestedByUser
+        ? { fullName: requestedByUser.fullName }
+        : null,
+      returnStatus: status ? { lookupValue: status.lookupValue } : null,
+      totalSKUs,
+      totalExpectedQuantity,
+      totalExpectedCredit,
+      details: enrichedDetails,
     };
   },
 });

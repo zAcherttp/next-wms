@@ -66,7 +66,7 @@ export default function AvatarUpload({
               previewUrl && "border-solid",
             )}
           >
-            <AnimatePresence mode="wait">
+            <AnimatePresence mode={"popLayout"}>
               {previewUrl ? (
                 <motion.div
                   initial={{ opacity: 0, filter: "blur(5px)" }}
