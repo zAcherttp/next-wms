@@ -1,7 +1,5 @@
 "use client";
 
-import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -14,8 +12,6 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { api } from "@wms/backend/convex/_generated/api";
-import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ChevronDown,
   ChevronLeft,
@@ -55,224 +51,197 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useBranches } from "@/hooks/use-branches";
-import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { ReturnRequestListItem } from "@/lib/types";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
+import { MOCK_RETURN_REQUESTS } from "@/mock/data/return-requests";
+
+export const columns: ColumnDef<ReturnRequestListItem>[] = [
+  {
+    accessorKey: "requestCode",
+    header: "Request ID",
+    cell: ({ row }) => (
+      <TableCellFirst>{row.getValue("requestCode")}</TableCellFirst>
+    ),
+  },
+  {
+    id: "supplier.name",
+    accessorFn: (row) => row.supplier?.name,
+    header: ({ column }) => {
+      const suppliers = Array.from(
+        new Set(
+          MOCK_RETURN_REQUESTS.map((rr) => rr.supplier?.name).filter(Boolean),
+        ),
+      ).map((name) => ({
+        label: name as string,
+        value: name as string,
+      }));
+
+      const currentFilter = column.getFilterValue() as string[] | undefined;
+
+      return (
+        <FilterPopover
+          label="Supplier"
+          options={suppliers}
+          currentValue={currentFilter}
+          onChange={(value) => column.setFilterValue(value)}
+          variant="multi-select"
+        />
+      );
+    },
+    filterFn: (row, id, value) => {
+      if (!value || (Array.isArray(value) && value.length === 0)) return true;
+      const rowValue = row.getValue(id) as string;
+      return Array.isArray(value)
+        ? value.includes(rowValue)
+        : rowValue === value;
+    },
+    cell: ({ row }) => (
+      <div className="">{row.getValue("supplier.name") ?? "-"}</div>
+    ),
+  },
+  {
+    accessorKey: "totalSKUs",
+    header: "Total SKUs",
+    cell: ({ row }) => (
+      <div className="text-center">{row.getValue("totalSKUs")}</div>
+    ),
+  },
+  {
+    accessorKey: "totalItems",
+    header: "Total Items",
+    cell: ({ row }) => (
+      <div className="text-center">{row.getValue("totalItems")}</div>
+    ),
+  },
+  {
+    accessorKey: "requestedAt",
+    header: ({ column }) => {
+      const sortOptions = [
+        { label: "Default", value: "default" },
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ];
+
+      const currentSort = column.getIsSorted();
+      const currentValue = currentSort ? String(currentSort) : "default";
+
+      return (
+        <div className="flex items-center justify-end">
+          <FilterPopover
+            label="Requested at"
+            options={sortOptions}
+            currentValue={currentValue}
+            onChange={(value) => {
+              if (value === "default" || !value) {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(value === "desc", false);
+              }
+            }}
+            isSort
+          />
+        </div>
+      );
+    },
+    cell: ({ row }) => {
+      const timestamp = row.getValue("requestedAt") as number;
+      const formatted = new Intl.DateTimeFormat("en-US", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+      }).format(new Date(timestamp));
+
+      return <div className="text-right font-medium">{formatted}</div>;
+    },
+  },
+  {
+    id: "returnStatus.lookupValue",
+    accessorFn: (row) => row.returnStatus?.lookupValue,
+    header: ({ column }) => {
+      const statusFilterOptions = [
+        { label: "All", value: "all" },
+        { label: "Waiting", value: "waiting" },
+        { label: "Approved", value: "approved" },
+        { label: "Returned", value: "returned" },
+        { label: "Rejected", value: "rejected" },
+      ];
+
+      const currentFilter = column.getFilterValue() as string | undefined;
+
+      return (
+        <div className="flex items-center justify-center">
+          <FilterPopover
+            label="Status"
+            options={statusFilterOptions}
+            currentValue={currentFilter}
+            onChange={(value) =>
+              column.setFilterValue(value === "all" ? undefined : value)
+            }
+          />
+        </div>
+      );
+    },
+    filterFn: (row, id, value) => {
+      if (!value || value === "all") return true;
+      const rowValue = row.getValue(id) as string;
+      return rowValue?.toLowerCase() === value?.toLowerCase();
+    },
+    cell: ({ row }) => {
+      const status = row.getValue("returnStatus.lookupValue") as string;
+      return (
+        <div className="text-center">
+          <Badge
+            className={cn(
+              "w-20 rounded-sm text-center",
+              getBadgeStyleByStatus(status ?? ""),
+            )}
+            variant={"outline"}
+          >
+            {status ?? "Unknown"}
+          </Badge>
+        </div>
+      );
+    },
+  },
+  {
+    id: "actions",
+    enableHiding: false,
+    cell: ({ row }) => {
+      const returnRequest = row.original;
+
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size={"icon-sm"}>
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuItem
+              onClick={() =>
+                navigator.clipboard.writeText(returnRequest.requestCode)
+              }
+            >
+              Copy Request ID
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>
+              <Eye className="mr-2 h-4 w-4" />
+              View details
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    },
+  },
+];
 
 export function ReturnRequestsTable() {
   const params = useParams();
   const workspace = params.workspace as string;
-  const { organizationId } = useCurrentUser();
-
-  const { currentBranch } = useBranches({
-    organizationId: organizationId as Id<"organizations"> | undefined,
-    includeDeleted: false,
-  });
-
-  const { data: returnRequests, isPending } = useQuery({
-    ...convexQuery(
-      api.returnRequest.listWithDetails,
-      organizationId && currentBranch
-        ? {
-            organizationId: organizationId as Id<"organizations">,
-            branchId: currentBranch._id,
-          }
-        : "skip",
-    ),
-    enabled: !!organizationId && !!currentBranch,
-  });
-
-  const columns: ColumnDef<ReturnRequestListItem>[] = React.useMemo(
-    () => [
-      {
-        accessorKey: "requestCode",
-        header: "Request ID",
-        cell: ({ row }) => (
-          <TableCellFirst>{row.getValue("requestCode")}</TableCellFirst>
-        ),
-      },
-      {
-        id: "supplier.name",
-        accessorFn: (row) => row.supplier?.name,
-        header: ({ column }) => {
-          const suppliers = returnRequests
-            ? Array.from(
-                new Set(
-                  returnRequests.map((rr) => rr.supplier?.name).filter(Boolean),
-                ),
-              ).map((name) => ({
-                label: name as string,
-                value: name as string,
-              }))
-            : [];
-
-          const currentFilter = column.getFilterValue() as string[] | undefined;
-
-          return (
-            <FilterPopover
-              label="Supplier"
-              options={suppliers}
-              currentValue={currentFilter}
-              onChange={(value) => column.setFilterValue(value)}
-              variant="multi-select"
-            />
-          );
-        },
-        filterFn: (row, id, value) => {
-          if (!value || (Array.isArray(value) && value.length === 0))
-            return true;
-          const rowValue = row.getValue(id) as string;
-          return Array.isArray(value)
-            ? value.includes(rowValue)
-            : rowValue === value;
-        },
-        cell: ({ row }) => (
-          <div className="">{row.getValue("supplier.name") ?? "-"}</div>
-        ),
-      },
-      {
-        accessorKey: "totalSKUs",
-        header: "Total SKUs",
-        cell: ({ row }) => (
-          <div className="text-center">{row.getValue("totalSKUs")}</div>
-        ),
-      },
-      {
-        accessorKey: "totalItems",
-        header: "Total Items",
-        cell: ({ row }) => (
-          <div className="text-center">{row.getValue("totalItems")}</div>
-        ),
-      },
-      {
-        accessorKey: "requestedAt",
-        header: ({ column }) => {
-          const sortOptions = [
-            { label: "Default", value: "default" },
-            { label: "Ascending", value: "asc" },
-            { label: "Descending", value: "desc" },
-          ];
-
-          const currentSort = column.getIsSorted();
-          const currentValue = currentSort ? String(currentSort) : "default";
-
-          return (
-            <div className="flex items-center justify-end">
-              <FilterPopover
-                label="Requested at"
-                options={sortOptions}
-                currentValue={currentValue}
-                onChange={(value) => {
-                  if (value === "default" || !value) {
-                    column.clearSorting();
-                  } else {
-                    column.toggleSorting(value === "desc", false);
-                  }
-                }}
-                isSort
-              />
-            </div>
-          );
-        },
-        cell: ({ row }) => {
-          const timestamp = row.getValue("requestedAt") as number;
-          const formatted = new Intl.DateTimeFormat("en-US", {
-            year: "numeric",
-            month: "2-digit",
-            day: "2-digit",
-          }).format(new Date(timestamp));
-
-          return <div className="text-right font-medium">{formatted}</div>;
-        },
-      },
-      {
-        id: "returnStatus.lookupValue",
-        accessorFn: (row) => row.returnStatus?.lookupValue,
-        header: ({ column }) => {
-          const statusFilterOptions = [
-            { label: "All", value: "all" },
-            { label: "Waiting", value: "waiting" },
-            { label: "Approved", value: "approved" },
-            { label: "Returned", value: "returned" },
-            { label: "Rejected", value: "rejected" },
-          ];
-
-          const currentFilter = column.getFilterValue() as string | undefined;
-
-          return (
-            <div className="flex items-center justify-center">
-              <FilterPopover
-                label="Status"
-                options={statusFilterOptions}
-                currentValue={currentFilter}
-                onChange={(value) => column.setFilterValue(value)}
-              />
-            </div>
-          );
-        },
-        filterFn: (row, id, value) => {
-          const rowValue = row.getValue(id) as string;
-          return rowValue?.toLowerCase() === value?.toLowerCase();
-        },
-        cell: ({ row }) => {
-          const status = row.getValue("returnStatus.lookupValue") as string;
-          return (
-            <div className="text-center">
-              <Badge
-                className={cn(
-                  "w-20 rounded-sm text-center",
-                  getBadgeStyleByStatus(status ?? ""),
-                )}
-                variant={"outline"}
-              >
-                {status ?? "Unknown"}
-              </Badge>
-            </div>
-          );
-        },
-      },
-      {
-        id: "actions",
-        enableHiding: false,
-        cell: ({ row }) => {
-          const returnRequest = row.original;
-
-          return (
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size={"icon-sm"}>
-                  <span className="sr-only">Open menu</span>
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuItem
-                  onClick={() =>
-                    navigator.clipboard.writeText(returnRequest.requestCode)
-                  }
-                >
-                  Copy Request ID
-                </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={`/${workspace}/return-requests/${returnRequest._id as string}`}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View details
-                  </Link>
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          );
-        },
-      },
-    ],
-    [returnRequests, workspace],
-  );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
@@ -285,9 +254,59 @@ export function ReturnRequestsTable() {
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
 
+  // Create columns with workspace context for links
+  const columnsWithWorkspace: ColumnDef<ReturnRequestListItem>[] =
+    React.useMemo(
+      () =>
+        columns.map((col) => {
+          if (col.id === "actions") {
+            return {
+              ...col,
+              cell: ({ row }) => {
+                const returnRequest = row.original;
+
+                return (
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size={"icon-sm"}>
+                        <span className="sr-only">Open menu</span>
+                        <MoreHorizontal />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          navigator.clipboard.writeText(
+                            returnRequest.requestCode,
+                          )
+                        }
+                      >
+                        Copy Request ID
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem asChild>
+                        <Link
+                          href={`/${workspace}/return-requests/${returnRequest._id as string}`}
+                        >
+                          <Eye className="mr-2 h-4 w-4" />
+                          View details
+                        </Link>
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                );
+              },
+            };
+          }
+          return col;
+        }),
+      [workspace],
+    );
+
   const table = useReactTable({
-    data: returnRequests ?? [],
-    columns,
+    data: MOCK_RETURN_REQUESTS,
+    columns: columnsWithWorkspace,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
@@ -316,27 +335,6 @@ export function ReturnRequestsTable() {
     table.resetSorting();
     setFilterValue("");
   };
-
-  if (isPending) {
-    return (
-      <div className="w-full space-y-4">
-        <div className="flex flex-row justify-between pb-4">
-          <div className="h-10 w-50 animate-pulse rounded bg-muted" />
-          <div className="h-10 w-25 animate-pulse rounded bg-muted" />
-        </div>
-        <div className="overflow-hidden rounded-md border">
-          <div className="bg-card p-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="mb-2 h-12 w-full animate-pulse rounded bg-muted"
-              />
-            ))}
-          </div>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="w-full">
@@ -429,7 +427,7 @@ export function ReturnRequestsTable() {
             ) : (
               <TableRow>
                 <TableCell
-                  colSpan={columns.length}
+                  colSpan={columnsWithWorkspace.length}
                   className="h-24 text-center"
                 >
                   No return requests found.
@@ -482,3 +480,4 @@ export function ReturnRequestsTable() {
     </div>
   );
 }
+
