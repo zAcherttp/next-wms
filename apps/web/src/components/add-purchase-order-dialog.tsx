@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, MapPin, Pencil, Plus, Trash2 } from "lucide-react";
+import { Check, MapPin, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +19,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { EditableField } from "@/components/ui/editable-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -97,7 +98,6 @@ export function AddPurchaseOrderDialog({
 }: AddPurchaseOrderDialogProps) {
   const [open, setOpen] = React.useState(false);
   const [poCode, setPoCode] = React.useState("PO-00012");
-  const [isEditingCode, setIsEditingCode] = React.useState(false);
   const [receivingBranch, setReceivingBranch] = React.useState<string>("");
   const [supplier, setSupplier] = React.useState<string>("");
   const [products, setProducts] = React.useState<ProductItem[]>([]);
@@ -167,45 +167,30 @@ export function AddPurchaseOrderDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="flex max-h-[85vh] w-full max-w-[35vw] flex-col overflow-hidden">
-        <DialogHeader className="flex flex-row items-center justify-between">
-          <div className="flex items-center gap-2">
-            {isEditingCode ? (
-              <Input
-                value={poCode}
-                onChange={(e) => setPoCode(e.target.value)}
-                onBlur={() => setIsEditingCode(false)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") setIsEditingCode(false);
-                }}
-                className="w-32 font-semibold text-lg italic"
-                autoFocus
-              />
-            ) : (
-              <>
-                <DialogTitle className="font-semibold text-lg italic">
-                  {poCode}
-                </DialogTitle>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  onClick={() => setIsEditingCode(true)}
-                >
-                  <Pencil className="size-4" />
-                </Button>
-              </>
-            )}
-          </div>
+      <DialogContent className="flex max-h-250 w-full flex-col overflow-hidden sm:max-w-300">
+        <DialogHeader>
+          <DialogTitle>New Purchase Order</DialogTitle>
         </DialogHeader>
 
         {/* Form Fields */}
-        <div className="grid grid-cols-2 gap-4">
+        <div className="flex max-w-150 flex-row gap-4">
           <div className="space-y-2">
             <Label htmlFor="receiving-branch">
-              Receiving Branch <span className="text-destructive">*</span>
+              PO-ID<span className="text-destructive">*</span>
+            </Label>
+            <EditableField
+              value={poCode}
+              onChange={setPoCode}
+              placeholder="Leave blank to auto-generate"
+              inputClassName="min-w-40"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="receiving-branch">
+              Receiving Branch<span className="text-destructive">*</span>
             </Label>
             <Select value={receivingBranch} onValueChange={setReceivingBranch}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="min-w-40">
                 <SelectValue placeholder="Branch" />
               </SelectTrigger>
               <SelectContent>
@@ -223,7 +208,7 @@ export function AddPurchaseOrderDialog({
               Supplier <span className="text-destructive">*</span>
             </Label>
             <Select value={supplier} onValueChange={setSupplier}>
-              <SelectTrigger className="w-full">
+              <SelectTrigger className="min-w-40">
                 <SelectValue placeholder="Supplier" />
               </SelectTrigger>
               <SelectContent>
@@ -243,11 +228,10 @@ export function AddPurchaseOrderDialog({
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-30">SKU Code</TableHead>
+                  <TableHead className="px-3">SKU Code</TableHead>
                   <TableHead>Product Name</TableHead>
-                  <TableHead className="w-25 text-center">Quantity</TableHead>
-                  <TableHead className="w-45">Location</TableHead>
-                  <TableHead className="w-12.5" />
+                  <TableHead className="text-center">Quantity</TableHead>
+                  <TableHead>Location</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -263,7 +247,7 @@ export function AddPurchaseOrderDialog({
                 ) : (
                   products.map((product) => (
                     <TableRow key={product.id}>
-                      <TableCell className="font-medium text-blue-600">
+                      <TableCell className="px-3 font-medium">
                         {product.skuCode}
                       </TableCell>
                       <TableCell>{product.skuName}</TableCell>
