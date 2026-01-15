@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   flexRender,
@@ -7,9 +9,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-// import { convexQuery } from "@convex-dev/react-query";
-// import { useQuery, useQueryClient } from "@tanstack/react-query";
-// import { api } from "@wms/backend/convex/_generated/api";
+import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ArrowLeft,
@@ -48,8 +48,6 @@ import {
 } from "@/components/ui/table";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
-// import { useConvex } from "convex/react";
-import { getReturnRequestById } from "@/mock/data/return-requests";
 
 // Define the detail item type based on what the API returns
 type DetailItem = {
@@ -122,20 +120,13 @@ export default function ReturnRequestDetailPage() {
   const params = useParams();
   const workspace = params.workspace as string;
   const returnRequestId = params.id as string;
-  // const queryClient = useQueryClient();
-  // const convex = useConvex();
 
-  // COMMENTED OUT: Convex query - using mock data instead
-  // const { data: returnRequest, isPending } = useQuery({
-  //   ...convexQuery(api.returnRequest.getReturnRequestWithDetails, {
-  //     returnRequestId: returnRequestId as Id<"return_requests">,
-  //   }),
-  //   enabled: !!returnRequestId,
-  // });
-
-  // Using mock data instead of Convex
-  const returnRequest = getReturnRequestById(returnRequestId);
-  const isPending = false;
+  const { data: returnRequest, isLoading: isPending } = useQuery({
+    ...convexQuery(api.returnRequest.getReturnRequestWithDetails, {
+      returnRequestId: returnRequestId as Id<"return_requests">,
+    }),
+    enabled: !!returnRequestId,
+  });
 
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
@@ -166,23 +157,6 @@ export default function ReturnRequestDetailPage() {
       },
     },
   });
-
-  // COMMENTED OUT: Convex mutation for status update - using mock data
-  // const handleStatusUpdate = async (newStatus: string) => {
-  //   try {
-  //     await convex.mutation(api.returnRequest.setReturnRequestStatus, {
-  //       returnRequestId: returnRequestId as Id<"return_requests">,
-  //       returnStatusTypeId: newStatus,
-  //     });
-  //     toast.success("Status updated successfully");
-  //     queryClient.invalidateQueries({
-  //       queryKey: ["returnRequest", returnRequestId],
-  //     });
-  //   } catch (error) {
-  //     toast.error("Failed to update status");
-  //     console.error(error);
-  //   }
-  // };
 
   if (isPending) {
     return (

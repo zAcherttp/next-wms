@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,6 +14,8 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ChevronLeft,
   ChevronRight,
@@ -51,15 +55,27 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { CycleCountSessionListItem } from "@/lib/types";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
-import { MOCK_CYCLE_COUNT_SESSIONS } from "@/mock/data/cycle-count";
 
 export function CycleCountSessionsTable() {
-  // Using mock data instead of Convex
-  const cycleCountSessions = MOCK_CYCLE_COUNT_SESSIONS;
-  const isPending = false;
+  const { organizationId } = useCurrentUser();
+
+  const { currentBranch } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: false,
+  });
+
+  const { data: cycleCountSessions, isLoading } = useQuery({
+    ...convexQuery(api.cycleCount.listWithDetails, {
+      organizationId: organizationId as string,
+      branchId: currentBranch?._id as string,
+    }),
+    enabled: !!organizationId && !!currentBranch,
+  });
 
   // Detail dialog state
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
@@ -296,7 +312,7 @@ export function CycleCountSessionsTable() {
     setFilterValue("");
   };
 
-  if (isPending) {
+  if (isLoading) {
     return (
       <div className="w-full space-y-4">
         <div className="flex flex-row justify-between pb-4">

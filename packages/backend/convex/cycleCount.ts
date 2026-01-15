@@ -694,3 +694,228 @@ export const getExpiringBatchesByZone = query({
     });
   },
 });
+
+// ================================================================
+// LIST & STATS QUERIES
+// ================================================================
+
+/**
+ * listWithDetails
+ *
+ * Purpose: Retrieves all cycle count sessions with enriched data for the table view
+ *
+ * Process:
+ * 1. Queries work_sessions table filtered by organization and branch
+ * 2. Filters by session type (cycle count)
+ * 3. Enriches each session with cycle count type, status, assigned user, and zones count
+ * 4. Returns formatted list matching CycleCountSessionListItem type
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const listWithDetails = query({
+  args: {
+    organizationId: v.string(),
+    branchId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Get the cycle count session type lookup
+    const cycleCountSessionType = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "session_type"),
+          q.eq(q.field("lookupValue"), "Cycle Count"),
+        ),
+      )
+      .first();
+
+    if (!cycleCountSessionType) {
+      return [];
+    }
+
+    // Step 2: Query work_sessions table filtered by organization
+    const sessions = await ctx.db
+      .query("work_sessions")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId as any),
+      )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("branchId"), args.branchId as any),
+          q.eq(q.field("sessionTypeId"), cycleCountSessionType._id),
+        ),
+      )
+      .order("desc")
+      .collect();
+
+    // Step 3: Enrich each session with related data
+    const enrichedSessions = await Promise.all(
+      sessions.map(async (session) => {
+        // Get cycle count type
+        const cycleCountType = session.cycleCountTypeId
+          ? await ctx.db.get(session.cycleCountTypeId)
+          : null;
+
+        // Get session status
+        const sessionStatus = await ctx.db.get(session.sessionStatusTypeId);
+
+        // Get assigned user
+        const assignedUser = await ctx.db.get(session.assignedUserId);
+
+        // Count zones for this session
+        const zoneAssignments = await ctx.db
+          .query("session_zone_assignments")
+          .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+          .collect();
+
+        return {
+          _id: session._id,
+          sessionCode: session.sessionCode,
+          name: session.name ?? session.sessionCode,
+          cycleCountType: cycleCountType
+            ? { lookupValue: cycleCountType.lookupValue }
+            : null,
+          sessionStatus: sessionStatus
+            ? { lookupValue: sessionStatus.lookupValue }
+            : null,
+          createdByUser: assignedUser
+            ? { fullName: assignedUser.fullName ?? assignedUser.email }
+            : null,
+          zonesCount: zoneAssignments.length,
+          createdAt: session._creationTime,
+        };
+      }),
+    );
+
+    return enrichedSessions;
+  },
+});
+
+/**
+ * getStats
+ *
+ * Purpose: Retrieves cycle count statistics for the dashboard
+ *
+ * Process:
+ * 1. Gets all cycle count sessions for the organization/branch
+ * 2. Counts active sessions, completed sessions, and total zones
+ * 3. Calculates verification rate from session metrics
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const getStats = query({
+  args: {
+    organizationId: v.string(),
+    branchId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Get the cycle count session type lookup
+    const cycleCountSessionType = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "session_type"),
+          q.eq(q.field("lookupValue"), "Cycle Count"),
+        ),
+      )
+      .first();
+
+    if (!cycleCountSessionType) {
+      return {
+        activeSessions: 0,
+        totalZones: 0,
+        completedSessions: 0,
+        verificationRate: 0,
+      };
+    }
+
+    // Step 2: Get active and completed status lookups
+    const activeStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "session_status"),
+          q.eq(q.field("lookupValue"), "Active"),
+        ),
+      )
+      .first();
+
+    const completedStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "session_status"),
+          q.eq(q.field("lookupValue"), "Completed"),
+        ),
+      )
+      .first();
+
+    // Step 3: Query all cycle count sessions for this org/branch
+    const allSessions = await ctx.db
+      .query("work_sessions")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId as any),
+      )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("branchId"), args.branchId as any),
+          q.eq(q.field("sessionTypeId"), cycleCountSessionType._id),
+        ),
+      )
+      .collect();
+
+    // Step 4: Count active and completed sessions
+    const activeSessions = activeStatus
+      ? allSessions.filter(
+          (s) => s.sessionStatusTypeId === activeStatus._id,
+        ).length
+      : 0;
+
+    const completedSessions = completedStatus
+      ? allSessions.filter(
+          (s) => s.sessionStatusTypeId === completedStatus._id,
+        ).length
+      : 0;
+
+    // Step 5: Count total unique zones across all sessions
+    const allZoneAssignments = await Promise.all(
+      allSessions.map(async (session) => {
+        const assignments = await ctx.db
+          .query("session_zone_assignments")
+          .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+          .collect();
+        return assignments.map((a) => a.zoneId);
+      }),
+    );
+    const uniqueZones = new Set(allZoneAssignments.flat());
+    const totalZones = uniqueZones.size;
+
+    // Step 6: Calculate average verification rate from session metrics
+    const allMetrics = await Promise.all(
+      allSessions.map(async (session) => {
+        const metrics = await ctx.db
+          .query("session_metrics")
+          .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+          .first();
+        return metrics?.accuracyRate;
+      }),
+    );
+    const validMetrics = allMetrics.filter(
+      (rate): rate is number => rate !== undefined && rate !== null,
+    );
+    const verificationRate =
+      validMetrics.length > 0
+        ? Math.round(
+            validMetrics.reduce((sum, rate) => sum + rate, 0) /
+              validMetrics.length,
+          )
+        : 0;
+
+    return {
+      activeSessions,
+      totalZones,
+      completedSessions,
+      verificationRate,
+    };
+  },
+});
