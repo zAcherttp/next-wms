@@ -11,18 +11,50 @@ export type NotificationItem = Doc<"notifications"> & {
   priority: SystemLookups | null;
 };
 
-export type PurchaseOrder = Omit<
-  Doc<"purchase_orders">,
-  | "_id"
-  | "supplierId"
-  | "createdByUserId"
-  | "purchaseOrderStatusTypeId"
-  | "organizationId"
-  | "branchId"
-> & {
+// ============================================================================
+// PURCHASE ORDER TYPES
+// ============================================================================
+
+/**
+ * Purchase order list item - used in the purchase orders table
+ */
+export type PurchaseOrderListItem = {
+  _id: Id<"purchase_orders">;
+  code: string;
+  orderedAt: number;
+  expectedDeliveryAt: number | null;
+  supplier: Pick<Supplier, "name"> | null;
   purchaseOrderStatus: Pick<SystemLookups, "lookupValue"> | null;
-  supplier: Pick<Supplier, "name" | "defaultLeadTimeDays"> | null;
+};
+
+/**
+ * Purchase order detailed item - line item in a purchase order detail view
+ */
+export type PurchaseOrderDetailedItem = {
+  _id: Id<"purchase_order_details">;
+  skuCode: string;
+  productName: string | null;
+  quantityOrdered: number;
+  location: string | null;
+};
+
+/**
+ * Purchase order with full details - used in the detail view dialog
+ */
+export type PurchaseOrderDetailed = {
+  _id: Id<"purchase_orders">;
+  code: string;
+  orderedAt: number;
+  expectedDeliveryAt: number | null;
   createdByUser: Pick<User, "fullName"> | null;
+  supplier: {
+    name: string;
+    phone: string;
+  } | null;
+  purchaseOrderStatus: Pick<SystemLookups, "lookupValue"> | null;
+  items: PurchaseOrderDetailedItem[];
+  totalItems: number;
+  totalQuantityOrdered: number;
 };
 
 // ============================================================================

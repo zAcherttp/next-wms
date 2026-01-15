@@ -180,7 +180,8 @@ export const createPurchaseOrder = mutation({
 });
 
 /**
- * Get all purchase orders for an organization
+ * Get all purchase orders for a branch (list view for table)
+ * Returns only fields needed for the table display
  */
 export const listPurchaseOrders = query({
   args: {
@@ -195,18 +196,21 @@ export const listPurchaseOrders = query({
       .order("desc")
       .collect();
 
-    // Enrich with supplier and branch names
+    // Enrich with supplier and status for table display
     const enrichedOrders = await Promise.all(
       orders.map(async (order) => {
         const supplier = await ctx.db.get(order.supplierId);
-        const branch = await ctx.db.get(order.branchId);
         const status = await ctx.db.get(order.purchaseOrderStatusTypeId);
 
         return {
-          ...order,
-          supplierName: supplier?.name ?? "Unknown",
-          branchName: branch?.name ?? "Unknown",
-          statusName: status?.lookupValue ?? "Unknown",
+          _id: order._id,
+          code: order.code,
+          orderedAt: order.orderedAt,
+          expectedDeliveryAt: order.expectedDeliveryAt ?? null,
+          supplier: supplier ? { name: supplier.name } : null,
+          purchaseOrderStatus: status
+            ? { lookupValue: status.lookupValue }
+            : null,
         };
       })
     );
@@ -216,9 +220,10 @@ export const listPurchaseOrders = query({
 });
 
 /**
- * Get purchase order details by ID
+ * Get purchase order with full details for the detail dialog
+ * Returns all information needed to display the purchase order detail view
  */
-export const getPurchaseOrderById = query({
+export const getPurchaseOrderDetailed = query({
   args: {
     orderId: v.id("purchase_orders"),
     userId: v.id("users"),
@@ -229,7 +234,7 @@ export const getPurchaseOrderById = query({
       throw new Error("Purchase order not found");
     }
 
-    // Get order details
+    // Get order details (line items)
     const details = await ctx.db
       .query("purchase_order_details")
       .withIndex("purchaseOrderId", (q) =>
@@ -237,40 +242,72 @@ export const getPurchaseOrderById = query({
       )
       .collect();
 
-    // Enrich details with product information
+    // Enrich details with product information and location
     const enrichedDetails = await Promise.all(
       details.map(async (detail) => {
         const variant = await ctx.db.get(detail.skuId);
-        if (!variant) {
-          return {
-            ...detail,
-            productName: "Unknown",
-            skuCode: "Unknown",
-          };
+        let productName: string | null = null;
+        let skuCode = "Unknown";
+
+        if (variant) {
+          skuCode = variant.skuCode;
+          const product = await ctx.db.get(variant.productId);
+          productName = product?.name ?? null;
         }
 
-        const product = await ctx.db.get(variant.productId);
+        // Get location from inventory batches if available
+        // For purchase orders, location would typically be recommended receiving zone
+        // We'll query inventory batches to find where items are stored
+        let location: string | null = null;
+        const inventoryBatch = await ctx.db
+          .query("inventory_batches")
+          .withIndex("skuId", (q) => q.eq("skuId", detail.skuId))
+          .filter((q) => q.eq(q.field("isDeleted"), false))
+          .first();
+
+        if (inventoryBatch) {
+          const zone = await ctx.db.get(inventoryBatch.zoneId);
+          location = zone?.name ?? null;
+        }
 
         return {
-          ...detail,
-          productName: product?.name ?? "Unknown",
-          skuCode: variant.skuCode,
-          description: variant.description,
+          _id: detail._id,
+          skuCode,
+          productName,
+          quantityOrdered: detail.quantityOrdered,
+          location,
         };
       })
     );
 
     // Get related entities
     const supplier = await ctx.db.get(order.supplierId);
-    const branch = await ctx.db.get(order.branchId);
     const status = await ctx.db.get(order.purchaseOrderStatusTypeId);
+    const createdByUser = await ctx.db.get(order.createdByUserId);
+
+    // Calculate totals
+    const totalItems = enrichedDetails.length;
+    const totalQuantityOrdered = enrichedDetails.reduce(
+      (sum, item) => sum + item.quantityOrdered,
+      0
+    );
 
     return {
-      ...order,
-      supplierName: supplier?.name ?? "Unknown",
-      branchName: branch?.name ?? "Unknown",
-      statusName: status?.lookupValue ?? "Unknown",
+      _id: order._id,
+      code: order.code,
+      orderedAt: order.orderedAt,
+      expectedDeliveryAt: order.expectedDeliveryAt ?? null,
+      createdByUser: createdByUser ? { fullName: createdByUser.fullName } : null,
+      supplier: supplier
+        ? {
+            name: supplier.name,
+            phone: supplier.phone,
+          }
+        : null,
+      purchaseOrderStatus: status ? { lookupValue: status.lookupValue } : null,
       items: enrichedDetails,
+      totalItems,
+      totalQuantityOrdered,
     };
   },
 });
