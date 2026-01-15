@@ -1,5 +1,6 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,6 +13,9 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ChevronDown,
   ChevronLeft,
@@ -19,6 +23,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Filter,
+  Loader2,
 } from "lucide-react";
 import * as React from "react";
 import { FilterPopover } from "@/components/table/filter-popover";
@@ -44,11 +49,23 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
-import {
-  type LocationAdjustmentRequest,
-  MOCK_LOCATION_ADJUSTMENTS,
-} from "@/mock/data/adjustments";
+
+// Type for location adjustment request from Convex
+type LocationAdjustmentRequest = {
+  _id: Id<"adjustment_requests">;
+  requestCode: string;
+  productName: string;
+  fromLocation: string;
+  toLocation: string;
+  quantity: number;
+  reason: string;
+  status: string;
+  requestedBy: { fullName: string } | null;
+  createdAt: number;
+};
 
 // Status filter options
 const statusFilterOptions = [
@@ -68,6 +85,9 @@ export function LocationAdjustmentsTable({
   onReject,
   onView,
 }: LocationAdjustmentsTableProps) {
+  const { organizationId } = useCurrentUser();
+  const { currentBranch } = useBranches({ organizationId });
+
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -78,8 +98,21 @@ export function LocationAdjustmentsTable({
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
 
-  // Using mock data
-  const data = MOCK_LOCATION_ADJUSTMENTS;
+  // Fetch real data from Convex
+  const { data: adjustments, isLoading } = useQuery({
+    ...convexQuery(
+      api.cycleCount.getLocationAdjustmentsForTable,
+      organizationId && currentBranch?._id
+        ? {
+            organizationId: organizationId as Id<"organizations">,
+            branchId: currentBranch._id as Id<"branches">,
+          }
+        : "skip",
+    ),
+    enabled: !!organizationId && !!currentBranch?._id,
+  });
+
+  const data = adjustments ?? [];
 
   const columns: ColumnDef<LocationAdjustmentRequest>[] = [
     {
@@ -311,7 +344,19 @@ export function LocationAdjustmentsTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

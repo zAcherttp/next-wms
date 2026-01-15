@@ -370,11 +370,13 @@ export default defineSchema({
     zoneId: v.optional(v.id("storage_zones")),
     batchId: v.optional(v.id("inventory_batches")),
     scannedAt: v.optional(v.number()),
+    scannedByUserId: v.optional(v.id("users")), // Track who scanned this item
     notes: v.optional(v.string()),
   })
     .index("sessionId", ["sessionId"])
     .index("skuId", ["skuId"])
-    .index("batchId", ["batchId"]),
+    .index("batchId", ["batchId"])
+    .index("zoneId", ["zoneId"]),
 
   session_metrics: defineTable({
     sessionId: v.id("work_sessions"),
@@ -388,10 +390,14 @@ export default defineSchema({
     sessionId: v.id("work_sessions"),
     zoneId: v.id("storage_zones"),
     assignedUserId: v.id("users"),
+    assignmentStatusTypeId: v.optional(v.id("system_lookups")), // not_started/in_progress/completed
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
   })
     .index("sessionId", ["sessionId"])
     .index("zoneId", ["zoneId"])
-    .index("assignedUserId", ["assignedUserId"]),
+    .index("assignedUserId", ["assignedUserId"])
+    .index("assignmentStatusTypeId", ["assignmentStatusTypeId"]),
 
   // ================================================================
   // INVENTORY TRACKING

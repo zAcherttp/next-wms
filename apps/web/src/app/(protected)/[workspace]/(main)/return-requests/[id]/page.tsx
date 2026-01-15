@@ -84,18 +84,6 @@ const columns: ColumnDef<DetailItem>[] = [
     ),
   },
   {
-    accessorKey: "expectedCreditAmount",
-    header: "Expected Credit",
-    cell: ({ row }) => {
-      const amount = row.getValue("expectedCreditAmount") as number;
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount);
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
-  },
-  {
     id: "reason.lookupValue",
     accessorFn: (row) => row.reason?.lookupValue,
     header: "Reason",
@@ -278,7 +266,7 @@ export default function ReturnRequestDetailPage() {
 
           <Separator className="my-4" />
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-lg border p-4 text-center">
               <p className="font-bold text-2xl">{returnRequest.totalSKUs}</p>
               <p className="text-muted-foreground text-sm">Total SKUs</p>
@@ -288,17 +276,6 @@ export default function ReturnRequestDetailPage() {
                 {returnRequest.totalExpectedQuantity}
               </p>
               <p className="text-muted-foreground text-sm">Total Quantity</p>
-            </div>
-            <div className="rounded-lg border p-4 text-center">
-              <p className="font-bold text-2xl">
-                {new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(returnRequest.totalExpectedCredit)}
-              </p>
-              <p className="text-muted-foreground text-sm">
-                Total Expected Credit
-              </p>
             </div>
           </div>
         </CardContent>

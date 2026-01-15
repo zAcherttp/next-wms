@@ -1,5 +1,6 @@
 "use client";
 
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,6 +13,9 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ChevronDown,
   ChevronLeft,
@@ -19,6 +23,7 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Filter,
+  Loader2,
 } from "lucide-react";
 import * as React from "react";
 import { FilterPopover } from "@/components/table/filter-popover";
@@ -44,11 +49,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
-import {
-  MOCK_QUANTITY_ADJUSTMENTS,
-  type QuantityAdjustmentRequest,
-} from "@/mock/data/adjustments";
+
+// Type for quantity adjustment request from Convex
+type QuantityAdjustmentRequest = {
+  _id: Id<"adjustment_requests">;
+  requestCode: string;
+  productName: string;
+  currentQty: number;
+  adjustedQty: number;
+  reason: string;
+  status: string;
+  requestedBy: { fullName: string } | null;
+  createdAt: number;
+};
 
 // Status filter options
 const statusFilterOptions = [
@@ -68,6 +84,9 @@ export function QuantityAdjustmentsTable({
   onReject,
   onView,
 }: QuantityAdjustmentsTableProps) {
+  const { organizationId } = useCurrentUser();
+  const { currentBranch } = useBranches({ organizationId });
+
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -78,8 +97,21 @@ export function QuantityAdjustmentsTable({
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
 
-  // Using mock data
-  const data = MOCK_QUANTITY_ADJUSTMENTS;
+  // Fetch real data from Convex
+  const { data: adjustments, isLoading } = useQuery({
+    ...convexQuery(
+      api.cycleCount.getQuantityAdjustmentsForTable,
+      organizationId && currentBranch?._id
+        ? {
+            organizationId: organizationId as Id<"organizations">,
+            branchId: currentBranch._id as Id<"branches">,
+          }
+        : "skip",
+    ),
+    enabled: !!organizationId && !!currentBranch?._id,
+  });
+
+  const data = adjustments ?? [];
 
   const columns: ColumnDef<QuantityAdjustmentRequest>[] = [
     {
@@ -316,7 +348,19 @@ export function QuantityAdjustmentsTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

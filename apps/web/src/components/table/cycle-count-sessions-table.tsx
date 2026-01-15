@@ -83,11 +83,6 @@ export function CycleCountSessionsTable() {
     string | null
   >(null);
 
-  const _handleViewDetails = (sessionId: string) => {
-    setSelectedSessionId(sessionId);
-    setDetailDialogOpen(true);
-  };
-
   const handleViewDetailsCallback = React.useCallback((sessionId: string) => {
     setSelectedSessionId(sessionId);
     setDetailDialogOpen(true);
@@ -280,8 +275,14 @@ export function CycleCountSessionsTable() {
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
 
+  // Memoize the data to prevent unnecessary table re-renders
+  const tableData = React.useMemo(
+    () => cycleCountSessions ?? [],
+    [cycleCountSessions],
+  );
+
   const table = useReactTable({
-    data: cycleCountSessions ?? [],
+    data: tableData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -299,9 +300,13 @@ export function CycleCountSessionsTable() {
     },
   });
 
+  // Use a ref to avoid table dependency in useEffect
+  const tableRef = React.useRef(table);
+  tableRef.current = table;
+
   React.useEffect(() => {
-    table.getColumn("sessionCode")?.setFilterValue(debouncedFilterValue);
-  }, [debouncedFilterValue, table]);
+    tableRef.current.getColumn("sessionCode")?.setFilterValue(debouncedFilterValue);
+  }, [debouncedFilterValue]);
 
   const activeFiltersCount =
     sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);

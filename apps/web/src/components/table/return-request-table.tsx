@@ -26,9 +26,8 @@ import {
   Filter,
   MoreHorizontal,
 } from "lucide-react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import * as React from "react";
+import { ReturnRequestDetailDialog } from "@/components/return-request-detail-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
@@ -62,8 +61,6 @@ import type { ReturnRequestListItem } from "@/lib/types";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 
 export function ReturnRequestsTable() {
-  const params = useParams();
-  const workspace = params.workspace as string;
   const { organizationId } = useCurrentUser();
   const { currentBranch } = useBranches({
     organizationId: organizationId as Id<"organizations"> | undefined,
@@ -256,21 +253,22 @@ export function ReturnRequestsTable() {
                   Copy Request ID
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={`/${workspace}/return-requests/${returnRequest._id as string}`}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View details
-                  </Link>
-                </DropdownMenuItem>
+                <ReturnRequestDetailDialog
+                  returnRequestId={returnRequest._id as Id<"return_requests">}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      View details
+                    </DropdownMenuItem>
+                  }
+                />
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [supplierOptions, workspace],
+    [supplierOptions],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -284,8 +282,14 @@ export function ReturnRequestsTable() {
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
 
+  // Memoize the data to prevent unnecessary table re-renders
+  const tableData = React.useMemo(
+    () => returnRequests ?? [],
+    [returnRequests],
+  );
+
   const table = useReactTable({
-    data: returnRequests ?? [],
+    data: tableData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -303,9 +307,13 @@ export function ReturnRequestsTable() {
     },
   });
 
+  // Use a ref to avoid table dependency in useEffect
+  const tableRef = React.useRef(table);
+  tableRef.current = table;
+
   React.useEffect(() => {
-    table.getColumn("requestCode")?.setFilterValue(debouncedFilterValue);
-  }, [debouncedFilterValue, table]);
+    tableRef.current.getColumn("requestCode")?.setFilterValue(debouncedFilterValue);
+  }, [debouncedFilterValue]);
 
   const activeFiltersCount =
     sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);

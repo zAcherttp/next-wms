@@ -1,5 +1,243 @@
 import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+
+// ================================================================
+// REFERENCE DATA QUERIES
+// ================================================================
+
+/**
+ * getStorageZones
+ *
+ * Purpose: Retrieves all storage zones for a specific branch
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const getStorageZones = query({
+  args: {
+    branchId: v.id("branches"),
+  },
+  handler: async (ctx, args) => {
+    const zones = await ctx.db
+      .query("storage_zones")
+      .withIndex("branchId", (q) => q.eq("branchId", args.branchId))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .collect();
+
+    return zones;
+  },
+});
+
+/**
+ * getCycleCountLookups
+ *
+ * Purpose: Retrieves all system lookups needed for cycle count session creation
+ *
+ * Access: Available to all authenticated users
+ */
+export const getCycleCountLookups = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get session type lookup for "Cycle Count"
+    const sessionType = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "SessionType"),
+          q.eq(q.field("lookupCode"), "CYCLE_COUNT"),
+        ),
+      )
+      .first();
+
+    // Get cycle count types (Daily, Weekly)
+    const cycleCountTypes = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType", (q) => q.eq("lookupType", "CycleCountType"))
+      .collect();
+
+    // Get session status types
+    const sessionStatuses = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType", (q) => q.eq("lookupType", "SessionStatus"))
+      .collect();
+
+    // Get the "Pending" status as default for new sessions
+    const pendingStatus = sessionStatuses.find(
+      (s) => s.lookupCode === "PENDING",
+    );
+
+    return {
+      sessionTypeId: sessionType?._id ?? null,
+      cycleCountTypes: cycleCountTypes.map((t) => ({
+        _id: t._id,
+        lookupCode: t.lookupCode,
+        lookupValue: t.lookupValue,
+      })),
+      sessionStatuses: sessionStatuses.map((s) => ({
+        _id: s._id,
+        lookupCode: s.lookupCode,
+        lookupValue: s.lookupValue,
+      })),
+      defaultStatusId: pendingStatus?._id ?? null,
+    };
+  },
+});
+
+/**
+ * getAdjustmentLookups
+ *
+ * Purpose: Retrieves all system lookups needed for adjustment dialogs
+ *
+ * Access: Available to all authenticated users
+ */
+export const getAdjustmentLookups = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get adjustment types (Quantity, Location)
+    const adjustmentTypes = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType", (q) => q.eq("lookupType", "AdjustmentType"))
+      .collect();
+
+    // Get adjustment statuses (Pending, Approved, Rejected)
+    const adjustmentStatuses = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType", (q) => q.eq("lookupType", "AdjustmentStatus"))
+      .collect();
+
+    // Get adjustment reasons (Damaged, Count Discrepancy, Expired)
+    const adjustmentReasons = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType", (q) => q.eq("lookupType", "AdjustmentReason"))
+      .collect();
+
+    // Find the default "Pending" status
+    const pendingStatus = adjustmentStatuses.find(
+      (s) => s.lookupCode === "PENDING",
+    );
+
+    // Find quantity and location types
+    const quantityType = adjustmentTypes.find(
+      (t) => t.lookupCode === "QUANTITY",
+    );
+    const locationType = adjustmentTypes.find(
+      (t) => t.lookupCode === "LOCATION",
+    );
+
+    return {
+      adjustmentTypes: adjustmentTypes.map((t) => ({
+        _id: t._id,
+        lookupCode: t.lookupCode,
+        lookupValue: t.lookupValue,
+      })),
+      adjustmentStatuses: adjustmentStatuses.map((s) => ({
+        _id: s._id,
+        lookupCode: s.lookupCode,
+        lookupValue: s.lookupValue,
+      })),
+      adjustmentReasons: adjustmentReasons.map((r) => ({
+        _id: r._id,
+        lookupCode: r.lookupCode,
+        lookupValue: r.lookupValue,
+      })),
+      defaultStatusId: pendingStatus?._id ?? null,
+      quantityTypeId: quantityType?._id ?? null,
+      locationTypeId: locationType?._id ?? null,
+    };
+  },
+});
+
+/**
+ * getInventoryBatchesByZone
+ *
+ * Purpose: Retrieves inventory batches (items) for a specific zone
+ * Used by location transfer dialog to show items available for transfer
+ *
+ * Access: Available to all authenticated users
+ */
+export const getInventoryBatchesByZone = query({
+  args: {
+    zoneId: v.id("storage_zones"),
+    branchId: v.id("branches"),
+  },
+  handler: async (ctx, args) => {
+    // Get all inventory batches in this zone
+    const batches = await ctx.db
+      .query("inventory_batches")
+      .withIndex("zoneId", (q) => q.eq("zoneId", args.zoneId))
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("branchId"), args.branchId),
+          q.gt(q.field("quantity"), 0),
+          q.eq(q.field("isDeleted"), false),
+        ),
+      )
+      .collect();
+
+    // Enrich batches with product variant and product info
+    const enrichedBatches = await Promise.all(
+      batches.map(async (batch) => {
+        // Get product variant (SKU)
+        const productVariant = await ctx.db.get(batch.skuId);
+        // Get parent product
+        const product = productVariant
+          ? await ctx.db.get(productVariant.productId)
+          : null;
+
+        return {
+          _id: batch._id,
+          batchCode:
+            batch.internalBatchNumber ?? batch.supplierBatchNumber ?? "N/A",
+          productId: productVariant?._id ?? "unknown",
+          productName: product?.name ?? "Unknown Product",
+          productCode: productVariant?.skuCode ?? "N/A",
+          currentQuantity: batch.quantity,
+          expiresAt: batch.expiresAt,
+          zoneId: batch.zoneId,
+        };
+      }),
+    );
+
+    return enrichedBatches;
+  },
+});
+
+/**
+ * getOrganizationUsers
+ *
+ * Purpose: Retrieves all users (workers) for a specific organization
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const getOrganizationUsers = query({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    // Get all members of the organization
+    const members = await ctx.db
+      .query("members")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .collect();
+
+    // Get user details for each member
+    const users = await Promise.all(
+      members.map(async (member) => {
+        const user = await ctx.db.get(member.userId);
+        if (!user || user.isDeleted) return null;
+        return {
+          _id: user._id,
+          fullName: user.fullName,
+          email: user.email,
+        };
+      }),
+    );
+
+    return users.filter((u) => u !== null);
+  },
+});
 
 // ================================================================
 // SESSION QUERIES & MUTATIONS
@@ -116,16 +354,18 @@ export const createCycleCountSession = mutation({
     zoneAssignments: v.array(
       v.object({
         zoneId: v.id("storage_zones"),
-        assignedUserId: v.id("users"),
+        assignedUserId: v.optional(v.id("users")), // Made optional - can assign later
       }),
     ),
-    lineItems: v.array(
-      v.object({
-        skuId: v.id("product_variants"),
-        expectedQuantity: v.number(),
-        zoneId: v.optional(v.id("storage_zones")),
-        batchId: v.optional(v.id("inventory_batches")),
-      }),
+    lineItems: v.optional(
+      v.array(
+        v.object({
+          skuId: v.id("product_variants"),
+          expectedQuantity: v.number(),
+          zoneId: v.optional(v.id("storage_zones")),
+          batchId: v.optional(v.id("inventory_batches")),
+        }),
+      ),
     ),
   },
   handler: async (ctx, args) => {
@@ -149,28 +389,71 @@ export const createCycleCountSession = mutation({
       sessionStatusTypeId: args.sessionStatusTypeId,
     });
 
-    // Step 3: Create zone-worker assignments
+    // Step 3: Get the "not_started" status for zone assignments
+    const notStartedStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "ZoneAssignmentStatus"),
+          q.eq(q.field("lookupCode"), "NOT_STARTED"),
+        ),
+      )
+      .first();
+
+    // Step 4: Create zone-worker assignments with initial status
     for (const assignment of args.zoneAssignments) {
       await ctx.db.insert("session_zone_assignments", {
         sessionId,
         zoneId: assignment.zoneId,
-        assignedUserId: assignment.assignedUserId,
+        assignedUserId: assignment.assignedUserId ?? args.assignedUserId, // Fall back to primary user
+        assignmentStatusTypeId: notStartedStatus?._id,
       });
     }
 
-    // Step 4: Create all session line items
-    for (const item of args.lineItems) {
-      await ctx.db.insert("session_line_items", {
-        sessionId,
-        skuId: item.skuId,
-        expectedQuantity: item.expectedQuantity,
-        actualQuantity: 0,
-        zoneId: item.zoneId,
-        batchId: item.batchId,
-      });
+    // Step 5: Create session line items
+    if (args.lineItems && args.lineItems.length > 0) {
+      // Use provided line items
+      for (const item of args.lineItems) {
+        await ctx.db.insert("session_line_items", {
+          sessionId,
+          skuId: item.skuId,
+          expectedQuantity: item.expectedQuantity,
+          actualQuantity: 0,
+          zoneId: item.zoneId,
+          batchId: item.batchId,
+        });
+      }
+    } else {
+      // Auto-generate line items from inventory batches in selected zones
+      const zoneIds = args.zoneAssignments.map((a) => a.zoneId);
+      for (const zoneId of zoneIds) {
+        const batches = await ctx.db
+          .query("inventory_batches")
+          .withIndex("zoneId", (q) => q.eq("zoneId", zoneId))
+          .filter((q) =>
+            q.and(
+              q.eq(q.field("organizationId"), args.organizationId),
+              q.eq(q.field("branchId"), args.branchId),
+              q.eq(q.field("isDeleted"), false),
+              q.gt(q.field("quantity"), 0),
+            ),
+          )
+          .collect();
+
+        for (const batch of batches) {
+          await ctx.db.insert("session_line_items", {
+            sessionId,
+            skuId: batch.skuId,
+            expectedQuantity: batch.quantity,
+            actualQuantity: 0,
+            zoneId: zoneId,
+            batchId: batch._id,
+          });
+        }
+      }
     }
 
-    // Step 5: Return the newly created session ID
+    // Step 6: Return the newly created session ID
     return sessionId;
   },
 });
@@ -302,6 +585,7 @@ export const updateSessionLineItem = mutation({
   args: {
     lineItemId: v.id("session_line_items"),
     actualQuantity: v.number(),
+    scannedByUserId: v.optional(v.id("users")),
     scannedAt: v.optional(v.number()),
     notes: v.optional(v.string()),
   },
@@ -317,6 +601,7 @@ export const updateSessionLineItem = mutation({
     await ctx.db.patch(args.lineItemId, {
       actualQuantity: args.actualQuantity,
       scannedAt: args.scannedAt ?? Date.now(),
+      scannedByUserId: args.scannedByUserId,
       notes: args.notes,
     });
 
@@ -326,8 +611,609 @@ export const updateSessionLineItem = mutation({
 });
 
 // ================================================================
+// EMPLOYEE SCANNER UI QUERIES & MUTATIONS
+// ================================================================
+
+/**
+ * getMyAssignedSessions
+ *
+ * Purpose: Retrieves all cycle count sessions where the current user is assigned to at least one zone
+ *
+ * Process:
+ * 1. Queries session_zone_assignments for the user
+ * 2. Gets unique session IDs
+ * 3. Fetches session details with status and progress info
+ * 4. Returns sessions that are not completed/cancelled
+ *
+ * Access: Available to all authenticated users
+ * Typical users: Warehouse staff checking their assigned work
+ */
+export const getMyAssignedSessions = query({
+  args: {
+    userId: v.id("users"),
+    organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Get all zone assignments for this user
+    const myAssignments = await ctx.db
+      .query("session_zone_assignments")
+      .withIndex("assignedUserId", (q) => q.eq("assignedUserId", args.userId))
+      .collect();
+
+    if (myAssignments.length === 0) {
+      return [];
+    }
+
+    // Step 2: Get unique session IDs
+    const sessionIds = [...new Set(myAssignments.map((a) => a.sessionId))];
+
+    // Step 3: Fetch session details
+    const sessions = await Promise.all(
+      sessionIds.map(async (sessionId) => {
+        const session = await ctx.db.get(sessionId);
+        if (!session) return null;
+
+        // Check if session belongs to org/branch
+        if (
+          session.organizationId !== args.organizationId ||
+          session.branchId !== args.branchId
+        ) {
+          return null;
+        }
+
+        // Get session status
+        const sessionStatus = await ctx.db.get(session.sessionStatusTypeId);
+        const statusValue = sessionStatus?.lookupValue?.toLowerCase();
+
+        // Skip completed/cancelled sessions
+        if (statusValue === "completed" || statusValue === "cancelled") {
+          return null;
+        }
+
+        // Get user's zone assignments for this session
+        const userZoneAssignments = myAssignments.filter(
+          (a) => a.sessionId === sessionId,
+        );
+
+        // Get zone details and assignment status
+        const zonesWithStatus = await Promise.all(
+          userZoneAssignments.map(async (assignment) => {
+            const zone = await ctx.db.get(assignment.zoneId);
+            const assignmentStatus = assignment.assignmentStatusTypeId
+              ? await ctx.db.get(assignment.assignmentStatusTypeId)
+              : null;
+            return {
+              zoneId: assignment.zoneId,
+              zoneName: zone?.name ?? "Unknown Zone",
+              assignmentStatus: assignmentStatus?.lookupValue ?? "Not Started",
+              assignmentId: assignment._id,
+            };
+          }),
+        );
+
+        return {
+          _id: session._id,
+          sessionCode: session.sessionCode,
+          name: session.name ?? session.sessionCode,
+          sessionStatus: sessionStatus?.lookupValue ?? "Unknown",
+          assignedZones: zonesWithStatus,
+          createdAt: session._creationTime,
+        };
+      }),
+    );
+
+    // Filter out nulls and return
+    return sessions.filter((s) => s !== null);
+  },
+});
+
+/**
+ * getZoneLineItems
+ *
+ * Purpose: Retrieves all line items for a specific zone in a session (for scanner UI)
+ *
+ * Process:
+ * 1. Validates the zone assignment exists and user is assigned
+ * 2. Fetches all line items for the zone
+ * 3. Enriches with product details
+ * 4. Returns items sorted by scan status
+ *
+ * Access: Available to assigned workers
+ * Typical users: Warehouse staff using scanner UI
+ */
+export const getZoneLineItems = query({
+  args: {
+    sessionId: v.id("work_sessions"),
+    zoneId: v.id("storage_zones"),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Get all line items for this session and zone
+    const lineItems = await ctx.db
+      .query("session_line_items")
+      .withIndex("sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .filter((q) => q.eq(q.field("zoneId"), args.zoneId))
+      .collect();
+
+    // Step 2: Enrich with product details
+    const enrichedItems = await Promise.all(
+      lineItems.map(async (item) => {
+        const sku = await ctx.db.get(item.skuId);
+        const product = sku?.productId ? await ctx.db.get(sku.productId) : null;
+        const scannedByUser = item.scannedByUserId
+          ? await ctx.db.get(item.scannedByUserId)
+          : null;
+
+        return {
+          _id: item._id,
+          skuId: item.skuId,
+          skuCode: sku?.skuCode ?? "Unknown SKU",
+          productName: product?.name ?? "Unknown Product",
+          expectedQuantity: item.expectedQuantity,
+          actualQuantity: item.actualQuantity,
+          variance: item.actualQuantity - item.expectedQuantity,
+          isScanned: item.scannedAt !== undefined,
+          scannedAt: item.scannedAt,
+          scannedByUser: scannedByUser?.fullName ?? null,
+          notes: item.notes,
+          batchId: item.batchId,
+        };
+      }),
+    );
+
+    // Step 3: Sort by scan status (unscanned first)
+    return enrichedItems.sort((a, b) => {
+      if (a.isScanned === b.isScanned) return 0;
+      return a.isScanned ? 1 : -1;
+    });
+  },
+});
+
+/**
+ * updateZoneAssignmentStatus
+ *
+ * Purpose: Updates the status of a zone assignment (start/complete work)
+ *
+ * Process:
+ * 1. Validates the assignment exists
+ * 2. Updates status and timestamps
+ * 3. Returns the updated assignment ID
+ *
+ * Access: Available to assigned workers and supervisors
+ * Typical users: Warehouse staff starting/completing zone work
+ */
+export const updateZoneAssignmentStatus = mutation({
+  args: {
+    assignmentId: v.id("session_zone_assignments"),
+    assignmentStatusTypeId: v.id("system_lookups"),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Fetch the assignment to validate it exists
+    const assignment = await ctx.db.get(args.assignmentId);
+
+    if (!assignment) {
+      throw new Error("Zone assignment not found");
+    }
+
+    // Step 2: Get the status to determine which timestamp to set
+    const status = await ctx.db.get(args.assignmentStatusTypeId);
+    const statusCode = status?.lookupCode?.toLowerCase();
+
+    // Step 3: Build update object
+    const updateData: Record<string, unknown> = {
+      assignmentStatusTypeId: args.assignmentStatusTypeId,
+    };
+
+    if (statusCode === "in_progress" && !assignment.startedAt) {
+      updateData.startedAt = Date.now();
+    }
+
+    if (statusCode === "completed") {
+      updateData.completedAt = Date.now();
+    }
+
+    // Step 4: Update the assignment
+    await ctx.db.patch(args.assignmentId, updateData);
+
+    return args.assignmentId;
+  },
+});
+
+/**
+ * getZoneAssignmentDetail
+ *
+ * Purpose: Retrieves detailed information about a specific zone assignment for the scanner UI
+ *
+ * Process:
+ * 1. Fetches the zone assignment
+ * 2. Gets related session, zone, and user details
+ * 3. Calculates progress statistics
+ * 4. Returns comprehensive assignment data
+ *
+ * Access: Available to assigned workers and supervisors
+ */
+export const getZoneAssignmentDetail = query({
+  args: {
+    assignmentId: v.id("session_zone_assignments"),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Get the zone assignment
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment) return null;
+
+    // Step 2: Get related entities
+    const session = await ctx.db.get(assignment.sessionId);
+    const zone = await ctx.db.get(assignment.zoneId);
+    const assignedUser = await ctx.db.get(assignment.assignedUserId);
+    const assignmentStatus = assignment.assignmentStatusTypeId
+      ? await ctx.db.get(assignment.assignmentStatusTypeId)
+      : null;
+
+    // Step 3: Get line items for this zone
+    const lineItems = await ctx.db
+      .query("session_line_items")
+      .withIndex("sessionId", (q) => q.eq("sessionId", assignment.sessionId))
+      .filter((q) => q.eq(q.field("zoneId"), assignment.zoneId))
+      .collect();
+
+    // Step 4: Calculate progress
+    const totalItems = lineItems.length;
+    const scannedItems = lineItems.filter((i) => i.scannedAt !== undefined).length;
+    const itemsWithVariance = lineItems.filter(
+      (i) => i.scannedAt !== undefined && i.actualQuantity !== i.expectedQuantity,
+    ).length;
+
+    return {
+      _id: assignment._id,
+      sessionId: assignment.sessionId,
+      sessionCode: session?.sessionCode ?? "Unknown",
+      sessionName: session?.name ?? session?.sessionCode ?? "Unknown",
+      zoneId: assignment.zoneId,
+      zoneName: zone?.name ?? "Unknown Zone",
+      assignedUserId: assignment.assignedUserId,
+      assignedUserName: assignedUser?.fullName ?? "Unknown",
+      status: assignmentStatus?.lookupValue ?? "Not Started",
+      statusCode: assignmentStatus?.lookupCode ?? "not_started",
+      startedAt: assignment.startedAt,
+      completedAt: assignment.completedAt,
+      progress: {
+        totalItems,
+        scannedItems,
+        itemsWithVariance,
+        progressPercent: totalItems > 0 ? Math.round((scannedItems / totalItems) * 100) : 0,
+      },
+    };
+  },
+});
+
+// ================================================================
 // ADJUSTMENT QUERIES & MUTATIONS
 // ================================================================
+
+/**
+ * getQuantityAdjustmentsForTable
+ *
+ * Purpose: Retrieves quantity adjustment requests with enriched data for table display
+ *
+ * Process:
+ * 1. Gets the "QUANTITY" adjustment type lookup
+ * 2. Queries adjustment_requests filtered by type, organization and branch
+ * 3. Enriches each request with user info, status, reason, and detail summary
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const getQuantityAdjustmentsForTable = query({
+  args: {
+    organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
+  },
+  handler: async (ctx, args) => {
+    // Get the quantity adjustment type ID
+    const quantityType = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "AdjustmentType"),
+          q.eq(q.field("lookupCode"), "QUANTITY"),
+        ),
+      )
+      .first();
+
+    if (!quantityType) return [];
+
+    // Query adjustment requests
+    const adjustmentRequests = await ctx.db
+      .query("adjustment_requests")
+      .withIndex("adjustmentTypeId", (q) =>
+        q.eq("adjustmentTypeId", quantityType._id as unknown as string),
+      )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("organizationId"), args.organizationId as unknown as string),
+          q.eq(q.field("branchId"), args.branchId as unknown as string),
+        ),
+      )
+      .order("desc")
+      .collect();
+
+    // Enrich each request with related data
+    const enrichedRequests = await Promise.all(
+      adjustmentRequests.map(async (request) => {
+        // Get user info
+        const requestedByUser = await ctx.db
+          .query("users")
+          .filter((q) => q.eq(q.field("_id"), request.requestedByUserId))
+          .first();
+
+        // Get status lookup
+        const statusLookup = await ctx.db.get(
+          request.adjustmentStatusTypeId as unknown as Id<"system_lookups">,
+        );
+
+        // Get details for this request
+        const details = await ctx.db
+          .query("adjustment_request_details")
+          .withIndex("adjustmentRequestId", (q) =>
+            q.eq("adjustmentRequestId", request._id),
+          )
+          .collect();
+
+        // Get first detail for product info
+        const firstDetail = details[0];
+        let productName = "Multiple Products";
+
+        if (firstDetail && details.length === 1) {
+          // Try to get product name from SKU
+          const productVariant = firstDetail.skuId
+            ? await ctx.db
+                .query("product_variants")
+                .filter((q) => q.eq(q.field("skuCode"), firstDetail.skuId))
+                .first()
+            : null;
+
+          if (productVariant) {
+            const product = await ctx.db.get(productVariant.productId);
+            productName = product?.name ?? firstDetail.skuId;
+          } else {
+            productName = firstDetail.skuId;
+          }
+        }
+
+        // Get reason lookup
+        const reasonLookup = firstDetail?.reasonTypeId
+          ? await ctx.db.get(firstDetail.reasonTypeId as unknown as Id<"system_lookups">)
+          : null;
+
+        // Calculate totals from all details
+        const totalExpected = details.reduce((sum, d) => sum + d.expectedQuantity, 0);
+        const totalActual = details.reduce((sum, d) => sum + d.actualQuantity, 0);
+
+        return {
+          _id: request._id,
+          requestCode: request.requestCode,
+          productName,
+          currentQty: totalExpected,
+          adjustedQty: totalActual,
+          reason: reasonLookup?.lookupValue ?? "Unknown",
+          status: statusLookup?.lookupValue ?? "Unknown",
+          requestedBy: requestedByUser ? { fullName: requestedByUser.fullName } : null,
+          createdAt: request.requestedAt,
+        };
+      }),
+    );
+
+    return enrichedRequests;
+  },
+});
+
+/**
+ * getLocationAdjustmentsForTable
+ *
+ * Purpose: Retrieves location adjustment requests with enriched data for table display
+ *
+ * Process:
+ * 1. Gets the "LOCATION" adjustment type lookup
+ * 2. Queries adjustment_requests filtered by type, organization and branch
+ * 3. Enriches each request with user info, status, reason, and location details
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const getLocationAdjustmentsForTable = query({
+  args: {
+    organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
+  },
+  handler: async (ctx, args) => {
+    // Get the location adjustment type ID
+    const locationType = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "AdjustmentType"),
+          q.eq(q.field("lookupCode"), "LOCATION"),
+        ),
+      )
+      .first();
+
+    if (!locationType) return [];
+
+    // Query adjustment requests
+    const adjustmentRequests = await ctx.db
+      .query("adjustment_requests")
+      .withIndex("adjustmentTypeId", (q) =>
+        q.eq("adjustmentTypeId", locationType._id as unknown as string),
+      )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("organizationId"), args.organizationId as unknown as string),
+          q.eq(q.field("branchId"), args.branchId as unknown as string),
+        ),
+      )
+      .order("desc")
+      .collect();
+
+    // Enrich each request with related data
+    const enrichedRequests = await Promise.all(
+      adjustmentRequests.map(async (request) => {
+        // Get user info
+        const requestedByUser = await ctx.db
+          .query("users")
+          .filter((q) => q.eq(q.field("_id"), request.requestedByUserId))
+          .first();
+
+        // Get status lookup
+        const statusLookup = await ctx.db.get(
+          request.adjustmentStatusTypeId as unknown as Id<"system_lookups">,
+        );
+
+        // Get details for this request
+        const details = await ctx.db
+          .query("adjustment_request_details")
+          .withIndex("adjustmentRequestId", (q) =>
+            q.eq("adjustmentRequestId", request._id),
+          )
+          .collect();
+
+        // Get first detail for product and location info
+        const firstDetail = details[0];
+        let productName = "Multiple Products";
+        let fromLocation = "N/A";
+        let toLocation = "N/A";
+
+        if (firstDetail) {
+          // Get product name
+          if (details.length === 1) {
+            const productVariant = firstDetail.skuId
+              ? await ctx.db
+                  .query("product_variants")
+                  .filter((q) => q.eq(q.field("skuCode"), firstDetail.skuId))
+                  .first()
+              : null;
+
+            if (productVariant) {
+              const product = await ctx.db.get(productVariant.productId);
+              productName = product?.name ?? firstDetail.skuId;
+            } else {
+              productName = firstDetail.skuId;
+            }
+          }
+
+          // Get from zone name
+          if (firstDetail.fromZoneId) {
+            const fromZone = await ctx.db.get(
+              firstDetail.fromZoneId as unknown as Id<"storage_zones">,
+            );
+            fromLocation = fromZone?.name ?? firstDetail.fromZoneId;
+          }
+
+          // Get to zone name
+          if (firstDetail.toZoneId) {
+            const toZone = await ctx.db.get(
+              firstDetail.toZoneId as unknown as Id<"storage_zones">,
+            );
+            toLocation = toZone?.name ?? firstDetail.toZoneId;
+          }
+        }
+
+        // Get reason lookup
+        const reasonLookup = firstDetail?.reasonTypeId
+          ? await ctx.db.get(firstDetail.reasonTypeId as unknown as Id<"system_lookups">)
+          : null;
+
+        // Calculate total quantity from all details
+        const totalQuantity = details.reduce((sum, d) => sum + (d.quantity ?? 0), 0);
+
+        return {
+          _id: request._id,
+          requestCode: request.requestCode,
+          productName,
+          fromLocation,
+          toLocation,
+          quantity: totalQuantity,
+          reason: reasonLookup?.lookupValue ?? "Location Transfer",
+          status: statusLookup?.lookupValue ?? "Unknown",
+          requestedBy: requestedByUser ? { fullName: requestedByUser.fullName } : null,
+          createdAt: request.requestedAt,
+        };
+      }),
+    );
+
+    return enrichedRequests;
+  },
+});
+
+/**
+ * getAdjustmentStats
+ *
+ * Purpose: Retrieves summary statistics for adjustment requests
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const getAdjustmentStats = query({
+  args: {
+    organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
+  },
+  handler: async (ctx, args) => {
+    // Get all adjustment requests for this branch
+    const adjustmentRequests = await ctx.db
+      .query("adjustment_requests")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId as unknown as string),
+      )
+      .filter((q) => q.eq(q.field("branchId"), args.branchId as unknown as string))
+      .collect();
+
+    // Get status lookups
+    const pendingStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "AdjustmentStatus"),
+          q.eq(q.field("lookupCode"), "PENDING"),
+        ),
+      )
+      .first();
+
+    const approvedStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "AdjustmentStatus"),
+          q.eq(q.field("lookupCode"), "APPROVED"),
+        ),
+      )
+      .first();
+
+    const rejectedStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "AdjustmentStatus"),
+          q.eq(q.field("lookupCode"), "REJECTED"),
+        ),
+      )
+      .first();
+
+    // Count by status
+    const pendingCount = adjustmentRequests.filter(
+      (r) => r.adjustmentStatusTypeId === (pendingStatus?._id as unknown as string),
+    ).length;
+    const approvedCount = adjustmentRequests.filter(
+      (r) => r.adjustmentStatusTypeId === (approvedStatus?._id as unknown as string),
+    ).length;
+    const rejectedCount = adjustmentRequests.filter(
+      (r) => r.adjustmentStatusTypeId === (rejectedStatus?._id as unknown as string),
+    ).length;
+
+    return {
+      totalQuantityRequests: adjustmentRequests.length,
+      pendingApproval: pendingCount,
+      approved: approvedCount,
+      rejected: rejectedCount,
+    };
+  },
+});
 
 /**
  * getAllAdjustmentRequests

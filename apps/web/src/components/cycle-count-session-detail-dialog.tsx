@@ -118,7 +118,10 @@ export function CycleCountSessionDetailDialog({
           selectedLineItem
             ? {
                 productId: selectedLineItem.productId,
+                productName: selectedLineItem.productName,
                 zoneId: selectedZoneId ?? activeZone?.zoneId,
+                zoneName: activeZone?.zoneName,
+                skuId: selectedLineItem.productId,
                 currentQty: selectedLineItem.expectedQuantity,
                 countedQty: selectedLineItem.actualQuantity,
               }
@@ -134,6 +137,7 @@ export function CycleCountSessionDetailDialog({
           selectedZoneId
             ? {
                 zoneId: selectedZoneId,
+                zoneName: activeZone?.zoneName,
               }
             : undefined
         }

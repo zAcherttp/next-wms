@@ -1,8 +1,11 @@
 "use client";
 
-import { Upload, X } from "lucide-react";
-import Image from "next/image";
-import { useState } from "react";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { Loader2, Upload, X } from "lucide-react";
+import * as React from "react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,100 +24,194 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useFileUpload } from "@/hooks/use-file-upload";
 import { cn } from "@/lib/utils";
-import {
-  MOCK_ADJUSTMENT_REASONS,
-  MOCK_PRODUCTS,
-  MOCK_SECTIONS,
-  MOCK_STORAGE_ZONES,
-} from "@/mock/data/cycle-count";
 
 interface QuantityAdjustmentDialogProps {
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
-  // Pre-fill data from line item
+  // Pre-fill data from cycle count line item
   initialData?: {
     productId?: string;
+    productName?: string;
     zoneId?: string;
+    zoneName?: string;
+    batchId?: string;
+    skuId?: string;
     currentQty?: number;
     countedQty?: number;
   };
+  onSuccess?: () => void;
+}
+
+// Generate adjustment request code like ADJ-2026-001
+function generateRequestCode(): string {
+  const year = new Date().getFullYear();
+  const random = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
+  return `ADJ-${year}-${random}`;
 }
 
 export function QuantityAdjustmentDialog({
   open,
   onOpenChange,
   initialData,
+  onSuccess,
 }: QuantityAdjustmentDialogProps) {
+  const { user, organizationId } = useCurrentUser();
+  const { currentBranch } = useBranches({ organizationId });
+
   // Form state
-  const [zoneId, setZoneId] = useState(initialData?.zoneId ?? "");
-  const [sectionId, setSectionId] = useState("");
-  const [productId, setProductId] = useState(initialData?.productId ?? "");
-  const [currentQty, setCurrentQty] = useState(
-    initialData?.currentQty?.toString() ?? "",
-  );
-  const [countedQty, setCountedQty] = useState(
-    initialData?.countedQty?.toString() ?? "",
-  );
-  const [reasonId, setReasonId] = useState("");
-  const [comments, setComments] = useState("");
+  const [zoneId, setZoneId] = React.useState<string>("");
+  const [productName, setProductName] = React.useState<string>("");
+  const [batchId, setBatchId] = React.useState<string>("");
+  const [skuId, setSkuId] = React.useState<string>("");
+  const [currentQty, setCurrentQty] = React.useState<string>("");
+  const [countedQty, setCountedQty] = React.useState<string>("");
+  const [reasonId, setReasonId] = React.useState<string>("");
+  const [comments, setComments] = React.useState<string>("");
 
   // File upload
-  const [{ files, isDragging }, { removeFile, openFileDialog, getInputProps }] =
-    useFileUpload({
-      maxFiles: 5,
-      maxSize: 5 * 1024 * 1024, // 5MB
-      accept: "image/*",
-      multiple: true,
-    });
+  const [
+    { files, isDragging },
+    { removeFile, openFileDialog, getInputProps, clearFiles },
+  ] = useFileUpload({
+    maxFiles: 5,
+    maxSize: 5 * 1024 * 1024, // 5MB
+    accept: "image/*",
+    multiple: true,
+  });
 
-  const handleClose = () => {
-    // Reset form
-    setZoneId(initialData?.zoneId ?? "");
-    setSectionId("");
-    setProductId(initialData?.productId ?? "");
-    setCurrentQty(initialData?.currentQty?.toString() ?? "");
-    setCountedQty(initialData?.countedQty?.toString() ?? "");
+  // Fetch storage zones for this branch
+  const { data: zones, isLoading: isLoadingZones } = useQuery({
+    ...convexQuery(
+      api.cycleCount.getStorageZones,
+      open && currentBranch?._id
+        ? { branchId: currentBranch._id as Id<"branches"> }
+        : "skip",
+    ),
+    enabled: open && !!currentBranch?._id,
+  });
+
+  // Fetch adjustment lookups (reasons, statuses, types)
+  const { data: lookups, isLoading: isLoadingLookups } = useQuery({
+    ...convexQuery(api.cycleCount.getAdjustmentLookups, open ? {} : "skip"),
+    enabled: open,
+  });
+
+  // Create adjustment request mutation - extract hook to top level
+  const createAdjustmentFn = useConvexMutation(
+    api.cycleCount.createNewAdjustmentRequest,
+  );
+  const createAdjustmentMutation = useMutation({
+    mutationFn: createAdjustmentFn,
+  });
+
+  // Cleanup file previews on unmount to prevent memory leaks
+  React.useEffect(() => {
+    return () => {
+      clearFiles();
+    };
+  }, [clearFiles]);
+
+  // Initialize form when dialog opens with initial data
+  React.useEffect(() => {
+    if (open && initialData) {
+      setZoneId(initialData.zoneId ?? "");
+      setProductName(initialData.productName ?? "");
+      setBatchId(initialData.batchId ?? "");
+      setSkuId(initialData.skuId ?? "");
+      setCurrentQty(initialData.currentQty?.toString() ?? "");
+      setCountedQty(initialData.countedQty?.toString() ?? "");
+    }
+  }, [open, initialData]);
+
+  const handleClose = React.useCallback(() => {
+    // Reset form state
+    setZoneId("");
+    setProductName("");
+    setBatchId("");
+    setSkuId("");
+    setCurrentQty("");
+    setCountedQty("");
     setReasonId("");
     setComments("");
+    // Clear files to revoke object URLs and prevent memory leaks
+    clearFiles();
     onOpenChange?.(false);
+  }, [onOpenChange, clearFiles]);
+
+  const handleSubmit = async () => {
+    if (
+      !organizationId ||
+      !currentBranch?._id ||
+      !user?._id ||
+      !lookups?.quantityTypeId ||
+      !lookups?.defaultStatusId
+    ) {
+      console.error("Missing required data for adjustment request");
+      return;
+    }
+
+    const expectedQty = Number.parseInt(currentQty, 10) || 0;
+    const actualQty = Number.parseInt(countedQty, 10) || 0;
+    const varianceQty = actualQty - expectedQty;
+
+    try {
+      await createAdjustmentMutation.mutateAsync({
+        organizationId: organizationId as string,
+        branchId: currentBranch._id as string,
+        requestCode: generateRequestCode(),
+        adjustmentTypeId: lookups.quantityTypeId as string,
+        requestedByUserId: user._id as string,
+        adjustmentStatusTypeId: lookups.defaultStatusId as string,
+        details: [
+          {
+            batchId: batchId || "unknown",
+            skuId: skuId || productName || "unknown",
+            expectedQuantity: expectedQty,
+            actualQuantity: actualQty,
+            varianceQuantity: varianceQty,
+            costImpact: 0,
+            reasonTypeId: reasonId,
+            customReasonNotes: comments || undefined,
+          },
+        ],
+      });
+
+      onSuccess?.();
+      handleClose();
+    } catch (error) {
+      console.error("Failed to create adjustment request:", error);
+    }
   };
 
-  const handleZoneChange = (value: string) => {
-    setZoneId(value);
-    setSectionId(""); // Reset section when zone changes
-  };
+  // Get current zone name for display
+  const currentZoneName = React.useMemo(() => {
+    if (initialData?.zoneName) return initialData.zoneName;
+    return zones?.find((z) => z._id === zoneId)?.name ?? "Unknown Zone";
+  }, [zones, zoneId, initialData?.zoneName]);
 
-  const handleSubmit = () => {
-    // TODO: Implement submit logic
-    console.log({
-      zoneId,
-      sectionId,
-      productId,
-      currentQty: Number(currentQty),
-      countedQty: Number(countedQty),
-      reasonId,
-      comments,
-      files,
-    });
-    handleClose();
-  };
-
-  const sections = zoneId ? (MOCK_SECTIONS[zoneId] ?? []) : [];
+  // Check if opened from cycle count (pre-filled data)
+  const isFromCycleCount = !!initialData?.zoneId;
 
   const isFormValid =
     zoneId !== "" &&
-    productId !== "" &&
+    (productName !== "" || skuId !== "") &&
     currentQty !== "" &&
     countedQty !== "" &&
     reasonId !== "";
+
+  const isSubmitting = createAdjustmentMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent showCloseButton={false} className="sm:max-w-lg">
         <DialogHeader className="relative">
-          <DialogTitle>Create Adjustment Request</DialogTitle>
+          <DialogTitle>Create Quantity Adjustment</DialogTitle>
           <button
             type="button"
             onClick={handleClose}
@@ -126,71 +223,67 @@ export function QuantityAdjustmentDialog({
         </DialogHeader>
 
         <div className="mt-2 space-y-4">
-          {/* Zone and Section Row */}
-          <div className="grid grid-cols-2 gap-4">
-            <Field>
-              <FieldLabel>Zone</FieldLabel>
-              <Select value={zoneId} onValueChange={handleZoneChange}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select zone..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {MOCK_STORAGE_ZONES.map((zone) => (
-                    <SelectItem key={zone._id} value={zone._id}>
-                      {zone.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
+          {/* Location Info (read-only when from cycle count) */}
+          {isFromCycleCount ? (
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>Zone</FieldLabel>
+                <div className="rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                  {currentZoneName}
+                </div>
+              </Field>
+              <Field>
+                <FieldLabel>Product</FieldLabel>
+                <div className="rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                  {productName || skuId || "N/A"}
+                </div>
+              </Field>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>Zone</FieldLabel>
+                <Select value={zoneId} onValueChange={setZoneId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select zone..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingZones ? (
+                      <SelectItem value="_loading" disabled>
+                        Loading...
+                      </SelectItem>
+                    ) : (
+                      zones?.map((zone) => (
+                        <SelectItem key={zone._id} value={zone._id}>
+                          {zone.name}
+                        </SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </Field>
+              <Field>
+                <FieldLabel>Product/SKU</FieldLabel>
+                <Input
+                  value={productName}
+                  onChange={(e) => setProductName(e.target.value)}
+                  placeholder="Enter product name..."
+                />
+              </Field>
+            </div>
+          )}
 
-            <Field>
-              <FieldLabel>Section</FieldLabel>
-              <Select
-                value={sectionId}
-                onValueChange={setSectionId}
-                disabled={!zoneId}
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select section..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {sections.map((section) => (
-                    <SelectItem key={section._id} value={section._id}>
-                      {section.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </Field>
-          </div>
-
-          {/* Product */}
-          <Field>
-            <FieldLabel>Product</FieldLabel>
-            <Select value={productId} onValueChange={setProductId}>
-              <SelectTrigger className="w-full">
-                <SelectValue placeholder="Select product..." />
-              </SelectTrigger>
-              <SelectContent>
-                {MOCK_PRODUCTS.map((product) => (
-                  <SelectItem key={product._id} value={product._id}>
-                    {product.code} - {product.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </Field>
-
-          {/* Current Qty, Counted Qty, Reason Row */}
+          {/* Current Qty, Counted Qty, Variance Row */}
           <div className="grid grid-cols-3 gap-4">
             <Field>
-              <FieldLabel>Current Qty</FieldLabel>
+              <FieldLabel>Expected Qty</FieldLabel>
               <Input
                 type="number"
                 value={currentQty}
                 onChange={(e) => setCurrentQty(e.target.value)}
                 placeholder="0"
+                readOnly={isFromCycleCount}
+                className={cn(isFromCycleCount && "bg-muted/50")}
               />
             </Field>
 
@@ -201,29 +294,58 @@ export function QuantityAdjustmentDialog({
                 value={countedQty}
                 onChange={(e) => setCountedQty(e.target.value)}
                 placeholder="0"
+                readOnly={isFromCycleCount}
+                className={cn(isFromCycleCount && "bg-muted/50")}
               />
             </Field>
 
             <Field>
-              <FieldLabel>Reason</FieldLabel>
-              <Select value={reasonId} onValueChange={setReasonId}>
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {MOCK_ADJUSTMENT_REASONS.map((reason) => (
-                    <SelectItem key={reason._id} value={reason._id}>
-                      {reason.value}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <FieldLabel>Variance</FieldLabel>
+              <div
+                className={cn(
+                  "flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium",
+                  Number(countedQty) - Number(currentQty) > 0 &&
+                    "text-amber-600",
+                  Number(countedQty) - Number(currentQty) < 0 && "text-red-600",
+                  Number(countedQty) - Number(currentQty) === 0 &&
+                    "text-green-600",
+                )}
+              >
+                {currentQty && countedQty
+                  ? Number(countedQty) - Number(currentQty) > 0
+                    ? `+${Number(countedQty) - Number(currentQty)}`
+                    : Number(countedQty) - Number(currentQty)
+                  : "—"}
+              </div>
             </Field>
           </div>
 
+          {/* Reason */}
+          <Field>
+            <FieldLabel>Reason</FieldLabel>
+            <Select value={reasonId} onValueChange={setReasonId}>
+              <SelectTrigger className="w-full">
+                <SelectValue placeholder="Select reason..." />
+              </SelectTrigger>
+              <SelectContent>
+                {isLoadingLookups ? (
+                  <SelectItem value="_loading" disabled>
+                    Loading...
+                  </SelectItem>
+                ) : (
+                  lookups?.adjustmentReasons.map((reason) => (
+                    <SelectItem key={reason._id} value={reason._id}>
+                      {reason.lookupValue}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </Field>
+
           {/* Comments */}
           <Field>
-            <FieldLabel>Comments</FieldLabel>
+            <FieldLabel>Comments (Optional)</FieldLabel>
             <Textarea
               value={comments}
               onChange={(e) => setComments(e.target.value)}
@@ -262,7 +384,8 @@ export function QuantityAdjustmentDialog({
                     key={fileWithPreview.id}
                     className="group relative h-16 w-16 overflow-hidden rounded-md border"
                   >
-                    <Image
+                    {/* Use native img for blob URLs - next/image doesn't optimize them anyway */}
+                    <img
                       src={fileWithPreview.preview ?? ""}
                       alt="Preview"
                       className="h-full w-full object-cover"
@@ -285,15 +408,27 @@ export function QuantityAdjustmentDialog({
         </div>
 
         <DialogFooter className="mt-4">
-          <Button variant="outline" onClick={handleClose} className="flex-1">
+          <Button
+            variant="outline"
+            onClick={handleClose}
+            className="flex-1"
+            disabled={isSubmitting}
+          >
             Cancel
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={!isFormValid}
+            disabled={!isFormValid || isSubmitting}
             className="flex-1"
           >
-            Submit
+            {isSubmitting ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Submitting...
+              </>
+            ) : (
+              "Submit"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

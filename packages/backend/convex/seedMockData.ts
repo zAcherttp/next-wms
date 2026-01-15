@@ -190,6 +190,31 @@ export const seedAllTestData = mutation({
       sortOrder: 2,
     });
 
+    // Zone Assignment Status types (for cycle count zone assignments)
+    const zoneAssignmentNotStartedId = await ctx.db.insert("system_lookups", {
+      lookupType: "ZoneAssignmentStatus",
+      lookupCode: "NOT_STARTED",
+      lookupValue: "Not Started",
+      description: "Zone assignment has not been started",
+      sortOrder: 1,
+    });
+
+    const zoneAssignmentInProgressId = await ctx.db.insert("system_lookups", {
+      lookupType: "ZoneAssignmentStatus",
+      lookupCode: "IN_PROGRESS",
+      lookupValue: "In Progress",
+      description: "Worker is actively counting in this zone",
+      sortOrder: 2,
+    });
+
+    const zoneAssignmentCompletedId = await ctx.db.insert("system_lookups", {
+      lookupType: "ZoneAssignmentStatus",
+      lookupCode: "COMPLETED",
+      lookupValue: "Completed",
+      description: "Zone count has been completed by the worker",
+      sortOrder: 3,
+    });
+
     // Batch Status types
     const batchActiveStatusId = await ctx.db.insert("system_lookups", {
       lookupType: "BatchStatus",
