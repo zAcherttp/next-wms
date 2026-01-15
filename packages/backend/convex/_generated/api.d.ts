@@ -26,6 +26,7 @@ import type * as receiveSessions from "../receiveSessions.js";
 import type * as returnRequest from "../returnRequest.js";
 import type * as seedMockData from "../seedMockData.js";
 import type * as suppliers from "../suppliers.js";
+import type * as systemLookups from "../systemLookups.js";
 
 import type {
   ApiFromModules,
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   returnRequest: typeof returnRequest;
   seedMockData: typeof seedMockData;
   suppliers: typeof suppliers;
+  systemLookups: typeof systemLookups;
 }>;
 
 /**

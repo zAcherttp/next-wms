@@ -220,12 +220,13 @@ export const update = mutation({
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     defaultLeadTimeDays: v.optional(v.number()),
+    brandId: v.optional(v.id("brands")),
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // TODO: Add permission check
 
-    const { id, email, name, defaultLeadTimeDays, ...otherUpdates } = args;
+    const { id, email, name, defaultLeadTimeDays, brandId, ...otherUpdates } = args;
 
     const supplier = await ctx.db.get(id);
     if (!supplier) {
@@ -287,6 +288,15 @@ export const update = mutation({
         throw new Error("Lead time must be a positive number");
       }
       updates.defaultLeadTimeDays = defaultLeadTimeDays;
+    }
+
+    // Validate brandId if updating
+    if (brandId !== undefined) {
+      const brand = await ctx.db.get(brandId);
+      if (!brand) {
+        throw new Error("Brand not found");
+      }
+      updates.brandId = brandId;
     }
 
     await ctx.db.patch(id, updates);
