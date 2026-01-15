@@ -150,7 +150,31 @@ export type BrandWithProductCount = Brand & {
   productCount: number;
 };
 
+/**
+ * Product list item - used in the products table with enriched data
+ */
+export type ProductListItem = {
+  _id: Id<"products">;
+  name: string;
+  description: string;
+  isActive: boolean;
+  shelfLifeDays?: number;
+  reorderPoint?: number;
+  category: { _id: Id<"categories">; name: string } | null;
+  brand: { _id: Id<"brands">; name: string } | null;
+  storageRequirement: Pick<SystemLookups, "lookupValue"> | null;
+  trackingMethod: Pick<SystemLookups, "lookupValue"> | null;
+  variantCount: number;
+  defaultVariant: {
+    _id: Id<"product_variants">;
+    skuCode: string;
+    costPrice: number;
+    sellingPrice: number;
+  } | null;
+};
+
 export type Branch = Doc<"branches">;
+
 
 // ============================================================
 // Receive Session Types

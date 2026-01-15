@@ -371,6 +371,7 @@ export const search = query({
 
 /**
  * GET ACTIVE - Get only active suppliers (for dropdowns, etc.)
+ * Returns suppliers enriched with brand names
  */
 export const getActive = query({
   args: {
@@ -386,6 +387,27 @@ export const getActive = query({
       .filter((q) => q.eq(q.field("isDeleted"), false))
       .collect();
 
-    return suppliers;
+    // Enrich with brand information
+    const brandIds = [...new Set(suppliers.map(s => s.brandId))];
+    const brands = await Promise.all(
+      brandIds.map(async (brandId) => {
+        const brand = await ctx.db.get(brandId);
+        console.log(`Raw brand from DB for ID ${brandId}:`, JSON.stringify(brand, null, 2));
+        return { id: brandId, brand };
+      })
+    );
+    const brandMap = new Map(brands.map(b => [b.id, b.brand]));
+
+    const enrichedSuppliers = suppliers.map((supplier) => {
+      const brand = brandMap.get(supplier.brandId);
+      const brandName = brand?.name || "";
+      console.log(`Supplier: ${supplier.name}, BrandId: ${supplier.brandId}, Brand Name: "${brandName}", Brand Object:`, JSON.stringify(brand, null, 2));
+      return {
+        ...supplier,
+        brandName,
+      };
+    });
+
+    return enrichedSuppliers;
   },
 });

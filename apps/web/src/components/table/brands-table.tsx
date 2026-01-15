@@ -1,7 +1,7 @@
 "use client";
 
-import { useConvexMutation } from "@convex-dev/react-query";
-import { useMutation } from "@tanstack/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   flexRender,
@@ -10,7 +10,7 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import { api } from "@wms/backend/convex/_generated/api";
-import type { Id } from "@wms/backend/convex/_generated/dataModel";
+
 import {
   ChevronLeft,
   ChevronRight,
@@ -342,43 +342,14 @@ export const columns: ColumnDef<BrandWithProductCount>[] = [
 ];
 
 export function BrandsTable() {
-  // const { organizationId } = useCurrentUser();
+  const { organizationId } = useCurrentUser();
 
-  // const { data: brands, isLoading } = useQuery({
-  //   ...convexQuery(api.brands.listBrandsWithProductCount, {
-  //     organizationId: organizationId as unknown as string,
-  //   }),
-  //   enabled: !!organizationId,
-  // });
-
-  // Mock data for testing
-  const brands: BrandWithProductCount[] = [
-    {
-      _id: "1" as Id<"brands">,
-      _creationTime: Date.now(),
-      organizationId: "org1",
-      name: "BRAND-01",
-      isActive: true,
-      productCount: 10,
-    },
-    {
-      _id: "2" as Id<"brands">,
-      _creationTime: Date.now(),
-      organizationId: "org1",
-      name: "BRAND-02",
-      isActive: true,
-      productCount: 10,
-    },
-    {
-      _id: "3" as Id<"brands">,
-      _creationTime: Date.now(),
-      organizationId: "org1",
-      name: "BRAND-03",
-      isActive: true,
-      productCount: 10,
-    },
-  ];
-  const isLoading = false;
+  const { data: brands, isLoading } = useQuery({
+    ...convexQuery(api.brands.listBrandsWithProductCount, {
+      organizationId: organizationId as string,
+    }),
+    enabled: !!organizationId,
+  });
 
   const table = useReactTable({
     data: brands ?? [],
@@ -458,7 +429,7 @@ export function BrandsTable() {
         </Table>
       </div>
       <div className="flex items-center justify-between space-x-2 py-4">
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="flex items-center gap-2">
           <Label htmlFor="Showing" className="font-medium text-sm">
             Showing
           </Label>

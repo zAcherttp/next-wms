@@ -122,16 +122,8 @@ const data = {
           url: "/master-data/products",
         },
         {
-          title: "SKUs",
-          url: "/master-data/skus",
-        },
-        {
           title: "Categories",
           url: "/master-data/categories",
-        },
-        {
-          title: "UoMs",
-          url: "/master-data/uoms",
         },
         {
           title: "Brands",

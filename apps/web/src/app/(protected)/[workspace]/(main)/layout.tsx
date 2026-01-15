@@ -11,9 +11,9 @@ export default async function Layout({
   const defaultOpen = cookieStore.get("sidebar_state")?.value === "true";
 
   return (
-    <SidebarProvider defaultOpen={defaultOpen}>
+    <SidebarProvider defaultOpen={defaultOpen} suppressHydrationWarning>
       <AppSidebar />
-      <SidebarInset className="h-screen">
+      <SidebarInset className="h-screen" suppressHydrationWarning>
         <MainHeader />
         <ScrollArea className="overflow-y-auto px-4">{children}</ScrollArea>
       </SidebarInset>

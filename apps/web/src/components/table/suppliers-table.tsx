@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   flexRender,
@@ -7,6 +9,9 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Doc, Id } from "@wms/backend/convex/_generated/dataModel";
+
 import {
   ChevronLeft,
   ChevronRight,
@@ -16,6 +21,7 @@ import {
   Plus,
 } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Button } from "@/components/ui/button";
 import {
@@ -52,25 +58,75 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 // Supplier type for the table
-export type SupplierTableItem = {
-  _id: string;
-  name: string;
-  isActive: boolean;
+export type SupplierTableItem = Doc<"suppliers"> & {
+  brandName: string;
 };
 
 // CreateSupplierDialog component
 function CreateSupplierDialog() {
+  const { organizationId } = useCurrentUser();
   const [open, setOpen] = React.useState(false);
-  const [name, setName] = React.useState("");
+  const [formData, setFormData] = React.useState({
+    name: "",
+    contactPerson: "",
+    email: "",
+    phone: "",
+    defaultLeadTimeDays: 7,
+    brandId: "",
+  });
+
+  // Fetch brands
+  const { data: brands } = useQuery({
+    ...convexQuery(api.brands.listBrandsWithProductCount, {
+      organizationId: organizationId as Id<"organizations">,
+    }),
+    enabled: !!organizationId,
+  });
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: useConvexMutation(api.suppliers.create),
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim()) return;
-    console.log("Creating supplier:", name);
-    setName("");
-    setOpen(false);
+    if (!formData.name.trim() || !formData.email.trim() || !formData.brandId || !organizationId) return;
+
+    console.log("Creating supplier with brandId:", formData.brandId);
+    
+    mutate(
+      { 
+        name: formData.name,
+        contactPerson: formData.contactPerson,
+        email: formData.email,
+        phone: formData.phone,
+        defaultLeadTimeDays: formData.defaultLeadTimeDays,
+        brandId: formData.brandId as Id<"brands">,
+        organizationId,
+        isActive: true
+      },
+      {
+        onSuccess: () => {
+          toast.success(`Supplier "${formData.name}" created successfully`);
+          setFormData({
+            name: "",
+            contactPerson: "",
+            email: "",
+            phone: "",
+            defaultLeadTimeDays: 7,
+            brandId: "",
+          });
+          setOpen(false);
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to create supplier",
+          );
+        },
+      },
+    );
   };
 
   return (
@@ -91,13 +147,75 @@ function CreateSupplierDialog() {
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
-              <Label htmlFor="name">Supplier Name</Label>
+              <Label htmlFor="name">Supplier Name *</Label>
               <Input
                 id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
                 placeholder="Enter supplier name..."
                 autoFocus
+              />
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="brand-select">Brand *</Label>
+              <Select
+                value={formData.brandId}
+                onValueChange={(value) =>
+                  setFormData({ ...formData, brandId: value })
+                }
+                disabled={isPending}
+              >
+                <SelectTrigger id="brand-select">
+                  <SelectValue placeholder="Select a brand" />
+                </SelectTrigger>
+                <SelectContent>
+                  {brands?.map((brand) => (
+                    <SelectItem key={brand._id} value={brand._id}>
+                      {brand.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="grid gap-2">
+              <Label htmlFor="contactPerson">Contact Person *</Label>
+              <Input
+                id="contactPerson"
+                value={formData.contactPerson}
+                onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
+                placeholder="Enter contact person name..."
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="email">Email *</Label>
+              <Input
+                id="email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                placeholder="supplier@example.com"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="phone">Phone *</Label>
+              <Input
+                id="phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                placeholder="+84 123 456 789"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="leadTime">Lead Time (days) *</Label>
+              <Input
+                id="leadTime"
+                type="number"
+                value={formData.defaultLeadTimeDays}
+                onChange={(e) => setFormData({...formData, defaultLeadTimeDays: Number(e.target.value)})}
+                placeholder="7"
+                min="0"
               />
             </div>
           </div>
@@ -109,8 +227,137 @@ function CreateSupplierDialog() {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={!name.trim()}>
-              Create
+            <Button type="submit" disabled={isPending || !formData.name.trim() || !formData.email.trim() || !formData.brandId}>
+              {isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// EditSupplierDialog component
+function EditSupplierDialog({
+  supplier,
+  open,
+  onOpenChange,
+}: {
+  supplier: SupplierTableItem;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [formData, setFormData] = React.useState({
+    name: supplier.name,
+    contactPerson: supplier.contactPerson,
+    email: supplier.email,
+    phone: supplier.phone,
+    defaultLeadTimeDays: supplier.defaultLeadTimeDays,
+  });
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: useConvexMutation(api.suppliers.update),
+  });
+
+  React.useEffect(() => {
+    setFormData({
+      name: supplier.name,
+      contactPerson: supplier.contactPerson,
+      email: supplier.email,
+      phone: supplier.phone,
+      defaultLeadTimeDays: supplier.defaultLeadTimeDays,
+    });
+  }, [supplier]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.name.trim() || !formData.email.trim()) return;
+
+    mutate(
+      { id: supplier._id, ...formData },
+      {
+        onSuccess: () => {
+          toast.success(`Supplier "${formData.name}" updated successfully`);
+          onOpenChange(false);
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to update supplier",
+          );
+        },
+      },
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md">
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Edit Supplier</DialogTitle>
+            <DialogDescription>Update supplier information.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Supplier Name *</Label>
+              <Input
+                id="edit-name"
+                value={formData.name}
+                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                placeholder="Enter supplier name..."
+                autoFocus
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-contactPerson">Contact Person *</Label>
+              <Input
+                id="edit-contactPerson"
+                value={formData.contactPerson}
+                onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
+                placeholder="Enter contact person name..."
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-email">Email *</Label>
+              <Input
+                id="edit-email"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                placeholder="supplier@example.com"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-phone">Phone *</Label>
+              <Input
+                id="edit-phone"
+                value={formData.phone}
+                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                placeholder="+84 123 456 789"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-leadTime">Lead Time (days) *</Label>
+              <Input
+                id="edit-leadTime"
+                type="number"
+                value={formData.defaultLeadTimeDays}
+                onChange={(e) => setFormData({...formData, defaultLeadTimeDays: Number(e.target.value)})}
+                placeholder="7"
+                min="0"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending || !formData.name.trim() || !formData.email.trim()}>
+              {isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
         </form>
@@ -121,26 +368,100 @@ function CreateSupplierDialog() {
 
 // Actions Cell Component
 function ActionsCell({ supplier }: { supplier: SupplierTableItem }) {
+  const [editOpen, setEditOpen] = React.useState(false);
+
+  const { mutate: deleteSupplier } = useMutation({
+    mutationFn: useConvexMutation(api.suppliers.remove),
+  });
+
+  const { mutate: updateSupplier } = useMutation({
+    mutationFn: useConvexMutation(api.suppliers.update),
+  });
+
+  const handleDelete = () => {
+    if (!confirm(`Are you sure you want to delete "${supplier.name}"?`)) return;
+
+    deleteSupplier(
+      { id: supplier._id },
+      {
+        onSuccess: () => {
+          toast.success(`Supplier "${supplier.name}" deleted`);
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to delete supplier",
+          );
+        },
+      },
+    );
+  };
+
+  const handleToggleActive = () => {
+    updateSupplier(
+      { id: supplier._id, isActive: !supplier.isActive },
+      {
+        onSuccess: () => {
+          toast.success(
+            `Supplier "${supplier.name}" ${supplier.isActive ? "deactivated" : "activated"}`
+          );
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to update supplier",
+          );
+        },
+      },
+    );
+  };
+
   return (
-    <div className="flex justify-end">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon-sm">
-            <span className="sr-only">Open menu</span>
-            <MoreHorizontal />
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem>Edit name</DropdownMenuItem>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive">
-            Deactivate
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
-    </div>
+    <>
+      <div className="flex justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-sm">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setEditOpen(true)}>
+              Edit supplier
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {supplier.isActive ? (
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={handleToggleActive}
+              >
+                Deactivate
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                className="text-green-600"
+                onClick={handleToggleActive}
+              >
+                Activate
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem 
+              className="text-destructive"
+              onClick={handleDelete}
+            >
+              Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <EditSupplierDialog
+        supplier={supplier}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+    </>
   );
 }
 
@@ -149,6 +470,38 @@ export const columns: ColumnDef<SupplierTableItem>[] = [
     accessorKey: "name",
     header: () => <span className="font-medium">Name</span>,
     cell: ({ row }) => <TableCellFirst>{row.getValue("name")}</TableCellFirst>,
+  },
+  {
+    accessorKey: "brandName",
+    header: () => <span className="font-medium">Brand</span>,
+    cell: ({ row }) => {
+      const brandName = row.getValue("brandName") as string;
+      return brandName ? (
+        <span>{brandName}</span>
+      ) : (
+        <span className="text-muted-foreground text-sm">N/A</span>
+      );
+    },
+  },
+  {
+    accessorKey: "contactPerson",
+    header: () => <span className="font-medium">Contact Person</span>,
+    cell: ({ row }) => <div>{row.getValue("contactPerson")}</div>,
+  },
+  {
+    accessorKey: "email",
+    header: () => <span className="font-medium">Email</span>,
+    cell: ({ row }) => <div className="text-muted-foreground text-sm">{row.getValue("email")}</div>,
+  },
+  {
+    accessorKey: "phone",
+    header: () => <span className="font-medium">Phone</span>,
+    cell: ({ row }) => <div className="text-muted-foreground text-sm">{row.getValue("phone")}</div>,
+  },
+  {
+    accessorKey: "defaultLeadTimeDays",
+    header: () => <div className="text-center"><span className="font-medium">Lead Time</span></div>,
+    cell: ({ row }) => <div className="text-center">{row.getValue("defaultLeadTimeDays")} days</div>,
   },
   {
     id: "actions",
@@ -165,25 +518,29 @@ export const columns: ColumnDef<SupplierTableItem>[] = [
 ];
 
 export function SuppliersTable() {
-  // Mock data for testing
-  const suppliers: SupplierTableItem[] = [
-    {
-      _id: "1",
-      name: "SUPPLIER-01",
-      isActive: true,
-    },
-    {
-      _id: "2",
-      name: "SUPPLIER-02",
-      isActive: true,
-    },
-    {
-      _id: "3",
-      name: "SUPPLIER-03",
-      isActive: true,
-    },
-  ];
-  const isLoading = false;
+  const { organizationId } = useCurrentUser();
+
+  const { data: suppliers, isLoading } = useQuery({
+    ...convexQuery(api.suppliers.getActive, {
+      organizationId: organizationId as Id<"organizations">,
+    }),
+    enabled: !!organizationId,
+  });
+
+  React.useEffect(() => {
+    if (suppliers) {
+      console.log("=== SUPPLIERS DATA ===");
+      console.log("Total suppliers:", suppliers.length);
+      suppliers.forEach((s, idx) => {
+        console.log(`Supplier ${idx + 1}:`, {
+          name: s.name,
+          brandId: s.brandId,
+          brandName: s.brandName || "<<< MISSING >>>",
+          fullData: s
+        });
+      });
+    }
+  }, [suppliers]);
 
   const table = useReactTable({
     data: suppliers ?? [],
@@ -263,7 +620,7 @@ export function SuppliersTable() {
         </Table>
       </div>
       <div className="flex items-center justify-between space-x-2 py-4">
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="flex items-center gap-2">
           <Label htmlFor="Showing" className="font-medium text-sm">
             Showing
           </Label>
@@ -290,7 +647,7 @@ export function SuppliersTable() {
         </div>
         <div className="flex w-full items-center gap-8 lg:w-fit">
           <div className="flex w-fit items-center justify-center font-medium text-sm">
-            Showing {table.getRowModel().rows.length} brand(s) of{" "}
+            Showing {table.getRowModel().rows.length} supplier(s) of{" "}
             {totalSuppliers} total
           </div>
           <div className="ml-auto flex items-center gap-2 lg:ml-0">
