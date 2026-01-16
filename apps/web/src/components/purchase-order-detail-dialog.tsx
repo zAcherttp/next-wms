@@ -1,5 +1,9 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -18,45 +23,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
-
-// Mock data for purchase order details
-const MOCK_PO_DETAIL = {
-  code: "PO-2024-001",
-  createdByUser: {
-    fullName: "John Smith",
-  },
-  supplier: {
-    name: "ABC Supplies Inc.",
-    phone: "+1-555-0101",
-  },
-  createdAt: new Date("2024-01-15T10:30:00"),
-  expectedDeliveryAt: new Date("2024-01-25"),
-  status: "Confirmed",
-  items: [
-    {
-      id: "1",
-      sku: "SKU-001A",
-      productName: "Industrial Bearing 6mm",
-      quantityOrdered: 100,
-      location: "Zone A - Receiving",
-    },
-    {
-      id: "2",
-      sku: "SKU-002B",
-      productName: "Stainless Steel Bolt M8",
-      quantityOrdered: 500,
-      location: "Zone B - Storage",
-    },
-    {
-      id: "3",
-      sku: "SKU-003C",
-      productName: "Rubber Gasket 50mm",
-      quantityOrdered: 200,
-      location: "Zone C - Cold Storage",
-    },
-  ],
-};
 
 interface InfoItemProps {
   label: string;
@@ -75,37 +43,62 @@ function InfoItem({ label, value }: InfoItemProps) {
 }
 
 interface PurchaseOrderDetailDialogProps {
+  orderId: Id<"purchase_orders"> | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   trigger?: React.ReactNode;
 }
 
 export function PurchaseOrderDetailDialog({
+  orderId,
+  open: controlledOpen,
+  onOpenChange,
   trigger,
 }: PurchaseOrderDetailDialogProps) {
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  
+  // Use controlled state if provided, otherwise use internal state
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
+  
+  const { userId } = useCurrentUser();
 
-  // Calculate totals
-  const totalItems = MOCK_PO_DETAIL.items.length;
-  const totalQuantityOrdered = MOCK_PO_DETAIL.items.reduce(
-    (sum, item) => sum + item.quantityOrdered,
-    0,
-  );
+  const { data: orderDetail, isPending } = useQuery({
+    ...convexQuery(
+      api.purchaseOrders.getPurchaseOrderDetailed,
+      userId && open && orderId
+        ? {
+            orderId,
+            userId: userId as Id<"users">,
+          }
+        : "skip"
+    ),
+    enabled: !!userId && open && !!orderId,
+  });
 
-  const formatDate = (date: Date) => {
+  const formatDate = React.useCallback((timestamp: number) => {
     return new Intl.DateTimeFormat("en-GB", {
       day: "numeric",
       month: "numeric",
       year: "numeric",
-    }).format(date);
-  };
+    }).format(new Date(timestamp));
+  }, []);
 
-  const formatTime = (date: Date) => {
-    return new Intl.DateTimeFormat("en-US", {
+  const formatDateTime = React.useCallback((timestamp: number) => {
+    const date = new Date(timestamp);
+    const dateStr = new Intl.DateTimeFormat("en-GB", {
+      day: "numeric",
+      month: "numeric",
+      year: "numeric",
+    }).format(date);
+    const timeStr = new Intl.DateTimeFormat("en-US", {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
       hour12: false,
     }).format(date);
-  };
+    return { dateStr, timeStr };
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -117,128 +110,158 @@ export function PurchaseOrderDetailDialog({
         )}
       </DialogTrigger>
       <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle className="font-bold text-2xl">
-            {MOCK_PO_DETAIL.code}
-          </DialogTitle>
-        </DialogHeader>
+        <DialogTitle className="sr-only">Purchase Order Details</DialogTitle>
+        {isPending || !orderDetail ? (
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-bold text-2xl">
+                {orderDetail.code}
+              </DialogTitle>
+            </DialogHeader>
 
-        {/* Order Information Card */}
-        <Card className="flex py-4">
-          <CardContent className="px-6 py-0">
-            <div className="grid grid-cols-3 gap-x-8 gap-y-4">
-              {/* Column 1: User & Status */}
-              <div className="space-y-4">
-                <InfoItem
-                  label="Created By"
-                  value={MOCK_PO_DETAIL.createdByUser.fullName}
-                />
-                <InfoItem
-                  label="Status"
-                  value={
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "font-medium",
-                        getBadgeStyleByStatus(MOCK_PO_DETAIL.status),
-                      )}
-                    >
-                      {MOCK_PO_DETAIL.status}
-                    </Badge>
-                  }
-                />
+            {/* Order Information Card */}
+            <Card className="flex py-4">
+              <CardContent className="px-6 py-0">
+                <div className="grid grid-cols-3 gap-x-8 gap-y-4">
+                  {/* Column 1: User & Status */}
+                  <div className="space-y-4">
+                    <InfoItem
+                      label="Created By"
+                      value={orderDetail.createdByUser?.fullName ?? "Unknown"}
+                    />
+                    <InfoItem
+                      label="Status"
+                      value={
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "font-medium",
+                            getBadgeStyleByStatus(
+                              orderDetail.purchaseOrderStatus?.lookupValue ?? ""
+                            )
+                          )}
+                        >
+                          {orderDetail.purchaseOrderStatus?.lookupValue ??
+                            "Unknown"}
+                        </Badge>
+                      }
+                    />
+                  </div>
+
+                  {/* Column 2: Supplier Info */}
+                  <div className="space-y-4">
+                    <InfoItem
+                      label="Supplier"
+                      value={orderDetail.supplier?.name ?? "Unknown"}
+                    />
+                    <InfoItem
+                      label="Supplier Phone"
+                      value={orderDetail.supplier?.phone ?? "-"}
+                    />
+                  </div>
+
+                  {/* Column 3: Dates */}
+                  <div className="space-y-4">
+                    <InfoItem
+                      label="Created At"
+                      value={
+                        <span>
+                          {formatDateTime(orderDetail.orderedAt).dateStr}{" "}
+                          <span className="text-muted-foreground">
+                            {formatDateTime(orderDetail.orderedAt).timeStr}
+                          </span>
+                        </span>
+                      }
+                    />
+                    <InfoItem
+                      label="Expected Delivery"
+                      value={
+                        orderDetail.expectedDeliveryAt
+                          ? formatDate(orderDetail.expectedDeliveryAt)
+                          : "-"
+                      }
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Detailed Item Info Section */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">
+                Detailed Item Info
+              </h3>
+
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-30">SKU</TableHead>
+                      <TableHead>Product Name</TableHead>
+                      <TableHead className="w-25 text-center">
+                        Qty Ordered
+                      </TableHead>
+                      <TableHead className="w-45">Location</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {orderDetail.items.length > 0 ? (
+                      orderDetail.items.map((item) => (
+                        <TableRow key={item._id}>
+                          <TableCell className="font-medium text-blue-600">
+                            {item.skuCode}
+                          </TableCell>
+                          <TableCell>{item.productName ?? "-"}</TableCell>
+                          <TableCell className="text-center font-medium text-blue-600">
+                            {item.quantityOrdered}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {item.location ?? "-"}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center">
+                          No items found
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
 
-              {/* Column 2: Supplier Info */}
-              <div className="space-y-4">
-                <InfoItem
-                  label="Supplier"
-                  value={MOCK_PO_DETAIL.supplier.name}
-                />
-                <InfoItem
-                  label="Supplier Phone"
-                  value={MOCK_PO_DETAIL.supplier.phone}
-                />
-              </div>
-
-              {/* Column 3: Dates */}
-              <div className="space-y-4">
-                <InfoItem
-                  label="Created At"
-                  value={
-                    <span>
-                      {formatDate(MOCK_PO_DETAIL.createdAt)}{" "}
-                      <span className="text-muted-foreground">
-                        {formatTime(MOCK_PO_DETAIL.createdAt)}
-                      </span>
+              {/* Totals Summary */}
+              <div className="flex justify-end">
+                <div className="inline-flex items-center gap-4 rounded-lg border bg-card px-4 py-2.5 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">
+                      Items:
                     </span>
-                  }
-                />
-                <InfoItem
-                  label="Expected Delivery"
-                  value={formatDate(MOCK_PO_DETAIL.expectedDeliveryAt)}
-                />
+                    <span className="font-semibold text-sm">
+                      {orderDetail.totalItems}
+                    </span>
+                  </div>
+                  <div className="h-4 w-px bg-border" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">
+                      Total Qty:
+                    </span>
+                    <span className="font-bold text-blue-600 text-sm">
+                      {orderDetail.totalQuantityOrdered}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Detailed Item Info Section */}
-        <div className="space-y-3">
-          <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">
-            Detailed Item Info
-          </h3>
-
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-30">SKU</TableHead>
-                  <TableHead>Product Name</TableHead>
-                  <TableHead className="w-25 text-center">
-                    Qty Ordered
-                  </TableHead>
-                  <TableHead className="w-45">Location</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {MOCK_PO_DETAIL.items.map((item) => (
-                  <TableRow key={item.id}>
-                    <TableCell className="font-medium text-blue-600">
-                      {item.sku}
-                    </TableCell>
-                    <TableCell>{item.productName}</TableCell>
-                    <TableCell className="text-center font-medium text-blue-600">
-                      {item.quantityOrdered}
-                    </TableCell>
-                    <TableCell className="text-muted-foreground">
-                      {item.location}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
-
-          {/* Totals Summary */}
-          <div className="flex justify-end">
-            <div className="inline-flex items-center gap-4 rounded-lg border bg-card px-4 py-2.5 shadow-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-sm">Items:</span>
-                <span className="font-semibold text-sm">{totalItems}</span>
-              </div>
-              <div className="h-4 w-px bg-border" />
-              <div className="flex items-center gap-2">
-                <span className="text-muted-foreground text-sm">
-                  Total Qty:
-                </span>
-                <span className="font-bold text-blue-600 text-sm">
-                  {totalQuantityOrdered}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -23,7 +23,7 @@ export function useBranches(options: UseBranchesOptions = {}) {
             organizationId,
             includeDeleted,
           }
-        : "skip",
+        : "skip"
     ),
   });
 
@@ -37,7 +37,7 @@ export function useBranches(options: UseBranchesOptions = {}) {
 
     if (savedBranchId) {
       const savedBranch = branches.find(
-        (b) => b._id === savedBranchId && b.isActive && !b.isDeleted,
+        (b) => b._id === savedBranchId && b.isActive && !b.isDeleted
       );
       if (savedBranch) {
         setCurrentBranch(savedBranch);
@@ -55,10 +55,37 @@ export function useBranches(options: UseBranchesOptions = {}) {
     }
   }, [branches]);
 
+  // Listen for branch changes from other components
+  useEffect(() => {
+    const handleBranchChange = (event: CustomEvent<string>) => {
+      if (!branches) return;
+      const newBranchId = event.detail;
+      const newBranch = branches.find((b) => b._id === newBranchId);
+      if (newBranch) {
+        setCurrentBranch(newBranch);
+      }
+    };
+
+    window.addEventListener(
+      "wms:branch-changed",
+      handleBranchChange as EventListener
+    );
+    return () => {
+      window.removeEventListener(
+        "wms:branch-changed",
+        handleBranchChange as EventListener
+      );
+    };
+  }, [branches]);
+
   const selectBranch = useCallback((branch: Branch | null) => {
     setCurrentBranch(branch);
     if (branch) {
       localStorage.setItem(STORAGE_KEY, branch._id);
+      // Dispatch custom event to notify other components
+      window.dispatchEvent(
+        new CustomEvent("wms:branch-changed", { detail: branch._id })
+      );
     } else {
       localStorage.removeItem(STORAGE_KEY);
     }

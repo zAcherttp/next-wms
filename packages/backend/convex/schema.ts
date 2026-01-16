@@ -17,7 +17,7 @@ export default defineSchema({
     logo: v.optional(v.string()),
     authMetadata: v.optional(v.string()), // JSON string from Better Auth
     authCreatedAt: v.number(), // timestamp from Better Auth
-    
+
     // Application-specific fields
     name: v.string(),
     address: v.string(),
@@ -73,7 +73,7 @@ export default defineSchema({
     image: v.optional(v.string()),
     authCreatedAt: v.number(), // timestamp from Better Auth
     authUpdatedAt: v.number(), // timestamp from Better Auth
-    
+
     // Application-specific fields
     username: v.string(),
     fullName: v.string(),
@@ -105,7 +105,10 @@ export default defineSchema({
     .index("userAuthId", ["userAuthId"])
     .index("organizationAuthId", ["organizationAuthId"])
     .index("userId_organizationId", ["userId", "organizationId"])
-    .index("userAuthId_organizationAuthId", ["userAuthId", "organizationAuthId"]),
+    .index("userAuthId_organizationAuthId", [
+      "userAuthId",
+      "organizationAuthId",
+    ]),
 
   user_branch_assignments: defineTable({
     userId: v.id("users"),

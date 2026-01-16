@@ -47,7 +47,7 @@ import { MOCK_PO } from "@/mock/data/purchase-orders";
 
 // Extract unique suppliers from mock data
 const MOCK_SUPPLIERS = Array.from(
-  new Set(MOCK_PO.map((po) => po.supplier?.name).filter(Boolean)),
+  new Set(MOCK_PO.map((po) => po.supplier?.name).filter(Boolean))
 ) as string[];
 
 // Mock branches
@@ -111,7 +111,7 @@ export function AddPurchaseOrderDialog({
 
   // Filter out already selected SKUs
   const availableSkus = MOCK_SKUS.filter(
-    (sku) => !selectedSkuIds.includes(sku.id),
+    (sku) => !selectedSkuIds.includes(sku.id)
   );
 
   const handleAddProduct = (sku: (typeof MOCK_SKUS)[0]) => {
@@ -136,12 +136,12 @@ export function AddPurchaseOrderDialog({
 
   const handleSelectZone = (
     productId: string,
-    zone: (typeof MOCK_ZONES)[0],
+    zone: (typeof MOCK_ZONES)[0]
   ) => {
     setProducts(
       products.map((p) =>
-        p.id === productId ? { ...p, zoneId: zone.id, zoneName: zone.name } : p,
-      ),
+        p.id === productId ? { ...p, zoneId: zone.id, zoneName: zone.name } : p
+      )
     );
     setZonePopoverOpenId(null);
   };
@@ -167,7 +167,7 @@ export function AddPurchaseOrderDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="flex max-h-250 w-full flex-col overflow-hidden sm:max-w-300">
+      <DialogContent className="flex max-h-250 w-full flex-col overflow-hidden sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>New Purchase Order</DialogTitle>
         </DialogHeader>
@@ -259,7 +259,7 @@ export function AddPurchaseOrderDialog({
                           onChange={(e) =>
                             handleUpdateProductQuantity(
                               product.id,
-                              Number.parseInt(e.target.value, 10) || 1,
+                              Number.parseInt(e.target.value, 10) || 1
                             )
                           }
                           className="mx-auto w-20 text-center"
@@ -278,7 +278,7 @@ export function AddPurchaseOrderDialog({
                               size="sm"
                               className={cn(
                                 "w-full justify-start",
-                                !product.zoneName && "text-muted-foreground",
+                                !product.zoneName && "text-muted-foreground"
                               )}
                             >
                               <MapPin className="mr-1 size-4" />
@@ -304,7 +304,7 @@ export function AddPurchaseOrderDialog({
                                           "mr-2 h-4 w-4",
                                           product.zoneId === zone.id
                                             ? "opacity-100"
-                                            : "opacity-0",
+                                            : "opacity-0"
                                         )}
                                       />
                                       {zone.name}
