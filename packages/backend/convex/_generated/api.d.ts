@@ -25,6 +25,7 @@ import type * as purchaseOrders from "../purchaseOrders.js";
 import type * as receiveSessions from "../receiveSessions.js";
 import type * as returnRequest from "../returnRequest.js";
 import type * as seedMockData from "../seedMockData.js";
+import type * as storageZones from "../storageZones.js";
 import type * as suppliers from "../suppliers.js";
 
 import type {
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   receiveSessions: typeof receiveSessions;
   returnRequest: typeof returnRequest;
   seedMockData: typeof seedMockData;
+  storageZones: typeof storageZones;
   suppliers: typeof suppliers;
 }>;
 

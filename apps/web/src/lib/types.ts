@@ -272,3 +272,5 @@ export type PendingPurchaseOrder = Pick<
   supplier: Pick<Supplier, "name"> | null;
   purchaseOrderStatus: Pick<SystemLookups, "lookupValue"> | null;
 };
+
+export type StorageZone = Doc<"storage_zones">;

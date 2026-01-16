@@ -35,19 +35,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface AddReceiveSessionDialogProps {
   trigger?: React.ReactNode;
 }
-
-/**
- * TODO: Replace this hardcoded branchId with dynamic branch selection
- * when branches feature is implemented.
- * Current hardcoded value is for development/testing purposes only.
- */
-const HARDCODED_BRANCH_ID =
-  "jx7bm140507ygfacwsnfezyz9d7z1yng" as Id<"branches">;
 
 export function AddReceiveSessionDialog({
   trigger,
@@ -55,7 +48,9 @@ export function AddReceiveSessionDialog({
   const [open, setOpen] = React.useState(false);
   const [confirmOpen, setConfirmOpen] = React.useState(false);
   const [selectedPOId, setSelectedPOId] = React.useState<string>("");
-  const { userId } = useCurrentUser();
+  const { userId, organizationId } = useCurrentUser();
+
+  const { currentBranch } = useBranches({ organizationId });
 
   // Fetch pending purchase orders for the dropdown
   const {
@@ -66,9 +61,9 @@ export function AddReceiveSessionDialog({
     status,
   } = useQuery({
     ...convexQuery(api.receiveSessions.getPendingPurchaseOrdersByBranch, {
-      branchId: HARDCODED_BRANCH_ID,
+      branchId: currentBranch?._id as Id<"branches">,
     }),
-    enabled: open, // Only fetch when dialog is open
+    enabled: !!currentBranch?._id,
   });
 
   // Debug log
@@ -78,12 +73,20 @@ export function AddReceiveSessionDialog({
       console.log("Is Loading:", isLoadingPOs);
       console.log("Is Error:", isError);
       console.log("Error:", queryError);
-      console.log("Branch ID:", HARDCODED_BRANCH_ID);
+      console.log("Branch ID:", currentBranch?._id);
       console.log("Pending POs data:", pendingPOs);
       console.log("Is array:", Array.isArray(pendingPOs));
       console.log("Length:", pendingPOs?.length);
     }
-  }, [open, isLoadingPOs, pendingPOs, status, isError, queryError]);
+  }, [
+    open,
+    isLoadingPOs,
+    pendingPOs,
+    status,
+    isError,
+    queryError,
+    currentBranch,
+  ]);
 
   // Mutation for creating receive session
   const createReceiveSession = useConvexMutation(

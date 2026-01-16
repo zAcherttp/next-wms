@@ -256,9 +256,9 @@ export default defineSchema({
     branchId: v.id("branches"),
     name: v.string(),
     path: v.string(), // ltree as string
-    zoneTypeId: v.id("system_lookups"),
+    zoneTypeId: v.optional(v.id("system_lookups")),
     storageBlockType: v.string(),
-    zoneAttributes: v.optional(v.any()), // jsonb
+    zoneAttributes: v.optional(v.record(v.string(), v.any())), // object with dynamic attributes
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
   })
