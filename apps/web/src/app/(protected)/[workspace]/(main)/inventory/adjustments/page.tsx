@@ -60,7 +60,7 @@ export default function Page() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex flex-col">
       {/* Dialogs */}
       <NewAdjustmentRequestDialog
         open={isNewRequestDialogOpen}

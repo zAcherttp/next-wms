@@ -36,7 +36,7 @@ export default function Page() {
   const stats = MOCK_CYCLE_COUNT_STATS;
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <div className="flex flex-col gap-6">
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard

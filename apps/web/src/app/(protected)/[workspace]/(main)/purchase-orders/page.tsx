@@ -40,7 +40,7 @@ export default function Page() {
     : defaultChartData;
 
   return (
-    <div className="flex flex-col gap-4 p-2">
+    <div className="flex flex-col gap-4">
       {/* Header with date picker and chart settings */}
       <div className="flex flex-row items-center justify-between">
         <DateRangePicker
