@@ -295,7 +295,7 @@ export function EntityBrowser() {
                       Right-click here to create your first floor zone
                     </p>
                   </div>
-                  <div className="mt-2 rounded-md border border-dashed border-muted-foreground/50 px-3 py-2 text-muted-foreground text-xs">
+                  <div className="mt-2 rounded-md border border-muted-foreground/50 border-dashed px-3 py-2 text-muted-foreground text-xs">
                     💡 Tip: Create a <strong>Floor</strong> zone first, then add
                     racks and obstacles inside it
                   </div>

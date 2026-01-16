@@ -353,8 +353,13 @@ function checkCollisionsBruteForce(
     if (excludeEntityId && rackId === excludeEntityId) continue;
 
     // Lookup from store to get parentId for world position conversion
-    const storeEntity = useLayoutStore.getState().entities.get(rackId as Id<"storage_zones">);
-    const worldPosition = getWorldPosition(rack.position, storeEntity?.parentId);
+    const storeEntity = useLayoutStore
+      .getState()
+      .entities.get(rackId as Id<"storage_zones">);
+    const worldPosition = getWorldPosition(
+      rack.position,
+      storeEntity?.parentId,
+    );
 
     const rackRotationY = Number.isFinite(rack.rotation?.y)
       ? rack.rotation.y
@@ -386,8 +391,13 @@ function checkCollisionsBruteForce(
       if (excludeEntityId && obstacleId === excludeEntityId) continue;
 
       // Lookup from store to get parentId for world position conversion
-      const storeEntity = useLayoutStore.getState().entities.get(obstacleId as Id<"storage_zones">);
-      const worldPosition = getWorldPosition(obstacle.position, storeEntity?.parentId);
+      const storeEntity = useLayoutStore
+        .getState()
+        .entities.get(obstacleId as Id<"storage_zones">);
+      const worldPosition = getWorldPosition(
+        obstacle.position,
+        storeEntity?.parentId,
+      );
 
       const obstacleRotationY = Number.isFinite(obstacle.rotation?.y)
         ? obstacle.rotation.y
@@ -782,8 +792,13 @@ export class CollisionDetector {
       const rack = racks.get(entityId);
       if (rack) {
         // Lookup from store to get parentId for world position conversion
-        const storeEntity = useLayoutStore.getState().entities.get(entityId as Id<"storage_zones">);
-        const worldPosition = getWorldPosition(rack.position, storeEntity?.parentId);
+        const storeEntity = useLayoutStore
+          .getState()
+          .entities.get(entityId as Id<"storage_zones">);
+        const worldPosition = getWorldPosition(
+          rack.position,
+          storeEntity?.parentId,
+        );
 
         const rackRotationY = Number.isFinite(rack.rotation?.y)
           ? rack.rotation.y
@@ -818,8 +833,13 @@ export class CollisionDetector {
       const obstacle = obstacles.get(entityId);
       if (obstacle) {
         // Lookup from store to get parentId for world position conversion
-        const storeEntity = useLayoutStore.getState().entities.get(entityId as Id<"storage_zones">);
-        const worldPosition = getWorldPosition(obstacle.position, storeEntity?.parentId);
+        const storeEntity = useLayoutStore
+          .getState()
+          .entities.get(entityId as Id<"storage_zones">);
+        const worldPosition = getWorldPosition(
+          obstacle.position,
+          storeEntity?.parentId,
+        );
 
         const obstacleRotationY = Number.isFinite(obstacle.rotation?.y)
           ? obstacle.rotation.y
