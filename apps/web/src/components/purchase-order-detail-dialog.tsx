@@ -56,11 +56,11 @@ export function PurchaseOrderDetailDialog({
   trigger,
 }: PurchaseOrderDetailDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
-  
+
   // Use controlled state if provided, otherwise use internal state
   const open = controlledOpen ?? internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
-  
+
   const { userId } = useCurrentUser();
 
   const { data: orderDetail, isPending } = useQuery({
@@ -71,7 +71,7 @@ export function PurchaseOrderDetailDialog({
             orderId,
             userId: userId as Id<"users">,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!userId && open && !!orderId,
   });
@@ -143,8 +143,9 @@ export function PurchaseOrderDetailDialog({
                           className={cn(
                             "font-medium",
                             getBadgeStyleByStatus(
-                              orderDetail.purchaseOrderStatus?.lookupValue ?? ""
-                            )
+                              orderDetail.purchaseOrderStatus?.lookupValue ??
+                                "",
+                            ),
                           )}
                         >
                           {orderDetail.purchaseOrderStatus?.lookupValue ??

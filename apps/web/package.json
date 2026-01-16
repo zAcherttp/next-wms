@@ -76,6 +76,7 @@
     "usehooks-ts": "^3.1.1",
     "vaul": "^1.1.2",
     "zod": "catalog:",
+    "zundo": "^2.3.0",
     "zustand": "^5.0.10"
   },
   "devDependencies": {

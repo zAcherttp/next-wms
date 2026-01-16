@@ -1,5 +1,5 @@
-import type { PurchaseOrderListItem } from "@/lib/types";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import type { PurchaseOrderListItem } from "@/lib/types";
 
 // This file is kept for reference/testing but is no longer used in the app
 // The app now fetches real data from the Convex API

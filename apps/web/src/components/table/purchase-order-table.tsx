@@ -77,13 +77,14 @@ export function PurchaseOrdersTable() {
             branchId: currentBranch._id,
             userId: userId as Id<"users">,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!userId && !!currentBranch,
   });
 
   // Dialog state - must be declared before useMemo since columns reference these
-  const [selectedOrderId, setSelectedOrderId] = React.useState<Id<"purchase_orders"> | null>(null);
+  const [selectedOrderId, setSelectedOrderId] =
+    React.useState<Id<"purchase_orders"> | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
 
   const columns: ColumnDef<PurchaseOrderListItem>[] = React.useMemo(
@@ -104,8 +105,8 @@ export function PurchaseOrdersTable() {
           const suppliers = purchaseOrders
             ? Array.from(
                 new Set(
-                  purchaseOrders.map((po) => po.supplier?.name).filter(Boolean)
-                )
+                  purchaseOrders.map((po) => po.supplier?.name).filter(Boolean),
+                ),
               ).map((name) => ({
                 label: name as string,
                 value: name as string,
@@ -256,14 +257,14 @@ export function PurchaseOrdersTable() {
         },
         cell: ({ row }) => {
           const status = row.getValue(
-            "purchaseOrderStatus.lookupValue"
+            "purchaseOrderStatus.lookupValue",
           ) as string;
           return (
             <div className="text-center">
               <Badge
                 className={cn(
                   "w-20 rounded-sm text-center",
-                  getBadgeStyleByStatus(status ?? "")
+                  getBadgeStyleByStatus(status ?? ""),
                 )}
                 variant={"outline"}
               >
@@ -311,12 +312,12 @@ export function PurchaseOrdersTable() {
         },
       },
     ],
-    [purchaseOrders]
+    [purchaseOrders],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -417,7 +418,7 @@ export function PurchaseOrdersTable() {
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </TableHead>
                   );
@@ -436,7 +437,7 @@ export function PurchaseOrdersTable() {
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}

@@ -23,7 +23,7 @@ export function useBranches(options: UseBranchesOptions = {}) {
             organizationId,
             includeDeleted,
           }
-        : "skip"
+        : "skip",
     ),
   });
 
@@ -37,7 +37,7 @@ export function useBranches(options: UseBranchesOptions = {}) {
 
     if (savedBranchId) {
       const savedBranch = branches.find(
-        (b) => b._id === savedBranchId && b.isActive && !b.isDeleted
+        (b) => b._id === savedBranchId && b.isActive && !b.isDeleted,
       );
       if (savedBranch) {
         setCurrentBranch(savedBranch);
@@ -68,12 +68,12 @@ export function useBranches(options: UseBranchesOptions = {}) {
 
     window.addEventListener(
       "wms:branch-changed",
-      handleBranchChange as EventListener
+      handleBranchChange as EventListener,
     );
     return () => {
       window.removeEventListener(
         "wms:branch-changed",
-        handleBranchChange as EventListener
+        handleBranchChange as EventListener,
       );
     };
   }, [branches]);
@@ -84,7 +84,7 @@ export function useBranches(options: UseBranchesOptions = {}) {
       localStorage.setItem(STORAGE_KEY, branch._id);
       // Dispatch custom event to notify other components
       window.dispatchEvent(
-        new CustomEvent("wms:branch-changed", { detail: branch._id })
+        new CustomEvent("wms:branch-changed", { detail: branch._id }),
       );
     } else {
       localStorage.removeItem(STORAGE_KEY);

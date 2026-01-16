@@ -1,5 +1,7 @@
 "use client";
 
+import { api } from "@wms/backend/convex/_generated/api";
+import { useMutation, useQuery } from "convex/react";
 import {
   ResizableHandle,
   ResizablePanel,
@@ -12,10 +14,21 @@ export function LayoutEditor() {
   const { organizationId } = useCurrentUser();
   const { currentBranch } = useBranches({ organizationId });
 
+  const zones = useQuery(
+    api.storageZones.getByBranch,
+    currentBranch?._id
+      ? { branchId: currentBranch._id, includeDeleted: false }
+      : "skip",
+  );
+  const createZone = useMutation(api.storageZones.create);
+  const updateZone = useMutation(api.storageZones.update);
+  const deleteZone = useMutation(api.storageZones.softDelete);
+
   return (
     <ResizablePanelGroup direction="horizontal" className="h-full w-full grow">
       {/* Main 3D Canvas */}
       <ResizablePanel defaultSize={75} minSize={50}>
+        <div>{JSON.stringify(zones)}</div>
         <div>3d canvas</div>
       </ResizablePanel>
 
