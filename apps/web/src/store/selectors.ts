@@ -53,13 +53,13 @@ export const selectRacksByFloor =
 /** Count of locked racks */
 export const selectLockedRackCount = (state: LayoutStoreState) => {
   const racks = state.getEntitiesByType("rack");
-  return racks.filter((r) => r.attributes.isLocked === true).length;
+  return racks.filter((r) => r.zoneAttributes.isLocked === true).length;
 };
 
 /** Count of inaccessible racks */
 export const selectInaccessibleRackCount = (state: LayoutStoreState) => {
   const racks = state.getEntitiesByType("rack");
-  return racks.filter((r) => r.attributes.isAccessible === false).length;
+  return racks.filter((r) => r.zoneAttributes.isAccessible === false).length;
 };
 
 /** Total rack count */
@@ -70,14 +70,14 @@ export const selectTotalRackCount = (state: LayoutStoreState) =>
 export const selectIsRackLocked =
   (rackId: string) => (state: LayoutStoreState) => {
     const rack = state.entities.get(rackId);
-    return rack?.attributes.isLocked === true;
+    return rack?.zoneAttributes.isLocked === true;
   };
 
 /** Check if rack is inaccessible */
 export const selectIsRackInaccessible =
   (rackId: string) => (state: LayoutStoreState) => {
     const rack = state.entities.get(rackId);
-    return rack?.attributes.isAccessible === false;
+    return rack?.zoneAttributes.isAccessible === false;
   };
 
 // ============================================================================
@@ -93,7 +93,7 @@ export const selectSelectedEntity = (state: LayoutStoreState) => {
 /** Get selected entity's block type */
 export const selectSelectedBlockType = (state: LayoutStoreState) => {
   const entity = selectSelectedEntity(state);
-  return entity?.blockType ?? null;
+  return entity?.storageBlockType ?? null;
 };
 
 // ============================================================================
@@ -125,8 +125,9 @@ export const selectEntityBreadcrumb =
     while (current) {
       breadcrumb.unshift({
         id: current.id,
-        name: (current.attributes.name as string) || current.blockType,
-        blockType: current.blockType,
+        name:
+          (current.zoneAttributes.name as string) || current.storageBlockType,
+        blockType: current.storageBlockType,
       });
       current = current.parentId
         ? state.entities.get(current.parentId)

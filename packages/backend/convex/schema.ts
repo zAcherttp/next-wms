@@ -258,6 +258,7 @@ export default defineSchema({
   storage_zones: defineTable({
     branchId: v.id("branches"),
     name: v.string(),
+    parentId: v.optional(v.id("storage_zones")),
     path: v.string(), // ltree as string
     zoneTypeId: v.optional(v.id("system_lookups")),
     storageBlockType: v.string(),

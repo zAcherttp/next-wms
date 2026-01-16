@@ -5,9 +5,10 @@
 
 import { enableMapSet } from "immer";
 import { temporal } from "zundo";
+// Helper types for slice creators to accept the full store state/set/get
+import type { StateCreator } from "zustand";
 import { create } from "zustand";
 import { immer } from "zustand/middleware/immer";
-
 import type { BlockType } from "@/lib/types/layout-editor/attribute-registry";
 import type {
   CameraSlice,
@@ -24,6 +25,13 @@ import {
   createSelectionSlice,
   createSyncSlice,
 } from "./slices";
+
+type LayoutStoreCreator<T> = StateCreator<
+  LayoutStoreState,
+  [["zustand/immer", never]],
+  [],
+  T
+>;
 
 // Enable Immer MapSet plugin for Map and Set support
 enableMapSet();
@@ -45,11 +53,11 @@ export type LayoutStoreState = EntitiesSlice &
 export const useLayoutStore = create<LayoutStoreState>()(
   temporal(
     immer((...args) => ({
-      ...createEntitiesSlice(...args),
-      ...createSelectionSlice(...args),
-      ...createCameraSlice(...args),
-      ...createSyncSlice(...args),
-      ...createConfigSlice(...args),
+      ...(createEntitiesSlice as LayoutStoreCreator<EntitiesSlice>)(...args),
+      ...(createSelectionSlice as LayoutStoreCreator<SelectionSlice>)(...args),
+      ...(createCameraSlice as LayoutStoreCreator<CameraSlice>)(...args),
+      ...(createSyncSlice as LayoutStoreCreator<SyncSlice>)(...args),
+      ...(createConfigSlice as LayoutStoreCreator<ConfigSlice>)(...args),
     })),
     {
       // Zundo configuration
@@ -111,40 +119,3 @@ export const canRedo = () => {
 // ============================================================================
 
 export type { StorageEntity, BlockType };
-
-// ============================================================================
-// Backward Compatibility Layer
-// ============================================================================
-// These functions maintain API compatibility with the old store
-
-/** @deprecated Use addEntity with blockType 'rack' instead */
-export const addRack = (
-  rack: {
-    position: object;
-    rotation: object;
-    dimensions: object;
-    shelves?: unknown[];
-  },
-  _zoneId: string,
-) => {
-  const store = useLayoutStore.getState();
-  return store.addEntity("rack", null, {
-    position: rack.position,
-    rotation: rack.rotation,
-    dimensions: rack.dimensions,
-    shelfCount: (rack.shelves?.length ?? 0) || 4,
-    storageType: "dry",
-  });
-};
-
-/** @deprecated Use updateEntity instead */
-export const updateRack = (rackId: string, updates: object) => {
-  const store = useLayoutStore.getState();
-  store.updateEntity(rackId, updates);
-};
-
-/** @deprecated Use removeEntity instead */
-export const removeRack = (rackId: string) => {
-  const store = useLayoutStore.getState();
-  store.removeEntity(rackId);
-};

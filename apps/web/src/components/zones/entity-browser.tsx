@@ -3,6 +3,7 @@
  * Displays entities hierarchically with drill-down and breadcrumb navigation
  */
 
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   AlertTriangle,
   AlignHorizontalDistributeCenter,
@@ -92,8 +93,8 @@ interface EntityRowProps {
   entity: StorageEntity;
   isSelected: boolean;
   hasChildren: boolean;
-  onSelect: (id: string) => void;
-  onDrillDown: (id: string) => void;
+  onSelect: (id: Id<"storage_zones">) => void;
+  onDrillDown: (id: Id<"storage_zones">) => void;
 }
 
 function EntityRow({
@@ -103,11 +104,11 @@ function EntityRow({
   onSelect,
   onDrillDown,
 }: EntityRowProps) {
-  const Icon = BLOCK_ICONS[entity.blockType] ?? Box;
-  const schema = BLOCK_UI_SCHEMAS[entity.blockType as BlockType];
+  const Icon = BLOCK_ICONS[entity.storageBlockType] ?? Box;
+  const schema = BLOCK_UI_SCHEMAS[entity.storageBlockType as BlockType];
   const name =
-    (entity.attributes.name as string) ||
-    `${schema?.displayName || entity.blockType}`;
+    (entity.zoneAttributes.name as string) ||
+    `${schema?.displayName || entity.storageBlockType}`;
 
   return (
     <div
@@ -151,7 +152,7 @@ function EntityRow({
 
 export function EntityBrowser() {
   // Current navigation path (entity IDs)
-  const [pathIds, setPathIds] = useState<string[]>([]);
+  const [pathIds, setPathIds] = useState<Id<"storage_zones">[]>([]);
 
   // Store state
   const entities = useLayoutStore((s) => s.entities);
@@ -160,7 +161,7 @@ export function EntityBrowser() {
   const selectEntity = useLayoutStore((s) => s.selectEntity);
 
   // Get current parent ID (last in path, or null for root)
-  const currentParentId =
+  const currentParentId: Id<"storage_zones"> | null =
     pathIds.length > 0 ? pathIds[pathIds.length - 1] : null;
 
   // Get entities at current level
@@ -190,7 +191,7 @@ export function EntityBrowser() {
     return pathIds.map((id) => {
       const entity = entities.get(id);
       if (!entity) return id.slice(0, 8);
-      return (entity.attributes.name as string) || entity.blockType;
+      return (entity.zoneAttributes.name as string) || entity.storageBlockType;
     });
   }, [pathIds, entities]);
 
@@ -204,12 +205,12 @@ export function EntityBrowser() {
   };
 
   // Drill down into entity
-  const handleDrillDown = (entityId: string) => {
+  const handleDrillDown = (entityId: Id<"storage_zones">) => {
     setPathIds([...pathIds, entityId]);
   };
 
   // Select entity
-  const handleSelect = (entityId: string) => {
+  const handleSelect = (entityId: Id<"storage_zones">) => {
     selectEntity(entityId);
   };
 

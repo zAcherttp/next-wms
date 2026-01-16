@@ -3,6 +3,7 @@
  * Part of the SmartStore state management system
  */
 
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import type { StateCreator } from "zustand";
 import type { BlockType } from "@/lib/types/layout-editor/attribute-registry";
 import {
@@ -16,49 +17,59 @@ import { getCollisionDetector } from "@/lib/utils/collision";
 // ============================================================================
 
 export interface StorageEntity {
-  id: string;
-  parentId: string | null;
-  branchId: string;
+  id: Id<"storage_zones">;
+  name: string;
+  parentId: Id<"storage_zones"> | null;
+  branchId: Id<"branches">;
   path: string;
-  blockType: BlockType;
-  attributes: Record<string, unknown>;
+  storageBlockType: BlockType;
+  zoneAttributes: Record<string, unknown>;
   isDeleted: boolean;
   deletedAt?: number;
 }
 
 export interface EntitiesState {
   // Normalized entity map - single source of truth
-  entities: Map<string, StorageEntity>;
+  entities: Map<Id<"storage_zones">, StorageEntity>;
 
   // Indices for fast lookups
-  entitiesByType: Map<BlockType, Set<string>>;
-  entitiesByParent: Map<string, Set<string>>;
-  entitiesByPath: Map<string, Set<string>>;
+  entitiesByType: Map<BlockType, Set<Id<"storage_zones">>>;
+  entitiesByParent: Map<Id<"storage_zones">, Set<Id<"storage_zones">>>;
+  entitiesByPath: Map<string, Set<Id<"storage_zones">>>;
 
   // Dirty tracking for sync
   isDirty: boolean;
-  pendingChanges: Set<string>;
+  pendingChanges: Set<Id<"storage_zones">>;
 }
 
 export interface EntitiesActions {
   // CRUD operations
   addEntity: (
     blockType: BlockType,
-    parentId: string | null,
+    parentId: Id<"storage_zones"> | null,
+    name: string,
     attributes?: Partial<Record<string, unknown>>,
-  ) => string;
-  updateEntity: (id: string, updates: Partial<Record<string, unknown>>) => void;
-  removeEntity: (id: string, soft?: boolean) => void;
+  ) => Id<"storage_zones">;
+  updateEntity: (
+    id: Id<"storage_zones">,
+    updates: Partial<Record<string, unknown>>,
+  ) => void;
+  removeEntity: (id: Id<"storage_zones">, soft?: boolean) => void;
 
   // Batch operations
-  addEntityBatch: (entities: Omit<StorageEntity, "id">[]) => string[];
+  addEntityBatch: (
+    entities: Omit<StorageEntity, "id">[],
+  ) => Id<"storage_zones">[];
 
   // Queries
-  getEntity: (id: string) => StorageEntity | undefined;
+  getEntity: (id: Id<"storage_zones">) => StorageEntity | undefined;
   getEntitiesByType: (blockType: BlockType) => StorageEntity[];
-  getEntitiesByParent: (parentId: string) => StorageEntity[];
+  getEntitiesByParent: (parentId: Id<"storage_zones">) => StorageEntity[];
   getEntitiesByPath: (path: string) => StorageEntity[];
-  getChildren: (parentId: string, blockType?: BlockType) => StorageEntity[];
+  getChildren: (
+    parentId: Id<"storage_zones">,
+    blockType?: BlockType,
+  ) => StorageEntity[];
 
   // Sync helpers
   markClean: () => void;
@@ -110,12 +121,17 @@ export const createEntitiesSlice: StateCreator<
   // CRUD Operations
   // ========================================================================
 
-  addEntity: (blockType, parentId, attributes = {}) => {
-    const id = crypto.randomUUID();
+  addEntity: (
+    blockType,
+    parentId,
+    name,
+    attributes = { name: "new entity" },
+  ) => {
+    const id: Id<"storage_zones"> = crypto.randomUUID() as Id<"storage_zones">;
     const parent = parentId ? get().entities.get(parentId) : undefined;
     const parentPath = parent?.path ?? null;
     const path = getPathForBlockType(parentPath, blockType);
-    const branchId = parent?.branchId ?? "";
+    const branchId = parent?.branchId as Id<"branches">;
 
     // Merge with defaults and validate
     const defaultAttrs = getDefaultAttributes(blockType);
@@ -130,9 +146,10 @@ export const createEntitiesSlice: StateCreator<
       id,
       parentId,
       branchId,
+      name,
       path,
-      blockType,
-      attributes: mergedAttrs,
+      storageBlockType: blockType,
+      zoneAttributes: mergedAttrs,
       isDeleted: false,
     };
 
@@ -191,11 +208,11 @@ export const createEntitiesSlice: StateCreator<
     if (!entity) return;
 
     // Validate merged attributes
-    const mergedAttrs = { ...entity.attributes, ...updates };
-    const validation = validateAttributes(entity.blockType, mergedAttrs);
+    const mergedAttrs = { ...entity.zoneAttributes, ...updates };
+    const validation = validateAttributes(entity.storageBlockType, mergedAttrs);
     if (!validation.success) {
       console.error(
-        `Invalid update for ${entity.blockType}:`,
+        `Invalid update for ${entity.storageBlockType}:`,
         validation.error,
       );
     }
@@ -203,14 +220,17 @@ export const createEntitiesSlice: StateCreator<
     set((state) => {
       const e = state.entities.get(id);
       if (e) {
-        e.attributes = { ...e.attributes, ...updates };
+        e.zoneAttributes = { ...e.zoneAttributes, ...updates };
         state.isDirty = true;
         state.pendingChanges.add(id);
       }
     });
 
     // Update collision for position/dimension changes
-    if (entity.blockType === "rack" || entity.blockType === "obstacle") {
+    if (
+      entity.storageBlockType === "rack" ||
+      entity.storageBlockType === "obstacle"
+    ) {
       const posOrDimChanged =
         "position" in updates ||
         "dimensions" in updates ||
@@ -219,7 +239,7 @@ export const createEntitiesSlice: StateCreator<
         const detector = getCollisionDetector();
         const updated = get().entities.get(id);
         if (detector && updated) {
-          const attrs = updated.attributes;
+          const attrs = updated.zoneAttributes;
           const collidable = {
             id,
             position: attrs.position as { x: number; y: number; z: number },
@@ -232,7 +252,7 @@ export const createEntitiesSlice: StateCreator<
           };
           detector.updateEntity(
             collidable,
-            entity.blockType as "rack" | "obstacle",
+            entity.storageBlockType as "rack" | "obstacle",
           );
         }
       }
@@ -244,7 +264,10 @@ export const createEntitiesSlice: StateCreator<
     if (!entity) return;
 
     // Remove from collision detection
-    if (entity.blockType === "rack" || entity.blockType === "obstacle") {
+    if (
+      entity.storageBlockType === "rack" ||
+      entity.storageBlockType === "obstacle"
+    ) {
       const detector = getCollisionDetector();
       detector?.removeEntity(id);
     }
@@ -260,7 +283,7 @@ export const createEntitiesSlice: StateCreator<
         state.entities.delete(id);
 
         // Remove from indices
-        state.entitiesByType.get(entity.blockType)?.delete(id);
+        state.entitiesByType.get(entity.storageBlockType)?.delete(id);
         if (entity.parentId) {
           state.entitiesByParent.get(entity.parentId)?.delete(id);
         }
@@ -279,9 +302,14 @@ export const createEntitiesSlice: StateCreator<
   },
 
   addEntityBatch: (entities) => {
-    const ids: string[] = [];
+    const ids: Id<"storage_zones">[] = [];
     entities.forEach((e) => {
-      const id = get().addEntity(e.blockType, e.parentId, e.attributes);
+      const id = get().addEntity(
+        e.storageBlockType,
+        e.parentId,
+        e.name,
+        e.zoneAttributes,
+      );
       ids.push(id);
     });
     return ids;
@@ -320,7 +348,7 @@ export const createEntitiesSlice: StateCreator<
   getChildren: (parentId, blockType) => {
     const children = get().getEntitiesByParent(parentId);
     if (!blockType) return children;
-    return children.filter((c) => c.blockType === blockType);
+    return children.filter((c) => c.storageBlockType === blockType);
   },
 
   // ========================================================================
@@ -357,10 +385,10 @@ export const createEntitiesSlice: StateCreator<
         state.entities.set(entity.id, entity);
 
         // Type index
-        if (!state.entitiesByType.has(entity.blockType)) {
-          state.entitiesByType.set(entity.blockType, new Set());
+        if (!state.entitiesByType.has(entity.storageBlockType)) {
+          state.entitiesByType.set(entity.storageBlockType, new Set());
         }
-        state.entitiesByType.get(entity.blockType)?.add(entity.id);
+        state.entitiesByType.get(entity.storageBlockType)?.add(entity.id);
 
         // Parent index
         if (entity.parentId) {
