@@ -62,7 +62,7 @@ export function AdjustmentRequestDetailDialog({
       <DialogTrigger asChild>
         {trigger || <Button variant="outline">View Details</Button>}
       </DialogTrigger>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
           <div className="flex items-center justify-between">
             <DialogTitle>Adjustment Request Details</DialogTitle>
@@ -86,7 +86,9 @@ export function AdjustmentRequestDetailDialog({
           </div>
         ) : !adjustmentRequest ? (
           <div className="flex h-40 items-center justify-center">
-            <p className="text-muted-foreground">Adjustment request not found.</p>
+            <p className="text-muted-foreground">
+              Adjustment request not found.
+            </p>
           </div>
         ) : (
           <div className="space-y-6">
@@ -109,30 +111,34 @@ export function AdjustmentRequestDetailDialog({
                   <InfoItem
                     icon={<Calendar className="h-5 w-5 text-primary" />}
                     label="Date"
-                    value={
-                      new Intl.DateTimeFormat("en-US", {
-                        year: "numeric",
-                        month: "long",
-                        day: "numeric",
-                      }).format(new Date(adjustmentRequest.requestedAt || adjustmentRequest._creationTime))
-                    }
+                    value={new Intl.DateTimeFormat("en-US", {
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    }).format(
+                      new Date(
+                        adjustmentRequest.requestedAt ||
+                          adjustmentRequest._creationTime,
+                      ),
+                    )}
                   />
                   <InfoItem
                     icon={<Clock className="h-5 w-5 text-primary" />}
                     label="Time"
-                    value={
-                      new Intl.DateTimeFormat("en-US", {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      }).format(new Date(adjustmentRequest.requestedAt || adjustmentRequest._creationTime))
-                    }
+                    value={new Intl.DateTimeFormat("en-US", {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }).format(
+                      new Date(
+                        adjustmentRequest.requestedAt ||
+                          adjustmentRequest._creationTime,
+                      ),
+                    )}
                   />
                   <InfoItem
                     icon={<User className="h-5 w-5 text-primary" />}
                     label="Requested By"
-                    value={
-                      adjustmentRequest.requestedBy?.fullName || "Unknown"
-                    }
+                    value={adjustmentRequest.requestedBy?.fullName || "Unknown"}
                   />
                   {adjustmentRequest.approvedByUser && (
                     <InfoItem
@@ -147,10 +153,12 @@ export function AdjustmentRequestDetailDialog({
                   <>
                     <Separator />
                     <div>
-                      <p className="text-muted-foreground text-sm mb-2">
+                      <p className="mb-2 text-muted-foreground text-sm">
                         Resolution Notes
                       </p>
-                      <p className="text-sm">{adjustmentRequest.resolutionNotes}</p>
+                      <p className="text-sm">
+                        {adjustmentRequest.resolutionNotes}
+                      </p>
                     </div>
                   </>
                 )}
@@ -158,98 +166,100 @@ export function AdjustmentRequestDetailDialog({
             </Card>
 
             {/* Adjustment Details */}
-            {adjustmentRequest.details && adjustmentRequest.details.length > 0 && (
-              <div className="space-y-3">
-                <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">
-                  Adjustment Items
-                </h3>
-                <div className="space-y-2">
-                  {adjustmentRequest.details.map((detail: any) => (
-                    <Card key={detail._id}>
-                      <CardContent className="p-4">
-                        <div className="grid grid-cols-2 gap-4">
-                          {detail.productName && (
-                            <div>
-                              <p className="text-muted-foreground text-xs">
-                                Product
-                              </p>
-                              <p className="font-medium text-sm">
-                                {detail.productName}
-                              </p>
-                            </div>
-                          )}
-                          {detail.fromLocationName && (
-                            <div>
-                              <p className="text-muted-foreground text-xs">
-                                From Location
-                              </p>
-                              <p className="font-medium text-sm">
-                                {detail.fromLocationName}
-                              </p>
-                            </div>
-                          )}
-                          {detail.toLocationName && (
-                            <div>
-                              <p className="text-muted-foreground text-xs">
-                                To Location
-                              </p>
-                              <p className="font-medium text-sm">
-                                {detail.toLocationName}
-                              </p>
-                            </div>
-                          )}
-                          {detail.currentQuantity !== undefined && (
-                            <div>
-                              <p className="text-muted-foreground text-xs">
-                                Current Quantity
-                              </p>
-                              <p className="font-medium text-sm">
-                                {detail.currentQuantity}
-                              </p>
-                            </div>
-                          )}
-                          {detail.adjustedQuantity !== undefined && (
-                            <div>
-                              <p className="text-muted-foreground text-xs">
-                                Adjusted Quantity
-                              </p>
-                              <p
-                                className={cn(
-                                  "font-medium text-sm",
-                                  detail.adjustedQuantity < detail.currentQuantity
-                                    ? "text-red-600"
-                                    : "text-green-600",
-                                )}
-                              >
-                                {detail.adjustedQuantity}
-                              </p>
-                            </div>
-                          )}
-                          {detail.quantityToTransfer !== undefined && (
-                            <div>
-                              <p className="text-muted-foreground text-xs">
-                                Quantity to Transfer
-                              </p>
-                              <p className="font-medium text-sm">
-                                {detail.quantityToTransfer}
-                              </p>
-                            </div>
-                          )}
-                          {detail.reason && (
-                            <div className="col-span-2">
-                              <p className="text-muted-foreground text-xs">
-                                Reason
-                              </p>
-                              <p className="text-sm">{detail.reason}</p>
-                            </div>
-                          )}
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+            {adjustmentRequest.details &&
+              adjustmentRequest.details.length > 0 && (
+                <div className="space-y-3">
+                  <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">
+                    Adjustment Items
+                  </h3>
+                  <div className="space-y-2">
+                    {adjustmentRequest.details.map((detail: any) => (
+                      <Card key={detail._id}>
+                        <CardContent className="p-4">
+                          <div className="grid grid-cols-2 gap-4">
+                            {detail.productName && (
+                              <div>
+                                <p className="text-muted-foreground text-xs">
+                                  Product
+                                </p>
+                                <p className="font-medium text-sm">
+                                  {detail.productName}
+                                </p>
+                              </div>
+                            )}
+                            {detail.fromLocationName && (
+                              <div>
+                                <p className="text-muted-foreground text-xs">
+                                  From Location
+                                </p>
+                                <p className="font-medium text-sm">
+                                  {detail.fromLocationName}
+                                </p>
+                              </div>
+                            )}
+                            {detail.toLocationName && (
+                              <div>
+                                <p className="text-muted-foreground text-xs">
+                                  To Location
+                                </p>
+                                <p className="font-medium text-sm">
+                                  {detail.toLocationName}
+                                </p>
+                              </div>
+                            )}
+                            {detail.currentQuantity !== undefined && (
+                              <div>
+                                <p className="text-muted-foreground text-xs">
+                                  Current Quantity
+                                </p>
+                                <p className="font-medium text-sm">
+                                  {detail.currentQuantity}
+                                </p>
+                              </div>
+                            )}
+                            {detail.adjustedQuantity !== undefined && (
+                              <div>
+                                <p className="text-muted-foreground text-xs">
+                                  Adjusted Quantity
+                                </p>
+                                <p
+                                  className={cn(
+                                    "font-medium text-sm",
+                                    detail.adjustedQuantity <
+                                      detail.currentQuantity
+                                      ? "text-red-600"
+                                      : "text-green-600",
+                                  )}
+                                >
+                                  {detail.adjustedQuantity}
+                                </p>
+                              </div>
+                            )}
+                            {detail.quantityToTransfer !== undefined && (
+                              <div>
+                                <p className="text-muted-foreground text-xs">
+                                  Quantity to Transfer
+                                </p>
+                                <p className="font-medium text-sm">
+                                  {detail.quantityToTransfer}
+                                </p>
+                              </div>
+                            )}
+                            {detail.reason && (
+                              <div className="col-span-2">
+                                <p className="text-muted-foreground text-xs">
+                                  Reason
+                                </p>
+                                <p className="text-sm">{detail.reason}</p>
+                              </div>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
           </div>
         )}
       </DialogContent>

@@ -245,7 +245,6 @@ export function ReturnRequestDetailDialog({
           </div>
         ) : (
           <>
-
             {/* Summary Card */}
             <Card className="py-4">
               <CardContent className="space-y-4">

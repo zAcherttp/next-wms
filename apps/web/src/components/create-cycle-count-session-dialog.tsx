@@ -287,207 +287,207 @@ export const CreateCycleCountSessionDialog = React.memo(
           <AnimatePresence mode={"popLayout"} initial={false}>
             {view === "type-selection" ? (
               <motion.div
-              key="type-selection"
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -20 }}
-              transition={springTransition}
-            >
-              <DialogHeader className="relative">
-                <DialogTitle>Create Cycle Count Session</DialogTitle>
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="absolute top-0 right-0 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                >
-                  <X className="h-4 w-4" />
-                  <span className="sr-only">Close</span>
-                </button>
-              </DialogHeader>
-
-              <div className="mt-6 space-y-4">
-                <p className="font-medium text-sm">Select Cycle Count Type</p>
-
-                <div className="grid grid-cols-2 gap-4">
+                key="type-selection"
+                initial={{ opacity: 0, x: -20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                transition={springTransition}
+              >
+                <DialogHeader className="relative">
+                  <DialogTitle>Create Cycle Count Session</DialogTitle>
                   <button
                     type="button"
-                    onClick={() => handleSelectType("daily")}
-                    className={cn(
-                      "flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors hover:bg-accent",
-                    )}
+                    onClick={handleClose}
+                    className="absolute top-0 right-0 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
                   >
-                    <span className="font-semibold">Daily</span>
-                    <span className="text-muted-foreground text-xs">
-                      Auto-select 2 longest unchecked zones
-                    </span>
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Close</span>
                   </button>
+                </DialogHeader>
 
-                  <button
-                    type="button"
-                    onClick={() => handleSelectType("weekly")}
-                    className={cn(
-                      "flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors hover:bg-accent",
-                    )}
-                  >
-                    <span className="font-semibold">Weekly</span>
-                    <span className="text-muted-foreground text-xs">
-                      Customize all zones and counts
-                    </span>
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="form"
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 20 }}
-              transition={springTransition}
-            >
-              <DialogHeader className="relative">
-                <DialogTitle>Create Cycle Count Session</DialogTitle>
-                <button
-                  type="button"
-                  onClick={handleClose}
-                  className="absolute top-0 right-0 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
-                >
-                  <X className="h-4 w-4" />
-                  <span className="sr-only">Close</span>
-                </button>
-              </DialogHeader>
+                <div className="mt-6 space-y-4">
+                  <p className="font-medium text-sm">Select Cycle Count Type</p>
 
-              <div className="mt-4 space-y-5">
-                {/* Change Type Link */}
-                <button
-                  type="button"
-                  onClick={handleChangeType}
-                  className="flex items-center gap-1 text-primary text-sm hover:underline"
-                >
-                  <ArrowLeft className="h-3 w-3" />
-                  Change Type
-                </button>
-
-                {/* Session Name */}
-                <Field>
-                  <FieldLabel>Session Name</FieldLabel>
-                  <Input
-                    placeholder={
-                      cycleCountType === "daily"
-                        ? "e.g., Daily Cycle Count"
-                        : "e.g., Weekly Cycle Count"
-                    }
-                    value={sessionName}
-                    onChange={(e) => setSessionName(e.target.value)}
-                  />
-                </Field>
-
-                {/* Description */}
-                <Field>
-                  <FieldLabel>Description (Optional)</FieldLabel>
-                  <Textarea
-                    placeholder="Add any notes..."
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    className="min-h-20 resize-none"
-                  />
-                </Field>
-
-                {/* Storage Zones */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <FieldLabel>Storage Zones</FieldLabel>
+                  <div className="grid grid-cols-2 gap-4">
                     <button
                       type="button"
-                      onClick={handleAddZone}
-                      className="flex items-center gap-1 text-primary text-sm hover:underline"
+                      onClick={() => handleSelectType("daily")}
+                      className={cn(
+                        "flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors hover:bg-accent",
+                      )}
                     >
-                      <Plus className="h-3 w-3" />
-                      Add Zone
+                      <span className="font-semibold">Daily</span>
+                      <span className="text-muted-foreground text-xs">
+                        Auto-select 2 longest unchecked zones
+                      </span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => handleSelectType("weekly")}
+                      className={cn(
+                        "flex flex-col items-start gap-1 rounded-lg border p-4 text-left transition-colors hover:bg-accent",
+                      )}
+                    >
+                      <span className="font-semibold">Weekly</span>
+                      <span className="text-muted-foreground text-xs">
+                        Customize all zones and counts
+                      </span>
                     </button>
                   </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="form"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                transition={springTransition}
+              >
+                <DialogHeader className="relative">
+                  <DialogTitle>Create Cycle Count Session</DialogTitle>
+                  <button
+                    type="button"
+                    onClick={handleClose}
+                    className="absolute top-0 right-0 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+                  >
+                    <X className="h-4 w-4" />
+                    <span className="sr-only">Close</span>
+                  </button>
+                </DialogHeader>
 
-                  <div className="max-h-50 space-y-2 overflow-y-auto pr-1">
-                    {zoneAssignments.map((assignment) => (
-                      <div
-                        key={assignment.id}
-                        className="flex items-center gap-2"
+                <div className="mt-4 space-y-5">
+                  {/* Change Type Link */}
+                  <button
+                    type="button"
+                    onClick={handleChangeType}
+                    className="flex items-center gap-1 text-primary text-sm hover:underline"
+                  >
+                    <ArrowLeft className="h-3 w-3" />
+                    Change Type
+                  </button>
+
+                  {/* Session Name */}
+                  <Field>
+                    <FieldLabel>Session Name</FieldLabel>
+                    <Input
+                      placeholder={
+                        cycleCountType === "daily"
+                          ? "e.g., Daily Cycle Count"
+                          : "e.g., Weekly Cycle Count"
+                      }
+                      value={sessionName}
+                      onChange={(e) => setSessionName(e.target.value)}
+                    />
+                  </Field>
+
+                  {/* Description */}
+                  <Field>
+                    <FieldLabel>Description (Optional)</FieldLabel>
+                    <Textarea
+                      placeholder="Add any notes..."
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      className="min-h-20 resize-none"
+                    />
+                  </Field>
+
+                  {/* Storage Zones */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <FieldLabel>Storage Zones</FieldLabel>
+                      <button
+                        type="button"
+                        onClick={handleAddZone}
+                        className="flex items-center gap-1 text-primary text-sm hover:underline"
                       >
-                        {/* Zone Select */}
-                        <Select
-                          value={assignment.zoneId}
-                          onValueChange={(value) =>
-                            handleZoneChange(assignment.id, value)
-                          }
-                        >
-                          <SelectTrigger className="h-9 flex-1">
-                            <SelectValue placeholder="Select zone..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(storageZones ?? []).map((zone) => (
-                              <SelectItem key={zone._id} value={zone._id}>
-                                {zone.name}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                        <Plus className="h-3 w-3" />
+                        Add Zone
+                      </button>
+                    </div>
 
-                        {/* Worker Select */}
-                        <Select
-                          value={assignment.workerId}
-                          onValueChange={(value) =>
-                            handleWorkerChange(assignment.id, value)
-                          }
+                    <div className="max-h-50 space-y-2 overflow-y-auto pr-1">
+                      {zoneAssignments.map((assignment) => (
+                        <div
+                          key={assignment.id}
+                          className="flex items-center gap-2"
                         >
-                          <SelectTrigger className="h-9 flex-1">
-                            <SelectValue placeholder="Assign worker..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {(workers ?? []).map((worker) => (
-                              <SelectItem key={worker._id} value={worker._id}>
-                                {worker.fullName}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          {/* Zone Select */}
+                          <Select
+                            value={assignment.zoneId}
+                            onValueChange={(value) =>
+                              handleZoneChange(assignment.id, value)
+                            }
+                          >
+                            <SelectTrigger className="h-9 flex-1">
+                              <SelectValue placeholder="Select zone..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(storageZones ?? []).map((zone) => (
+                                <SelectItem key={zone._id} value={zone._id}>
+                                  {zone.name}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
 
-                        {/* Remove Button */}
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon-sm"
-                          onClick={() => handleRemoveZone(assignment.id)}
-                          disabled={zoneAssignments.length <= 1}
-                          className="shrink-0 text-muted-foreground hover:text-destructive"
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    ))}
+                          {/* Worker Select */}
+                          <Select
+                            value={assignment.workerId}
+                            onValueChange={(value) =>
+                              handleWorkerChange(assignment.id, value)
+                            }
+                          >
+                            <SelectTrigger className="h-9 flex-1">
+                              <SelectValue placeholder="Assign worker..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(workers ?? []).map((worker) => (
+                                <SelectItem key={worker._id} value={worker._id}>
+                                  {worker.fullName}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+
+                          {/* Remove Button */}
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon-sm"
+                            onClick={() => handleRemoveZone(assignment.id)}
+                            disabled={zoneAssignments.length <= 1}
+                            className="shrink-0 text-muted-foreground hover:text-destructive"
+                          >
+                            <X className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <DialogFooter className="mt-6">
-                <Button variant="outline" onClick={handleClose}>
-                  Cancel
-                </Button>
-                <Button onClick={handleCreateSession} disabled={!isFormValid}>
-                  {isCreating ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create Session"
-                  )}
-                </Button>
-              </DialogFooter>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </DialogContent>
-    </Dialog>
-  );
+                <DialogFooter className="mt-6">
+                  <Button variant="outline" onClick={handleClose}>
+                    Cancel
+                  </Button>
+                  <Button onClick={handleCreateSession} disabled={!isFormValid}>
+                    {isCreating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      "Create Session"
+                    )}
+                  </Button>
+                </DialogFooter>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </DialogContent>
+      </Dialog>
+    );
   },
 );

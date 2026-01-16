@@ -108,7 +108,9 @@ export default function CycleCountProceedPage() {
     },
   });
 
-  const completeZoneFn = useConvexMutation(api.cycleCount.completeZoneAssignment);
+  const completeZoneFn = useConvexMutation(
+    api.cycleCount.completeZoneAssignment,
+  );
   const completeZoneMutation = useMutation({
     mutationFn: completeZoneFn,
     onSuccess: (result) => {
@@ -223,12 +225,7 @@ export default function CycleCountProceedPage() {
   return (
     <div className="mx-auto flex max-w-lg flex-col gap-4 p-4">
       {/* Back Button */}
-      <Button
-        variant="ghost"
-        size="sm"
-        onClick={handleBack}
-        className="w-fit"
-      >
+      <Button variant="ghost" size="sm" onClick={handleBack} className="w-fit">
         <ArrowLeft className="mr-2 h-4 w-4" />
         Back
       </Button>
@@ -311,20 +308,25 @@ export default function CycleCountProceedPage() {
                     <div>
                       <p className="font-medium">{zone.zoneName}</p>
                       <p className="text-muted-foreground text-sm">
-                        Assigned to: {zone.assignedUser?.fullName ?? "Unassigned"}
+                        Assigned to:{" "}
+                        {zone.assignedUser?.fullName ?? "Unassigned"}
                       </p>
                     </div>
                     <Badge
                       variant="outline"
-                      className={cn("font-medium", getStatusBadgeStyle(zone.status))}
+                      className={cn(
+                        "font-medium",
+                        getStatusBadgeStyle(zone.status),
+                      )}
                     >
                       {zone.status}
                     </Badge>
                   </div>
                   <div className="mt-2">
                     <p className="text-muted-foreground text-sm">
-                      Progress: {zone.progress.scannedItems} / {zone.progress.totalItems} items
-                      ({zone.progress.progressPercent}%)
+                      Progress: {zone.progress.scannedItems} /{" "}
+                      {zone.progress.totalItems} items (
+                      {zone.progress.progressPercent}%)
                     </p>
                   </div>
                 </CardContent>
@@ -534,7 +536,9 @@ export default function CycleCountProceedPage() {
             {/* Variance Display */}
             {foundItem && (
               <div className="space-y-1">
-                <Label className="text-muted-foreground text-xs">Variance</Label>
+                <Label className="text-muted-foreground text-xs">
+                  Variance
+                </Label>
                 <div
                   className={cn(
                     "rounded-md border px-3 py-2 font-medium",

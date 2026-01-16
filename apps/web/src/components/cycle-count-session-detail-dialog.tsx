@@ -115,7 +115,9 @@ export function CycleCountSessionDetailDialog({
           </DialogHeader>
           <div className="flex flex-col items-center gap-3">
             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            <p className="text-muted-foreground text-sm">Loading session details...</p>
+            <p className="text-muted-foreground text-sm">
+              Loading session details...
+            </p>
           </div>
         </DialogContent>
       </Dialog>
@@ -213,7 +215,9 @@ export function CycleCountSessionDetailDialog({
           {/* Show message if no zones */}
           {session.zones.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <p className="text-muted-foreground">No zones or items found for this session.</p>
+              <p className="text-muted-foreground">
+                No zones or items found for this session.
+              </p>
             </div>
           ) : (
             /* Zone Tabs */
@@ -313,7 +317,10 @@ export function CycleCountSessionDetailDialog({
                       <TableBody>
                         {zone.lineItems.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                            <TableCell
+                              colSpan={6}
+                              className="h-24 text-center text-muted-foreground"
+                            >
                               No items in this zone
                             </TableCell>
                           </TableRow>
@@ -344,7 +351,10 @@ export function CycleCountSessionDetailDialog({
                                   variant="link"
                                   size="sm"
                                   onClick={() =>
-                                    handleCreateAdjustment(item, zone.zoneId?.toString() ?? "")
+                                    handleCreateAdjustment(
+                                      item,
+                                      zone.zoneId?.toString() ?? "",
+                                    )
                                   }
                                 >
                                   Create Adjustment

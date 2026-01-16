@@ -321,7 +321,9 @@ export function CycleCountSessionsTable() {
   tableRef.current = table;
 
   React.useEffect(() => {
-    tableRef.current.getColumn("sessionCode")?.setFilterValue(debouncedFilterValue);
+    tableRef.current
+      .getColumn("sessionCode")
+      ?.setFilterValue(debouncedFilterValue);
   }, [debouncedFilterValue]);
 
   const activeFiltersCount =

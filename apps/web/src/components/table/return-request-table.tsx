@@ -1,6 +1,6 @@
 "use client";
 
-import { convexQuery } from "@convex-dev/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
@@ -16,7 +16,6 @@ import {
 } from "@tanstack/react-table";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
-import { useConvexMutation } from "@convex-dev/react-query";
 import {
   CheckCircle,
   ChevronDown,
@@ -92,48 +91,52 @@ export function ReturnRequestsTable() {
   const supplierOptions = React.useMemo(() => {
     if (!returnRequests) return [];
     return Array.from(
-      new Set(
-        returnRequests.map((rr) => rr.supplier?.name).filter(Boolean),
-      ),
+      new Set(returnRequests.map((rr) => rr.supplier?.name).filter(Boolean)),
     ).map((name) => ({
       label: name as string,
       value: name as string,
     }));
   }, [returnRequests]);
 
-  const handleApprove = React.useCallback((returnRequestId: Id<"return_requests">, requestCode: string) => {
-    console.log('Approving return request:', returnRequestId, requestCode);
-    approveRequest(
-      { returnRequestId },
-      {
-        onSuccess: () => {
-          console.log('Approval successful');
-          toast.success(`Return request ${requestCode} has been approved`);
+  const handleApprove = React.useCallback(
+    (returnRequestId: Id<"return_requests">, requestCode: string) => {
+      console.log("Approving return request:", returnRequestId, requestCode);
+      approveRequest(
+        { returnRequestId },
+        {
+          onSuccess: () => {
+            console.log("Approval successful");
+            toast.success(`Return request ${requestCode} has been approved`);
+          },
+          onError: (error) => {
+            console.error("Approval failed:", error);
+            toast.error(`Failed to approve return request: ${error.message}`);
+          },
         },
-        onError: (error) => {
-          console.error('Approval failed:', error);
-          toast.error(`Failed to approve return request: ${error.message}`);
-        },
-      },
-    );
-  }, [approveRequest]);
+      );
+    },
+    [approveRequest],
+  );
 
-  const handleReject = React.useCallback((returnRequestId: Id<"return_requests">, requestCode: string) => {
-    console.log('Rejecting return request:', returnRequestId, requestCode);
-    rejectRequest(
-      { returnRequestId },
-      {
-        onSuccess: () => {
-          console.log('Rejection successful');
-          toast.success(`Return request ${requestCode} has been rejected`);
+  const handleReject = React.useCallback(
+    (returnRequestId: Id<"return_requests">, requestCode: string) => {
+      console.log("Rejecting return request:", returnRequestId, requestCode);
+      rejectRequest(
+        { returnRequestId },
+        {
+          onSuccess: () => {
+            console.log("Rejection successful");
+            toast.success(`Return request ${requestCode} has been rejected`);
+          },
+          onError: (error) => {
+            console.error("Rejection failed:", error);
+            toast.error(`Failed to reject return request: ${error.message}`);
+          },
         },
-        onError: (error) => {
-          console.error('Rejection failed:', error);
-          toast.error(`Failed to reject return request: ${error.message}`);
-        },
-      },
-    );
-  }, [rejectRequest]);
+      );
+    },
+    [rejectRequest],
+  );
 
   const columns: ColumnDef<ReturnRequestListItem>[] = React.useMemo(
     () => [
@@ -317,7 +320,10 @@ export function ReturnRequestsTable() {
                     <DropdownMenuItem
                       onSelect={(e) => {
                         e.preventDefault();
-                        handleApprove(returnRequest._id as Id<"return_requests">, returnRequest.requestCode);
+                        handleApprove(
+                          returnRequest._id as Id<"return_requests">,
+                          returnRequest.requestCode,
+                        );
                       }}
                       disabled={isApproving}
                     >
@@ -327,7 +333,10 @@ export function ReturnRequestsTable() {
                     <DropdownMenuItem
                       onSelect={(e) => {
                         e.preventDefault();
-                        handleReject(returnRequest._id as Id<"return_requests">, returnRequest.requestCode);
+                        handleReject(
+                          returnRequest._id as Id<"return_requests">,
+                          returnRequest.requestCode,
+                        );
                       }}
                       disabled={isRejecting}
                     >
@@ -357,10 +366,7 @@ export function ReturnRequestsTable() {
     useDebouncedInput("", 300);
 
   // Memoize the data to prevent unnecessary table re-renders
-  const tableData = React.useMemo(
-    () => returnRequests ?? [],
-    [returnRequests],
-  );
+  const tableData = React.useMemo(() => returnRequests ?? [], [returnRequests]);
 
   const table = useReactTable({
     data: tableData,
@@ -386,7 +392,9 @@ export function ReturnRequestsTable() {
   tableRef.current = table;
 
   React.useEffect(() => {
-    tableRef.current.getColumn("requestCode")?.setFilterValue(debouncedFilterValue);
+    tableRef.current
+      .getColumn("requestCode")
+      ?.setFilterValue(debouncedFilterValue);
   }, [debouncedFilterValue]);
 
   const activeFiltersCount =
@@ -524,4 +532,3 @@ export function ReturnRequestsTable() {
     </div>
   );
 }
-

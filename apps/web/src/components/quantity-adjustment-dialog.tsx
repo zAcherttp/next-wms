@@ -303,7 +303,7 @@ export function QuantityAdjustmentDialog({
               <FieldLabel>Variance</FieldLabel>
               <div
                 className={cn(
-                  "flex h-9 items-center rounded-md border bg-muted/50 px-3 text-sm font-medium",
+                  "flex h-9 items-center rounded-md border bg-muted/50 px-3 font-medium text-sm",
                   Number(countedQty) - Number(currentQty) > 0 &&
                     "text-amber-600",
                   Number(countedQty) - Number(currentQty) < 0 && "text-red-600",
