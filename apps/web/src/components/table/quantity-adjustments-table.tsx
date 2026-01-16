@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,18 +14,37 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
+  CheckCircle,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Eye,
   Filter,
+  Loader2,
+  MoreHorizontal,
+  XCircle,
 } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
+import { AdjustmentRequestDetailDialog } from "@/components/adjustment-request-detail-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import {
   InputGroup,
   InputGroupAddon,
@@ -37,11 +58,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
-import {
-  MOCK_QUANTITY_ADJUSTMENTS,
-  type QuantityAdjustmentRequest,
-} from "@/mock/data/adjustments";
+
+// Type for quantity adjustment request from Convex
+type QuantityAdjustmentRequest = {
+  _id: Id<"adjustment_requests">;
+  requestCode: string;
+  productName: string;
+  currentQty: number;
+  adjustedQty: number;
+  reason: string;
+  status: string;
+  requestedBy: { fullName: string } | null;
+  createdAt: number;
+};
 
 // Status filter options
 const statusFilterOptions = [
@@ -53,14 +85,15 @@ const statusFilterOptions = [
 interface QuantityAdjustmentsTableProps {
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
-  onView?: (id: string) => void;
 }
 
 export function QuantityAdjustmentsTable({
   onApprove,
   onReject,
-  onView,
 }: QuantityAdjustmentsTableProps) {
+  const { organizationId } = useCurrentUser();
+  const { currentBranch } = useBranches({ organizationId });
+
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -71,8 +104,74 @@ export function QuantityAdjustmentsTable({
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
 
-  // Using mock data
-  const data = MOCK_QUANTITY_ADJUSTMENTS;
+  // Mutations for approve and reject
+  const { mutate: approveRequest, isPending: isApproving } = useMutation({
+    mutationFn: useConvexMutation(api.cycleCount.approveAdjustmentRequest),
+  });
+
+  const { mutate: rejectRequest, isPending: isRejecting } = useMutation({
+    mutationFn: useConvexMutation(api.cycleCount.rejectAdjustmentRequest),
+  });
+
+  const handleApprove = React.useCallback(
+    (adjustmentRequestId: Id<"adjustment_requests">, requestCode: string) => {
+      approveRequest(
+        { adjustmentRequestId },
+        {
+          onSuccess: () => {
+            toast.success(
+              `Adjustment request ${requestCode} has been approved`,
+            );
+            onApprove?.(adjustmentRequestId as string);
+          },
+          onError: (error) => {
+            toast.error(
+              `Failed to approve adjustment request: ${error.message}`,
+            );
+          },
+        },
+      );
+    },
+    [approveRequest, onApprove],
+  );
+
+  const handleReject = React.useCallback(
+    (adjustmentRequestId: Id<"adjustment_requests">, requestCode: string) => {
+      rejectRequest(
+        { adjustmentRequestId },
+        {
+          onSuccess: () => {
+            toast.success(
+              `Adjustment request ${requestCode} has been rejected`,
+            );
+            onReject?.(adjustmentRequestId as string);
+          },
+          onError: (error) => {
+            toast.error(
+              `Failed to reject adjustment request: ${error.message}`,
+            );
+          },
+        },
+      );
+    },
+    [rejectRequest, onReject],
+  );
+
+  // Fetch real data from Convex
+  const { data: adjustments, isLoading } = useQuery({
+    ...convexQuery(
+      api.cycleCount.getQuantityAdjustmentsForTable,
+      organizationId && currentBranch?._id
+        ? {
+            organizationId: organizationId as Id<"organizations">,
+            branchId: currentBranch._id as Id<"branches">,
+          }
+        : "skip",
+    ),
+    enabled: !!organizationId && !!currentBranch?._id,
+  });
+
+  const data = adjustments ?? [];
 
   const columns: ColumnDef<QuantityAdjustmentRequest>[] = [
     {
@@ -161,40 +260,62 @@ export function QuantityAdjustmentsTable({
       header: "Actions",
       cell: ({ row }) => {
         const adjustment = row.original;
-        const isPending = adjustment.status === "Pending";
+        const isPending = adjustment.status?.toLowerCase() === "pending";
 
         return (
-          <div className="flex items-center gap-2">
-            {isPending ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto p-0 text-green-600 hover:bg-transparent hover:text-green-700"
-                  onClick={() => onApprove?.(adjustment._id as string)}
-                >
-                  Approve
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto p-0 text-red-600 hover:bg-transparent hover:text-red-700"
-                  onClick={() => onReject?.(adjustment._id as string)}
-                >
-                  Reject
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto p-0 text-primary hover:bg-transparent hover:text-primary/80"
-                onClick={() => onView?.(adjustment._id as string)}
-              >
-                View
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size={"icon-sm"}>
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal />
               </Button>
-            )}
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() =>
+                  navigator.clipboard.writeText(adjustment.requestCode)
+                }
+              >
+                Copy Request ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <AdjustmentRequestDetailDialog
+                adjustmentRequestId={adjustment._id}
+                trigger={
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View details
+                  </DropdownMenuItem>
+                }
+              />
+              {isPending && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleApprove(adjustment._id, adjustment.requestCode);
+                    }}
+                    disabled={isApproving}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                    Approve
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleReject(adjustment._id, adjustment.requestCode);
+                    }}
+                    disabled={isRejecting}
+                  >
+                    <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                    Reject
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },
@@ -283,7 +404,19 @@ export function QuantityAdjustmentsTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}

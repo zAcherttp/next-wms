@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,6 +14,8 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ChevronLeft,
   ChevronRight,
@@ -23,6 +27,7 @@ import {
   Play,
   Trash2,
 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
 import { CreateCycleCountSessionDialog } from "@/components/create-cycle-count-session-dialog";
 import { CycleCountSessionDetailDialog } from "@/components/cycle-count-session-detail-dialog";
@@ -51,26 +56,40 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { CycleCountSessionListItem } from "@/lib/types";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
-import { MOCK_CYCLE_COUNT_SESSIONS } from "@/mock/data/cycle-count";
 
 export function CycleCountSessionsTable() {
-  // Using mock data instead of Convex
-  const cycleCountSessions = MOCK_CYCLE_COUNT_SESSIONS;
-  const isPending = false;
+  const { organizationId } = useCurrentUser();
+  const router = useRouter();
+  const params = useParams();
+
+  const { currentBranch } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: false,
+  });
+
+  const { data: cycleCountSessions, isLoading } = useQuery({
+    ...convexQuery(
+      api.cycleCount.listWithDetails,
+      organizationId && currentBranch?._id
+        ? {
+            organizationId: organizationId as string,
+            branchId: currentBranch._id as string,
+          }
+        : "skip",
+    ),
+    enabled: !!organizationId && !!currentBranch?._id,
+  });
 
   // Detail dialog state
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
   const [selectedSessionId, setSelectedSessionId] = React.useState<
     string | null
   >(null);
-
-  const _handleViewDetails = (sessionId: string) => {
-    setSelectedSessionId(sessionId);
-    setDetailDialogOpen(true);
-  };
 
   const handleViewDetailsCallback = React.useCallback((sessionId: string) => {
     setSelectedSessionId(sessionId);
@@ -225,8 +244,16 @@ export function CycleCountSessionsTable() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                {status === "active" || status === "pending" ? (
-                  <DropdownMenuItem>
+                {status === "active" ||
+                status === "pending" ||
+                status === "in progress" ? (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      router.push(
+                        `/${params.workspace}/inventory/cycle-count/${session._id}/proceed`,
+                      )
+                    }
+                  >
                     <Play className="mr-2 h-4 w-4" />
                     Proceed
                   </DropdownMenuItem>
@@ -250,7 +277,7 @@ export function CycleCountSessionsTable() {
         },
       },
     ],
-    [handleViewDetailsCallback],
+    [handleViewDetailsCallback, router, params.workspace],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -264,8 +291,14 @@ export function CycleCountSessionsTable() {
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
 
+  // Memoize the data to prevent unnecessary table re-renders
+  const tableData = React.useMemo(
+    () => cycleCountSessions ?? [],
+    [cycleCountSessions],
+  );
+
   const table = useReactTable({
-    data: cycleCountSessions ?? [],
+    data: tableData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -283,9 +316,13 @@ export function CycleCountSessionsTable() {
     },
   });
 
+  // Use a ref to avoid table dependency in useEffect
+  const tableRef = React.useRef(table);
+  tableRef.current = table;
+
   React.useEffect(() => {
-    table.getColumn("sessionCode")?.setFilterValue(debouncedFilterValue);
-  }, [debouncedFilterValue, table]);
+    tableRef.current.getColumn("sessionCode")?.setFilterValue(debouncedFilterValue);
+  }, [debouncedFilterValue]);
 
   const activeFiltersCount =
     sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);
@@ -296,7 +333,7 @@ export function CycleCountSessionsTable() {
     setFilterValue("");
   };
 
-  if (isPending) {
+  if (isLoading) {
     return (
       <div className="w-full space-y-4">
         <div className="flex flex-row justify-between pb-4">

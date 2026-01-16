@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useBranches } from "@/hooks/use-branches";
+import { useBranches, useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface AddReceiveSessionDialogProps {
@@ -50,7 +50,10 @@ export function AddReceiveSessionDialog({
   const [selectedPOId, setSelectedPOId] = React.useState<string>("");
   const { userId, organizationId } = useCurrentUser();
 
-  const { currentBranch } = useBranches({ organizationId });
+  const { currentBranch } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: false,
+  });
 
   // Fetch pending purchase orders for the dropdown
   const {
@@ -60,10 +63,13 @@ export function AddReceiveSessionDialog({
     isError,
     status,
   } = useQuery({
-    ...convexQuery(api.receiveSessions.getPendingPurchaseOrdersByBranch, {
-      branchId: currentBranch?._id as Id<"branches">,
-    }),
-    enabled: !!currentBranch?._id,
+    ...convexQuery(
+      api.receiveSessions.getPendingPurchaseOrdersByBranch,
+      open && currentBranch?._id
+        ? { branchId: currentBranch._id as Id<"branches"> }
+        : "skip",
+    ),
+    enabled: open && !!currentBranch?._id,
   });
 
   // Debug log
@@ -78,15 +84,7 @@ export function AddReceiveSessionDialog({
       console.log("Is array:", Array.isArray(pendingPOs));
       console.log("Length:", pendingPOs?.length);
     }
-  }, [
-    open,
-    isLoadingPOs,
-    pendingPOs,
-    status,
-    isError,
-    queryError,
-    currentBranch,
-  ]);
+  }, [open, isLoadingPOs, pendingPOs, status, isError, queryError, currentBranch?._id]);
 
   // Mutation for creating receive session
   const createReceiveSession = useConvexMutation(

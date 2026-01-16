@@ -1,8 +1,12 @@
 "use client";
 
-import { ArrowLeft, Plus, X } from "lucide-react";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { ArrowLeft, Loader2, Plus, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useState } from "react";
+import * as React from "react";
 import { springTransition } from "@/components/easing";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,8 +27,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
-import { MOCK_STORAGE_ZONES, MOCK_WORKERS } from "@/mock/data/cycle-count";
 
 interface CreateCycleCountSessionDialogProps {
   open?: boolean;
@@ -40,113 +45,248 @@ interface ZoneAssignment {
   workerId: string;
 }
 
-export function CreateCycleCountSessionDialog({
-  open,
-  onOpenChange,
-}: CreateCycleCountSessionDialogProps) {
-  const [view, setView] = useState<DialogView>("type-selection");
-  const [cycleCountType, setCycleCountType] = useState<CycleCountType | null>(
-    null,
-  );
+// Generate session code like CC-2026-001
+function generateSessionCode(): string {
+  const year = new Date().getFullYear();
+  const random = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
+  return `CC-${year}-${random}`;
+}
 
-  // Form states
-  const [sessionName, setSessionName] = useState("");
-  const [description, setDescription] = useState("");
-  const [zoneAssignments, setZoneAssignments] = useState<ZoneAssignment[]>([
-    { id: "1", zoneId: "", workerId: "" },
-  ]);
+export const CreateCycleCountSessionDialog = React.memo(
+  function CreateCycleCountSessionDialog({
+    open,
+    onOpenChange,
+  }: CreateCycleCountSessionDialogProps) {
+    const { organizationId, userId } = useCurrentUser();
+    const { currentBranch } = useBranches({
+      organizationId: organizationId as Id<"organizations"> | undefined,
+      includeDeleted: false,
+    });
 
-  const handleClose = () => {
-    // Reset state when dialog closes
-    setView("type-selection");
-    setCycleCountType(null);
-    setSessionName("");
-    setDescription("");
-    setZoneAssignments([{ id: "1", zoneId: "", workerId: "" }]);
-    onOpenChange?.(false);
-  };
+    const [view, setView] = React.useState<DialogView>("type-selection");
+    const [cycleCountType, setCycleCountType] =
+      React.useState<CycleCountType | null>(null);
+    const [isControlled] = React.useState(open !== undefined);
+    const [internalOpen, setInternalOpen] = React.useState(false);
 
-  const handleSelectType = (type: CycleCountType) => {
-    setCycleCountType(type);
+    const dialogOpen = isControlled ? open : internalOpen;
 
-    // For daily, auto-select 2 zones; for weekly, show 5 zones
-    if (type === "daily") {
-      setZoneAssignments([
-        { id: "1", zoneId: MOCK_STORAGE_ZONES[4]._id, workerId: "" },
-        { id: "2", zoneId: MOCK_STORAGE_ZONES[1]._id, workerId: "" },
-      ]);
-    } else {
-      setZoneAssignments([
-        { id: "1", zoneId: MOCK_STORAGE_ZONES[0]._id, workerId: "" },
-        { id: "2", zoneId: MOCK_STORAGE_ZONES[1]._id, workerId: "" },
-        { id: "3", zoneId: MOCK_STORAGE_ZONES[2]._id, workerId: "" },
-        { id: "4", zoneId: MOCK_STORAGE_ZONES[3]._id, workerId: "" },
-        { id: "5", zoneId: MOCK_STORAGE_ZONES[4]._id, workerId: "" },
-      ]);
-    }
+    // Fetch storage zones for the current branch
+    const { data: storageZones } = useQuery({
+      ...convexQuery(
+        api.cycleCount.getStorageZones,
+        currentBranch?._id
+          ? { branchId: currentBranch._id as Id<"branches"> }
+          : "skip",
+      ),
+      enabled: !!currentBranch?._id,
+    });
 
-    setView("form");
-  };
+    // Fetch organization users (workers)
+    const { data: workers } = useQuery({
+      ...convexQuery(api.cycleCount.getOrganizationUsers, {
+        organizationId: organizationId as Id<"organizations">,
+      }),
+      enabled: !!organizationId,
+    });
 
-  const handleChangeType = () => {
-    setView("type-selection");
-  };
+    // Fetch cycle count lookups
+    const { data: lookups } = useQuery({
+      ...convexQuery(api.cycleCount.getCycleCountLookups, {}),
+      enabled: true,
+    });
 
-  const handleAddZone = () => {
-    const newId = String(Date.now());
-    setZoneAssignments([
-      ...zoneAssignments,
-      { id: newId, zoneId: "", workerId: "" },
-    ]);
-  };
+    // Create session mutation
+    const { mutate: createSession, isPending: isCreating } = useMutation({
+      mutationFn: useConvexMutation(api.cycleCount.createCycleCountSession),
+      onSuccess: () => {
+        // Convex queries are reactive and will auto-update
+        // Close the dialog on success
+        handleClose();
+      },
+    });
 
-  const handleRemoveZone = (id: string) => {
-    if (zoneAssignments.length > 1) {
-      setZoneAssignments(zoneAssignments.filter((z) => z.id !== id));
-    }
-  };
+    // Form states
+    const [sessionName, setSessionName] = React.useState("");
+    const [description, setDescription] = React.useState("");
+    const [zoneAssignments, setZoneAssignments] = React.useState<
+      ZoneAssignment[]
+    >([{ id: "1", zoneId: "", workerId: "" }]);
 
-  const handleZoneChange = (id: string, zoneId: string) => {
-    setZoneAssignments(
-      zoneAssignments.map((z) => (z.id === id ? { ...z, zoneId } : z)),
+    const handleClose = React.useCallback(() => {
+      // Reset state when dialog closes
+      setView("type-selection");
+      setCycleCountType(null);
+      setSessionName("");
+      setDescription("");
+      setZoneAssignments([{ id: "1", zoneId: "", workerId: "" }]);
+      if (isControlled) {
+        onOpenChange?.(false);
+      } else {
+        setInternalOpen(false);
+      }
+    }, [onOpenChange, isControlled]);
+
+    const handleOpenChange = React.useCallback(
+      (newOpen: boolean) => {
+        if (!newOpen) {
+          handleClose();
+        } else if (isControlled) {
+          onOpenChange?.(true);
+        } else {
+          setInternalOpen(true);
+        }
+      },
+      [handleClose, onOpenChange, isControlled],
     );
-  };
 
-  const handleWorkerChange = (id: string, workerId: string) => {
-    setZoneAssignments(
-      zoneAssignments.map((z) => (z.id === id ? { ...z, workerId } : z)),
+    const handleSelectType = React.useCallback(
+      (type: CycleCountType) => {
+        setCycleCountType(type);
+
+        // For daily, auto-select first 2 zones; for weekly, show first 5 zones
+        const zones = storageZones ?? [];
+        if (type === "daily") {
+          const selectedZones = zones.slice(0, 2);
+          setZoneAssignments(
+            selectedZones.length > 0
+              ? selectedZones.map((zone, idx) => ({
+                  id: String(idx + 1),
+                  zoneId: zone._id,
+                  workerId: "",
+                }))
+              : [{ id: "1", zoneId: "", workerId: "" }],
+          );
+        } else {
+          const selectedZones = zones.slice(0, 5);
+          setZoneAssignments(
+            selectedZones.length > 0
+              ? selectedZones.map((zone, idx) => ({
+                  id: String(idx + 1),
+                  zoneId: zone._id,
+                  workerId: "",
+                }))
+              : [{ id: "1", zoneId: "", workerId: "" }],
+          );
+        }
+
+        setView("form");
+      },
+      [storageZones],
     );
-  };
 
-  const handleCreateSession = () => {
-    // TODO: Implement create session logic with Convex
-    console.log({
+    const handleChangeType = React.useCallback(() => {
+      setView("type-selection");
+    }, []);
+
+    const handleAddZone = React.useCallback(() => {
+      const newId = String(Date.now());
+      setZoneAssignments((prev) => [
+        ...prev,
+        { id: newId, zoneId: "", workerId: "" },
+      ]);
+    }, []);
+
+    const handleRemoveZone = React.useCallback((id: string) => {
+      setZoneAssignments((prev) => {
+        if (prev.length > 1) {
+          return prev.filter((z) => z.id !== id);
+        }
+        return prev;
+      });
+    }, []);
+
+    const handleZoneChange = React.useCallback((id: string, zoneId: string) => {
+      setZoneAssignments((prev) =>
+        prev.map((z) => (z.id === id ? { ...z, zoneId } : z)),
+      );
+    }, []);
+
+    const handleWorkerChange = React.useCallback(
+      (id: string, workerId: string) => {
+        setZoneAssignments((prev) =>
+          prev.map((z) => (z.id === id ? { ...z, workerId } : z)),
+        );
+      },
+      [],
+    );
+
+    const handleCreateSession = React.useCallback(() => {
+      if (
+        !organizationId ||
+        !currentBranch?._id ||
+        !userId ||
+        !lookups?.sessionTypeId ||
+        !lookups?.defaultStatusId ||
+        !cycleCountType
+      ) {
+        console.error("Missing required data for creating session");
+        return;
+      }
+
+      // Find the cycle count type ID
+      const cycleCountTypeId = lookups.cycleCountTypes.find(
+        (t) => t.lookupCode === cycleCountType.toUpperCase(),
+      )?._id;
+
+      if (!cycleCountTypeId) {
+        console.error("Cycle count type not found");
+        return;
+      }
+
+      createSession({
+        organizationId: organizationId as Id<"organizations">,
+        branchId: currentBranch._id,
+        sessionTypeId: lookups.sessionTypeId,
+        sessionCode: generateSessionCode(),
+        name: sessionName,
+        description: description || undefined,
+        cycleCountTypeId: cycleCountTypeId as Id<"system_lookups">,
+        assignedUserId: userId,
+        sessionStatusTypeId: lookups.defaultStatusId,
+        zoneAssignments: zoneAssignments
+          .filter((z) => z.zoneId !== "")
+          .map((z) => ({
+            zoneId: z.zoneId as Id<"storage_zones">,
+            assignedUserId: z.workerId
+              ? (z.workerId as Id<"users">)
+              : undefined,
+          })),
+      });
+    }, [
+      organizationId,
+      currentBranch?._id,
+      userId,
+      lookups,
       cycleCountType,
       sessionName,
       description,
       zoneAssignments,
-    });
-    handleClose();
-  };
+      createSession,
+    ]);
 
-  const isFormValid =
-    sessionName.trim() !== "" && zoneAssignments.every((z) => z.zoneId !== "");
+    const isFormValid =
+      sessionName.trim() !== "" &&
+      zoneAssignments.every((z) => z.zoneId !== "") &&
+      !isCreating;
 
-  return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogTrigger asChild>
-        <Button>
-          <Plus className="mr-2 h-4 w-4" />
-          Create Session
-        </Button>
-      </DialogTrigger>
-      <DialogContent
-        showCloseButton={false}
-        className="overflow-hidden sm:max-w-lg"
-      >
-        <AnimatePresence mode={"popLayout"} initial={false}>
-          {view === "type-selection" ? (
-            <motion.div
+    return (
+      <Dialog open={dialogOpen} onOpenChange={handleOpenChange}>
+        <DialogTrigger asChild>
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Create Session
+          </Button>
+        </DialogTrigger>
+        <DialogContent
+          showCloseButton={false}
+          className="overflow-hidden sm:max-w-lg"
+        >
+          <AnimatePresence mode={"popLayout"} initial={false}>
+            {view === "type-selection" ? (
+              <motion.div
               key="type-selection"
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -284,7 +424,7 @@ export function CreateCycleCountSessionDialog({
                             <SelectValue placeholder="Select zone..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {MOCK_STORAGE_ZONES.map((zone) => (
+                            {(storageZones ?? []).map((zone) => (
                               <SelectItem key={zone._id} value={zone._id}>
                                 {zone.name}
                               </SelectItem>
@@ -303,7 +443,7 @@ export function CreateCycleCountSessionDialog({
                             <SelectValue placeholder="Assign worker..." />
                           </SelectTrigger>
                           <SelectContent>
-                            {MOCK_WORKERS.map((worker) => (
+                            {(workers ?? []).map((worker) => (
                               <SelectItem key={worker._id} value={worker._id}>
                                 {worker.fullName}
                               </SelectItem>
@@ -333,7 +473,14 @@ export function CreateCycleCountSessionDialog({
                   Cancel
                 </Button>
                 <Button onClick={handleCreateSession} disabled={!isFormValid}>
-                  Create Session
+                  {isCreating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Session"
+                  )}
                 </Button>
               </DialogFooter>
             </motion.div>
@@ -342,4 +489,5 @@ export function CreateCycleCountSessionDialog({
       </DialogContent>
     </Dialog>
   );
-}
+  },
+);

@@ -1,69 +1,96 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { CheckCircle2, Layers, Percent, PlayCircle } from "lucide-react";
+import { ChartDataCard } from "@/components/chart-data-card";
 import { CycleCountSessionsTable } from "@/components/table/cycle-count-sessions-table";
-import { MOCK_CYCLE_COUNT_STATS } from "@/mock/data/cycle-count";
-
-interface StatCardProps {
-  title: string;
-  value: string | number;
-  subtitle: string;
-  icon: React.ReactNode;
-  valueColor?: string;
-}
-
-function StatCard({
-  title,
-  value,
-  subtitle,
-  icon,
-  valueColor = "text-foreground",
-}: StatCardProps) {
-  return (
-    <div className="flex flex-col gap-2 rounded-lg border bg-card p-4">
-      <div className="flex items-center justify-between">
-        <span className="text-muted-foreground text-sm">{title}</span>
-        <span className="text-muted-foreground">{icon}</span>
-      </div>
-      <div className={`font-bold text-3xl ${valueColor}`}>{value}</div>
-      <span className="text-muted-foreground text-xs">{subtitle}</span>
-    </div>
-  );
-}
+import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { useDateFilterStore } from "@/store/date-filter";
 
 export default function Page() {
-  // Using mock data
-  const stats = MOCK_CYCLE_COUNT_STATS;
+  const { organizationId } = useCurrentUser();
+
+  const { currentBranch } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: false,
+  });
+
+  const dateRange = useDateFilterStore((state) => state.dateRange);
+  const periodLabel = useDateFilterStore((state) => state.periodLabel);
+  const updateFromPicker = useDateFilterStore(
+    (state) => state.updateFromPicker,
+  );
+
+  const { data: stats, isLoading } = useQuery({
+    ...convexQuery(
+      api.cycleCount.getStatsWithChartData,
+      organizationId && currentBranch?._id
+        ? {
+            organizationId: organizationId as string,
+            branchId: currentBranch._id as string,
+            startDate: dateRange.from.getTime(),
+            endDate: dateRange.to?.getTime() ?? dateRange.from.getTime(),
+          }
+        : "skip",
+    ),
+    enabled: !!organizationId && !!currentBranch?._id,
+  });
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 p-4">
+      {/* Header with date picker */}
+      <div className="flex flex-row items-center justify-between">
+        <DateRangePicker
+          align="start"
+          showCompare={false}
+          onUpdate={(data) => {
+            updateFromPicker({
+              range: data.range,
+              preset: data.preset,
+              periodLabel: data.periodLabel,
+            });
+          }}
+        />
+      </div>
+
       {/* Stats Cards */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <StatCard
+        <ChartDataCard
           title="Active Sessions"
-          value={stats.activeSessions}
-          subtitle="1 ongoing today"
-          icon={<PlayCircle className="h-5 w-5" />}
+          value={stats?.activeSessions.value ?? 0}
+          changePercent={stats?.activeSessions.changePercent ?? 0}
+          periodLabel={periodLabel}
+          data={stats?.activeSessions.data ?? []}
+          color="var(--chart-1)"
         />
-        <StatCard
+        <ChartDataCard
           title="Total Zones"
-          value={stats.totalZones}
-          subtitle="Across all sessions"
-          icon={<Layers className="h-5 w-5" />}
+          value={stats?.totalZones.value ?? 0}
+          changePercent={stats?.totalZones.changePercent ?? 0}
+          periodLabel={periodLabel}
+          data={stats?.totalZones.data ?? []}
+          color="var(--chart-2)"
         />
-        <StatCard
+        <ChartDataCard
           title="Completed"
-          value={stats.completedSessions}
-          subtitle="Sessions finished"
-          icon={<CheckCircle2 className="h-5 w-5" />}
-          valueColor="text-blue-600"
+          value={stats?.completedSessions.value ?? 0}
+          changePercent={stats?.completedSessions.changePercent ?? 0}
+          periodLabel={periodLabel}
+          data={stats?.completedSessions.data ?? []}
+          color="var(--chart-3)"
         />
-        <StatCard
+        <ChartDataCard
           title="Verification Rate"
-          value={`${stats.verificationRate}%`}
-          subtitle="Average accuracy"
-          icon={<Percent className="h-5 w-5" />}
-          valueColor="text-green-600"
+          value={`${stats?.verificationRate.value ?? 0}%`}
+          changePercent={stats?.verificationRate.changePercent ?? 0}
+          periodLabel={periodLabel}
+          data={stats?.verificationRate.data ?? []}
+          color="var(--chart-4)"
         />
       </div>
 

@@ -1,9 +1,13 @@
 "use client";
 
-import { ArrowRight, Check } from "lucide-react";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
-import { useEffect, useState } from "react";
-
+import * as React from "react";
+import { springTransition } from "@/components/easing";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -22,144 +26,220 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
-import {
-  MOCK_SECTIONS,
-  MOCK_STORAGE_ZONES,
-  MOCK_TRANSFER_ITEMS,
-} from "@/mock/data/cycle-count";
-
-interface TransferItem {
-  id: string;
-  productId: string;
-  productName: string;
-  box: string;
-  quantity: number;
-  expiryDate: string;
-}
 
 interface LocationTransferDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  // When opened from cycle count, source zone is pre-filled
   initialData?: {
     zoneId?: string;
-    sectionId?: string;
+    zoneName?: string;
   };
+  onSuccess?: () => void;
 }
 
-const springTransition = {
-  type: "spring" as const,
-  stiffness: 300,
-  damping: 30,
-};
+// Generate adjustment request code like ADJ-2026-001
+function generateRequestCode(): string {
+  const year = new Date().getFullYear();
+  const random = Math.floor(Math.random() * 1000)
+    .toString()
+    .padStart(3, "0");
+  return `ADJ-${year}-${random}`;
+}
 
 export function LocationTransferDialog({
   open,
   onOpenChange,
   initialData,
+  onSuccess,
 }: LocationTransferDialogProps) {
-  const [step, setStep] = useState(1);
+  const { user, organizationId } = useCurrentUser();
+  const { currentBranch } = useBranches({ organizationId });
 
-  // Step 1: Source Location
-  const [fromZone, setFromZone] = useState<string>("");
-  const [fromSection, setFromSection] = useState<string>("");
+  // Track if opened from cycle count (source is pre-determined)
+  const isFromCycleCount = !!initialData?.zoneId;
 
-  // Step 2: Destination Location
-  const [toZone, setToZone] = useState<string>("");
-  const [toSection, setToSection] = useState<string>("");
+  // For cycle count flow: Step 1 = destination, Step 2 = items
+  // For standalone flow: Step 1 = source, Step 2 = destination, Step 3 = items
+  const totalSteps = isFromCycleCount ? 2 : 3;
+  const [step, setStep] = React.useState(1);
 
-  // Step 3: Item Selection
-  const [selectedItems, setSelectedItems] = useState<string[]>([]);
+  // Source Location
+  const [fromZone, setFromZone] = React.useState<string>("");
+  const [fromZoneName, setFromZoneName] = React.useState<string>("");
 
-  // Get sections based on selected zone
-  const fromSections = fromZone ? MOCK_SECTIONS[fromZone] || [] : [];
-  const toSections = toZone ? MOCK_SECTIONS[toZone] || [] : [];
+  // Destination Location
+  const [toZone, setToZone] = React.useState<string>("");
 
-  // Get available items for transfer (mock data)
-  const availableItems: TransferItem[] = MOCK_TRANSFER_ITEMS;
+  // Item Selection
+  const [selectedBatches, setSelectedBatches] = React.useState<string[]>([]);
 
-  // Initialize with provided data
-  useEffect(() => {
-    if (open && initialData) {
-      if (initialData.zoneId) {
-        setFromZone(initialData.zoneId);
-      }
-      if (initialData.sectionId) {
-        setFromSection(initialData.sectionId);
-      }
+  // Fetch storage zones for this branch
+  const { data: zones, isLoading: isLoadingZones } = useQuery({
+    ...convexQuery(
+      api.cycleCount.getStorageZones,
+      open && currentBranch?._id
+        ? { branchId: currentBranch._id as Id<"branches"> }
+        : "skip",
+    ),
+    enabled: open && !!currentBranch?._id,
+  });
+
+  // Fetch inventory batches from source zone
+  const { data: batches, isLoading: isLoadingBatches } = useQuery({
+    ...convexQuery(
+      api.cycleCount.getInventoryBatchesByZone,
+      open && fromZone && currentBranch?._id
+        ? {
+            zoneId: fromZone as Id<"storage_zones">,
+            branchId: currentBranch._id as Id<"branches">,
+          }
+        : "skip",
+    ),
+    enabled: open && !!fromZone && !!currentBranch?._id,
+  });
+
+  // Fetch adjustment lookups
+  const { data: lookups } = useQuery({
+    ...convexQuery(api.cycleCount.getAdjustmentLookups, open ? {} : "skip"),
+    enabled: open,
+  });
+
+  // Create adjustment request mutation - extract hook to top level
+  const createAdjustmentFn = useConvexMutation(
+    api.cycleCount.createNewAdjustmentRequest,
+  );
+  const createAdjustmentMutation = useMutation({
+    mutationFn: createAdjustmentFn,
+  });
+
+  // Initialize form when dialog opens
+  React.useEffect(() => {
+    if (open && initialData?.zoneId) {
+      setFromZone(initialData.zoneId);
+      setFromZoneName(initialData.zoneName ?? "");
     }
   }, [open, initialData]);
 
-  // Reset section when zone changes
-  useEffect(() => {
-    if (!fromSections.find((s) => s._id === fromSection)) {
-      setFromSection("");
-    }
-  }, [fromSections, fromSection]);
-
-  useEffect(() => {
-    if (!toSections.find((s) => s._id === toSection)) {
-      setToSection("");
-    }
-  }, [toSections, toSection]);
-
-  const handleClose = () => {
+  const handleClose = React.useCallback(() => {
     setStep(1);
     setFromZone("");
-    setFromSection("");
+    setFromZoneName("");
     setToZone("");
-    setToSection("");
-    setSelectedItems([]);
+    setSelectedBatches([]);
     onOpenChange(false);
-  };
+  }, [onOpenChange]);
 
   const handleNext = () => {
-    if (step < 3) {
-      setStep(step + 1);
+    if (step < totalSteps) {
+      setStep((prev) => prev + 1);
     }
   };
 
   const handleBack = () => {
     if (step > 1) {
-      setStep(step - 1);
+      setStep((prev) => prev - 1);
     }
   };
 
-  const handleItemToggle = (itemId: string) => {
-    setSelectedItems((prev) =>
-      prev.includes(itemId)
-        ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId],
+  const handleBatchToggle = (batchId: string) => {
+    setSelectedBatches((prev) =>
+      prev.includes(batchId)
+        ? prev.filter((id) => id !== batchId)
+        : [...prev, batchId],
     );
   };
 
-  const handleSubmit = () => {
-    console.log("Submitting transfer:", {
-      from: { zone: fromZone, section: fromSection },
-      to: { zone: toZone, section: toSection },
-      items: selectedItems,
-    });
-    handleClose();
+  const handleSubmit = async () => {
+    if (
+      !organizationId ||
+      !currentBranch?._id ||
+      !user?._id ||
+      !lookups?.locationTypeId ||
+      !lookups?.defaultStatusId
+    ) {
+      console.error("Missing required data for location transfer");
+      return;
+    }
+
+    // Build detail records for each selected batch
+    const selectedBatchData = batches?.filter((b) =>
+      selectedBatches.includes(b._id),
+    );
+
+    if (!selectedBatchData || selectedBatchData.length === 0) {
+      console.error("No items selected for transfer");
+      return;
+    }
+
+    // Find "Location Transfer" as the reason
+    const locationTransferReason = lookups.adjustmentReasons.find(
+      (r) => r.lookupCode === "LOCATION_TRANSFER",
+    );
+
+    try {
+      await createAdjustmentMutation.mutateAsync({
+        organizationId: organizationId as string,
+        branchId: currentBranch._id as string,
+        requestCode: generateRequestCode(),
+        adjustmentTypeId: lookups.locationTypeId as string,
+        requestedByUserId: user._id as string,
+        adjustmentStatusTypeId: lookups.defaultStatusId as string,
+        details: selectedBatchData.map((batch) => ({
+          batchId: batch._id,
+          skuId: batch.productCode,
+          fromZoneId: fromZone,
+          toZoneId: toZone,
+          quantity: batch.currentQuantity,
+          // For location transfers, qty fields are 0 (no variance)
+          expectedQuantity: 0,
+          actualQuantity: 0,
+          varianceQuantity: 0,
+          costImpact: 0,
+          reasonTypeId:
+            locationTransferReason?._id ??
+            lookups.adjustmentReasons[0]?._id ??
+            "",
+        })),
+      });
+
+      onSuccess?.();
+      handleClose();
+    } catch (error) {
+      console.error("Failed to create location transfer:", error);
+    }
   };
 
-  const canProceedStep1 = fromZone && fromSection;
-  const canProceedStep2 = toZone && toSection;
-  const canSubmit = selectedItems.length > 0;
+  // Get zone name helper
+  const getZoneName = React.useCallback(
+    (zoneId: string) => {
+      if (zoneId === fromZone && fromZoneName) return fromZoneName;
+      return zones?.find((z) => z._id === zoneId)?.name ?? "Unknown Zone";
+    },
+    [zones, fromZone, fromZoneName],
+  );
 
-  const getZoneName = (zoneId: string) => {
-    return MOCK_STORAGE_ZONES.find((z) => z._id === zoneId)?.name || zoneId;
-  };
+  // Calculate totals
+  const getTotalQuantity = React.useCallback(() => {
+    if (!batches) return 0;
+    return batches
+      .filter((b) => selectedBatches.includes(b._id))
+      .reduce((sum, b) => sum + b.currentQuantity, 0);
+  }, [batches, selectedBatches]);
 
-  const getSectionName = (zoneId: string, sectionId: string) => {
-    const sections = MOCK_SECTIONS[zoneId] || [];
-    return sections.find((s) => s._id === sectionId)?.name || sectionId;
-  };
+  // Can proceed validation
+  const canProceedStep1 = isFromCycleCount ? !!toZone : !!fromZone;
+  const canProceedStep2 = isFromCycleCount
+    ? selectedBatches.length > 0
+    : !!toZone;
+  const canSubmit = isFromCycleCount
+    ? selectedBatches.length > 0
+    : selectedBatches.length > 0;
 
-  const getTotalQuantity = () => {
-    return availableItems
-      .filter((item) => selectedItems.includes(item.id))
-      .reduce((sum, item) => sum + item.quantity, 0);
-  };
+  const isSubmitting = createAdjustmentMutation.isPending;
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
@@ -170,9 +250,184 @@ export function LocationTransferDialog({
 
         <Separator />
 
-        <AnimatePresence mode={"popLayout"}>
-          {/* Step 1: Select Source Location */}
-          {step === 1 && (
+        <AnimatePresence mode="popLayout">
+          {/* Simplified flow when from cycle count - Step 1: Select Destination */}
+          {isFromCycleCount && step === 1 && (
+            <motion.div
+              key="cc-step1"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={springTransition}
+              className="space-y-6 py-4"
+            >
+              <h3 className="font-medium text-sm">
+                Step 1: Select Destination
+              </h3>
+
+              {/* Source Zone (read-only) */}
+              <div className="space-y-2">
+                <Label className="font-medium text-muted-foreground text-xs uppercase">
+                  FROM (Source)
+                </Label>
+                <div className="rounded-md bg-muted px-3 py-2 text-sm">
+                  {getZoneName(fromZone)}
+                </div>
+              </div>
+
+              {/* Destination Zone */}
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-sm">To Zone</Label>
+                <Select value={toZone} onValueChange={setToZone}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select destination zone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingZones ? (
+                      <SelectItem value="_loading" disabled>
+                        Loading...
+                      </SelectItem>
+                    ) : (
+                      zones
+                        ?.filter((z) => z._id !== fromZone) // Exclude source zone
+                        .map((zone) => (
+                          <SelectItem key={zone._id} value={zone._id}>
+                            {zone.name}
+                          </SelectItem>
+                        ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Simplified flow when from cycle count - Step 2: Select Items */}
+          {isFromCycleCount && step === 2 && (
+            <motion.div
+              key="cc-step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={springTransition}
+              className="space-y-4 py-4"
+            >
+              <h3 className="font-medium text-sm">
+                Step 2: Select Items to Transfer
+              </h3>
+
+              {/* From/To Summary */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="rounded-md border bg-muted/50 p-3">
+                  <span className="font-medium text-muted-foreground text-xs uppercase">
+                    FROM
+                  </span>
+                  <p className="mt-1 font-medium text-primary text-sm">
+                    {getZoneName(fromZone)}
+                  </p>
+                </div>
+                <div className="rounded-md border bg-primary/5 p-3">
+                  <span className="font-medium text-muted-foreground text-xs uppercase">
+                    TO
+                  </span>
+                  <p className="mt-1 font-medium text-primary text-sm">
+                    {getZoneName(toZone)}
+                  </p>
+                </div>
+              </div>
+
+              {/* Available Items */}
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-sm">
+                  Available Items in {getZoneName(fromZone)}
+                </Label>
+                <div className="max-h-60 space-y-2 overflow-y-auto">
+                  {isLoadingBatches ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : batches && batches.length > 0 ? (
+                    batches.map((batch) => {
+                      const isSelected = selectedBatches.includes(batch._id);
+                      return (
+                        <div
+                          key={batch._id}
+                          className={cn(
+                            "cursor-pointer rounded-lg border p-3 transition-colors",
+                            isSelected
+                              ? "border-primary bg-primary/5"
+                              : "hover:border-muted-foreground/30",
+                          )}
+                          onClick={() => handleBatchToggle(batch._id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleBatchToggle(batch._id);
+                            }
+                          }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() =>
+                                handleBatchToggle(batch._id)
+                              }
+                              className="mt-0.5"
+                            />
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium">
+                                  {batch.productName}
+                                </span>
+                              </div>
+                              <p className="text-muted-foreground text-xs">
+                                {batch.productCode} • {batch.batchCode}
+                              </p>
+                              <div className="flex gap-4 text-muted-foreground text-xs">
+                                <span>
+                                  <span className="font-medium text-foreground">
+                                    Quantity
+                                  </span>{" "}
+                                  {batch.currentQuantity} units
+                                </span>
+                                {batch.expiresAt && (
+                                  <span>
+                                    <span className="font-medium text-foreground">
+                                      Expires
+                                    </span>{" "}
+                                    {new Date(
+                                      batch.expiresAt,
+                                    ).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="py-4 text-center text-muted-foreground text-sm">
+                      No items available in this zone
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* Selection Summary */}
+              <div className="rounded-md bg-muted px-3 py-2">
+                <p className="font-medium text-primary text-sm">
+                  {selectedBatches.length} item(s) selected
+                </p>
+                <p className="text-muted-foreground text-xs">
+                  Total quantity: {getTotalQuantity()} units
+                </p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Standard flow (when not from cycle count) - Step 1: Select Source */}
+          {!isFromCycleCount && step === 1 && (
             <motion.div
               key="step1"
               initial={{ opacity: 0, x: 20 }}
@@ -185,52 +440,34 @@ export function LocationTransferDialog({
                 Step 1: Select Source Location
               </h3>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground text-sm">
-                    From Zone
-                  </Label>
-                  <Select value={fromZone} onValueChange={setFromZone}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select zone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MOCK_STORAGE_ZONES.map((zone) => (
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-sm">
+                  From Zone
+                </Label>
+                <Select value={fromZone} onValueChange={setFromZone}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select source zone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingZones ? (
+                      <SelectItem value="_loading" disabled>
+                        Loading...
+                      </SelectItem>
+                    ) : (
+                      zones?.map((zone) => (
                         <SelectItem key={zone._id} value={zone._id}>
                           {zone.name}
                         </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground text-sm">
-                    From Section
-                  </Label>
-                  <Select
-                    value={fromSection}
-                    onValueChange={setFromSection}
-                    disabled={!fromZone}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select section" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {fromSections.map((section) => (
-                        <SelectItem key={section._id} value={section._id}>
-                          {section.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </motion.div>
           )}
 
-          {/* Step 2: Select Destination Location */}
-          {step === 2 && (
+          {/* Standard flow - Step 2: Select Destination */}
+          {!isFromCycleCount && step === 2 && (
             <motion.div
               key="step2"
               initial={{ opacity: 0, x: 20 }}
@@ -249,57 +486,38 @@ export function LocationTransferDialog({
                   FROM
                 </Label>
                 <div className="rounded-md bg-muted px-3 py-2 text-sm">
-                  {getZoneName(fromZone)} -{" "}
-                  {getSectionName(fromZone, fromSection)}
+                  {getZoneName(fromZone)}
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground text-sm">
-                    To Zone
-                  </Label>
-                  <Select value={toZone} onValueChange={setToZone}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select zone" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {MOCK_STORAGE_ZONES.map((zone) => (
-                        <SelectItem key={zone._id} value={zone._id}>
-                          {zone.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label className="text-muted-foreground text-sm">
-                    To Section
-                  </Label>
-                  <Select
-                    value={toSection}
-                    onValueChange={setToSection}
-                    disabled={!toZone}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select section" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {toSections.map((section) => (
-                        <SelectItem key={section._id} value={section._id}>
-                          {section.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              <div className="space-y-2">
+                <Label className="text-muted-foreground text-sm">To Zone</Label>
+                <Select value={toZone} onValueChange={setToZone}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select destination zone" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingZones ? (
+                      <SelectItem value="_loading" disabled>
+                        Loading...
+                      </SelectItem>
+                    ) : (
+                      zones
+                        ?.filter((z) => z._id !== fromZone)
+                        .map((zone) => (
+                          <SelectItem key={zone._id} value={zone._id}>
+                            {zone.name}
+                          </SelectItem>
+                        ))
+                    )}
+                  </SelectContent>
+                </Select>
               </div>
             </motion.div>
           )}
 
-          {/* Step 3: Select Items to Transfer */}
-          {step === 3 && (
+          {/* Standard flow - Step 3: Select Items */}
+          {!isFromCycleCount && step === 3 && (
             <motion.div
               key="step3"
               initial={{ opacity: 0, x: 20 }}
@@ -321,9 +539,6 @@ export function LocationTransferDialog({
                   <p className="mt-1 font-medium text-primary text-sm">
                     {getZoneName(fromZone)}
                   </p>
-                  <p className="text-muted-foreground text-xs">
-                    {getSectionName(fromZone, fromSection)}
-                  </p>
                 </div>
                 <div className="rounded-md border bg-primary/5 p-3">
                   <span className="font-medium text-muted-foreground text-xs uppercase">
@@ -332,84 +547,91 @@ export function LocationTransferDialog({
                   <p className="mt-1 font-medium text-primary text-sm">
                     {getZoneName(toZone)}
                   </p>
-                  <p className="text-muted-foreground text-xs">
-                    {getSectionName(toZone, toSection)}
-                  </p>
                 </div>
               </div>
 
               {/* Available Items */}
               <div className="space-y-2">
                 <Label className="text-muted-foreground text-sm">
-                  Available Items in {getSectionName(fromZone, fromSection)}
+                  Available Items in {getZoneName(fromZone)}
                 </Label>
                 <div className="max-h-60 space-y-2 overflow-y-auto">
-                  {availableItems.map((item) => {
-                    const isSelected = selectedItems.includes(item.id);
-                    return (
-                      <div
-                        key={item.id}
-                        className={cn(
-                          "cursor-pointer rounded-lg border p-3 transition-colors",
-                          isSelected
-                            ? "border-primary bg-primary/5"
-                            : "hover:border-muted-foreground/30",
-                        )}
-                        onClick={() => handleItemToggle(item.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" || e.key === " ") {
-                            e.preventDefault();
-                            handleItemToggle(item.id);
-                          }
-                        }}
-                      >
-                        <div className="flex items-start gap-3">
-                          <Checkbox
-                            checked={isSelected}
-                            onCheckedChange={() => handleItemToggle(item.id)}
-                            className="mt-0.5"
-                          />
-                          <div className="flex-1 space-y-1">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium">
-                                {item.productName}
-                              </span>
-                            </div>
-                            <p className="text-muted-foreground text-xs">
-                              {item.productId}
-                            </p>
-                            <div className="flex gap-4 text-muted-foreground text-xs">
-                              <span>
-                                <span className="font-medium text-foreground">
-                                  Box
-                                </span>{" "}
-                                {item.box}
-                              </span>
-                              <span>
-                                <span className="font-medium text-foreground">
-                                  Quantity
-                                </span>{" "}
-                                {item.quantity} units
-                              </span>
-                              <span>
-                                <span className="font-medium text-foreground">
-                                  Expiry Date
-                                </span>{" "}
-                                {item.expiryDate}
-                              </span>
+                  {isLoadingBatches ? (
+                    <div className="flex items-center justify-center py-8">
+                      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                  ) : batches && batches.length > 0 ? (
+                    batches.map((batch) => {
+                      const isSelected = selectedBatches.includes(batch._id);
+                      return (
+                        <div
+                          key={batch._id}
+                          className={cn(
+                            "cursor-pointer rounded-lg border p-3 transition-colors",
+                            isSelected
+                              ? "border-primary bg-primary/5"
+                              : "hover:border-muted-foreground/30",
+                          )}
+                          onClick={() => handleBatchToggle(batch._id)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" || e.key === " ") {
+                              e.preventDefault();
+                              handleBatchToggle(batch._id);
+                            }
+                          }}
+                        >
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              checked={isSelected}
+                              onCheckedChange={() =>
+                                handleBatchToggle(batch._id)
+                              }
+                              className="mt-0.5"
+                            />
+                            <div className="flex-1 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium">
+                                  {batch.productName}
+                                </span>
+                              </div>
+                              <p className="text-muted-foreground text-xs">
+                                {batch.productCode} • {batch.batchCode}
+                              </p>
+                              <div className="flex gap-4 text-muted-foreground text-xs">
+                                <span>
+                                  <span className="font-medium text-foreground">
+                                    Quantity
+                                  </span>{" "}
+                                  {batch.currentQuantity} units
+                                </span>
+                                {batch.expiresAt && (
+                                  <span>
+                                    <span className="font-medium text-foreground">
+                                      Expires
+                                    </span>{" "}
+                                    {new Date(
+                                      batch.expiresAt,
+                                    ).toLocaleDateString()}
+                                  </span>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })
+                  ) : (
+                    <p className="py-4 text-center text-muted-foreground text-sm">
+                      No items available in this zone
+                    </p>
+                  )}
                 </div>
               </div>
 
               {/* Selection Summary */}
               <div className="rounded-md bg-muted px-3 py-2">
                 <p className="font-medium text-primary text-sm">
-                  {selectedItems.length} item(s) selected
+                  {selectedBatches.length} item(s) selected
                 </p>
                 <p className="text-muted-foreground text-xs">
                   Total quantity: {getTotalQuantity()} units
@@ -421,16 +643,26 @@ export function LocationTransferDialog({
 
         <DialogFooter className="flex-row gap-2 sm:justify-between">
           {step === 1 ? (
-            <Button variant="outline" onClick={handleClose} className="flex-1">
+            <Button
+              variant="outline"
+              onClick={handleClose}
+              className="flex-1"
+              disabled={isSubmitting}
+            >
               Cancel
             </Button>
           ) : (
-            <Button variant="outline" onClick={handleBack} className="flex-1">
+            <Button
+              variant="outline"
+              onClick={handleBack}
+              className="flex-1"
+              disabled={isSubmitting}
+            >
               Back
             </Button>
           )}
 
-          {step < 3 ? (
+          {step < totalSteps ? (
             <Button
               onClick={handleNext}
               disabled={step === 1 ? !canProceedStep1 : !canProceedStep2}
@@ -442,11 +674,20 @@ export function LocationTransferDialog({
           ) : (
             <Button
               onClick={handleSubmit}
-              disabled={!canSubmit}
+              disabled={!canSubmit || isSubmitting}
               className="flex-1 bg-green-600 hover:bg-green-700"
             >
-              <Check className="mr-2 h-4 w-4" />
-              Submit Transfer
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <Check className="mr-2 h-4 w-4" />
+                  Submit Transfer
+                </>
+              )}
             </Button>
           )}
         </DialogFooter>

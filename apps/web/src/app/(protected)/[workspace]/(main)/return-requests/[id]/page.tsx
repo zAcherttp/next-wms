@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   flexRender,
@@ -7,9 +9,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-// import { convexQuery } from "@convex-dev/react-query";
-// import { useQuery, useQueryClient } from "@tanstack/react-query";
-// import { api } from "@wms/backend/convex/_generated/api";
+import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ArrowLeft,
@@ -48,8 +48,6 @@ import {
 } from "@/components/ui/table";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
-// import { useConvex } from "convex/react";
-import { getReturnRequestById } from "@/mock/data/return-requests";
 
 // Define the detail item type based on what the API returns
 type DetailItem = {
@@ -86,18 +84,6 @@ const columns: ColumnDef<DetailItem>[] = [
     ),
   },
   {
-    accessorKey: "expectedCreditAmount",
-    header: "Expected Credit",
-    cell: ({ row }) => {
-      const amount = row.getValue("expectedCreditAmount") as number;
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount);
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
-  },
-  {
     id: "reason.lookupValue",
     accessorFn: (row) => row.reason?.lookupValue,
     header: "Reason",
@@ -122,20 +108,13 @@ export default function ReturnRequestDetailPage() {
   const params = useParams();
   const workspace = params.workspace as string;
   const returnRequestId = params.id as string;
-  // const queryClient = useQueryClient();
-  // const convex = useConvex();
 
-  // COMMENTED OUT: Convex query - using mock data instead
-  // const { data: returnRequest, isPending } = useQuery({
-  //   ...convexQuery(api.returnRequest.getReturnRequestWithDetails, {
-  //     returnRequestId: returnRequestId as Id<"return_requests">,
-  //   }),
-  //   enabled: !!returnRequestId,
-  // });
-
-  // Using mock data instead of Convex
-  const returnRequest = getReturnRequestById(returnRequestId);
-  const isPending = false;
+  const { data: returnRequest, isLoading: isPending } = useQuery({
+    ...convexQuery(api.returnRequest.getReturnRequestWithDetails, {
+      returnRequestId: returnRequestId as Id<"return_requests">,
+    }),
+    enabled: !!returnRequestId,
+  });
 
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
@@ -166,23 +145,6 @@ export default function ReturnRequestDetailPage() {
       },
     },
   });
-
-  // COMMENTED OUT: Convex mutation for status update - using mock data
-  // const handleStatusUpdate = async (newStatus: string) => {
-  //   try {
-  //     await convex.mutation(api.returnRequest.setReturnRequestStatus, {
-  //       returnRequestId: returnRequestId as Id<"return_requests">,
-  //       returnStatusTypeId: newStatus,
-  //     });
-  //     toast.success("Status updated successfully");
-  //     queryClient.invalidateQueries({
-  //       queryKey: ["returnRequest", returnRequestId],
-  //     });
-  //   } catch (error) {
-  //     toast.error("Failed to update status");
-  //     console.error(error);
-  //   }
-  // };
 
   if (isPending) {
     return (
@@ -304,7 +266,7 @@ export default function ReturnRequestDetailPage() {
 
           <Separator className="my-4" />
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-lg border p-4 text-center">
               <p className="font-bold text-2xl">{returnRequest.totalSKUs}</p>
               <p className="text-muted-foreground text-sm">Total SKUs</p>
@@ -314,17 +276,6 @@ export default function ReturnRequestDetailPage() {
                 {returnRequest.totalExpectedQuantity}
               </p>
               <p className="text-muted-foreground text-sm">Total Quantity</p>
-            </div>
-            <div className="rounded-lg border p-4 text-center">
-              <p className="font-bold text-2xl">
-                {new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(returnRequest.totalExpectedCredit)}
-              </p>
-              <p className="text-muted-foreground text-sm">
-                Total Expected Credit
-              </p>
             </div>
           </div>
         </CardContent>

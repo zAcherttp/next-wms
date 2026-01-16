@@ -1,6 +1,9 @@
 "use client";
 
-import { X } from "lucide-react";
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import { Loader2, X } from "lucide-react";
 import { useState } from "react";
 import { LocationTransferDialog } from "@/components/location-transfer-dialog";
 import { NewAdjustmentRequestDialog } from "@/components/new-adjustment-request-dialog";
@@ -24,9 +27,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import type { CycleCountLineItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { getMockSessionDetails } from "@/mock/data/cycle-count";
 
 interface CycleCountSessionDetailDialogProps {
   sessionId: string | null;
@@ -34,12 +35,35 @@ interface CycleCountSessionDetailDialogProps {
   onOpenChange?: (open: boolean) => void;
 }
 
+// Type for line items from the API
+type LineItemFromApi = {
+  _id: string;
+  skuId: string;
+  skuCode: string;
+  productName: string;
+  zoneId: string | null;
+  batchId: string | null;
+  expectedQuantity: number;
+  actualQuantity: number;
+  variance: number;
+  scannedAt?: number;
+  notes?: string;
+};
+
 export function CycleCountSessionDetailDialog({
   sessionId,
   open,
   onOpenChange,
 }: CycleCountSessionDetailDialogProps) {
-  const session = sessionId ? getMockSessionDetails(sessionId) : null;
+  // Fetch session details from the backend
+  const { data: session, isLoading } = useQuery({
+    ...convexQuery(
+      api.cycleCount.getSessionDetailForDialog,
+      sessionId ? { sessionId } : "skip",
+    ),
+    enabled: !!sessionId && open,
+  });
+
   const [activeZoneIndex, setActiveZoneIndex] = useState(0);
   const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
   const [quantityAdjustmentDialogOpen, setQuantityAdjustmentDialogOpen] =
@@ -47,10 +71,11 @@ export function CycleCountSessionDetailDialog({
   const [locationTransferDialogOpen, setLocationTransferDialogOpen] =
     useState(false);
   const [selectedLineItem, setSelectedLineItem] =
-    useState<CycleCountLineItem | null>(null);
+    useState<LineItemFromApi | null>(null);
 
   const handleClose = () => {
     setActiveZoneIndex(0);
+    setSelectedLineItem(null);
     onOpenChange?.(false);
   };
 
@@ -63,7 +88,7 @@ export function CycleCountSessionDetailDialog({
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
 
   const handleCreateAdjustment = (
-    lineItem: CycleCountLineItem,
+    lineItem: LineItemFromApi,
     zoneId: string,
   ) => {
     setSelectedLineItem(lineItem);
@@ -79,6 +104,23 @@ export function CycleCountSessionDetailDialog({
       setLocationTransferDialogOpen(true);
     }
   };
+
+  // Show loading state
+  if (isLoading) {
+    return (
+      <Dialog open={open} onOpenChange={handleClose}>
+        <DialogContent className="flex h-96 items-center justify-center sm:max-w-3xl">
+          <DialogHeader className="sr-only">
+            <DialogTitle>Loading Session Details</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center gap-3">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            <p className="text-muted-foreground text-sm">Loading session details...</p>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   if (!session) {
     return null;
@@ -117,8 +159,12 @@ export function CycleCountSessionDetailDialog({
         initialData={
           selectedLineItem
             ? {
-                productId: selectedLineItem.productId,
-                zoneId: selectedZoneId ?? activeZone?.zoneId,
+                productId: selectedLineItem.skuCode,
+                productName: selectedLineItem.productName,
+                zoneId: selectedZoneId ?? activeZone?.zoneId?.toString(),
+                zoneName: activeZone?.zoneName,
+                skuId: selectedLineItem.skuId?.toString(),
+                batchId: selectedLineItem.batchId?.toString(),
                 currentQty: selectedLineItem.expectedQuantity,
                 countedQty: selectedLineItem.actualQuantity,
               }
@@ -134,6 +180,7 @@ export function CycleCountSessionDetailDialog({
           selectedZoneId
             ? {
                 zoneId: selectedZoneId,
+                zoneName: activeZone?.zoneName,
               }
             : undefined
         }
@@ -163,141 +210,156 @@ export function CycleCountSessionDetailDialog({
             </button>
           </DialogHeader>
 
-          {/* Zone Tabs */}
-          <Tabs
-            value={String(activeZoneIndex)}
-            onValueChange={(v) => setActiveZoneIndex(Number(v))}
-            className="w-full"
-          >
-            <TabsList className="w-full justify-start">
+          {/* Show message if no zones */}
+          {session.zones.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <p className="text-muted-foreground">No zones or items found for this session.</p>
+            </div>
+          ) : (
+            /* Zone Tabs */
+            <Tabs
+              value={String(activeZoneIndex)}
+              onValueChange={(v) => setActiveZoneIndex(Number(v))}
+              className="w-full"
+            >
+              <TabsList className="w-full justify-start overflow-x-auto">
+                {session.zones.map((zone, index) => (
+                  <TabsTrigger
+                    key={zone.zoneId?.toString() ?? index}
+                    value={String(index)}
+                    className="shrink-0"
+                  >
+                    {zone.zoneName}
+                  </TabsTrigger>
+                ))}
+              </TabsList>
+
               {session.zones.map((zone, index) => (
-                <TabsTrigger
-                  key={zone.zoneId}
+                <TabsContent
+                  key={zone.zoneId?.toString() ?? index}
                   value={String(index)}
-                  className="shrink-0"
+                  className="mt-4 space-y-4"
                 >
-                  {zone.zoneName}
-                </TabsTrigger>
-              ))}
-            </TabsList>
+                  {/* Info Cards */}
+                  <div className="grid grid-cols-3 gap-4">
+                    {/* Assigned Worker */}
+                    <div className="rounded-lg border bg-card p-3">
+                      <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                        Assigned Worker
+                      </p>
+                      <p className="font-medium text-sm">
+                        {zone.assignedWorker?.fullName ?? "Unassigned"}
+                      </p>
+                    </div>
 
-            {session.zones.map((zone, index) => (
-              <TabsContent
-                key={zone.zoneId}
-                value={String(index)}
-                className="mt-4 space-y-4"
-              >
-                {/* Info Cards */}
-                <div className="grid grid-cols-3 gap-4">
-                  {/* Assigned Worker */}
-                  <div className="rounded-lg border bg-card p-3">
-                    <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                      Assigned Worker
-                    </p>
-                    <p className="font-medium text-sm">
-                      {zone.assignedWorker?.fullName ?? "Unassigned"}
-                    </p>
+                    {/* Verification Status */}
+                    <div className="rounded-lg border bg-card p-3">
+                      <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                        Verification Status
+                      </p>
+                      <p className="font-medium text-sm">
+                        {zone.matchedCount} of {zone.totalCount} matched
+                      </p>
+                    </div>
+
+                    {/* Count Type */}
+                    <div className="rounded-lg border bg-card p-3">
+                      <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
+                        Count Type
+                      </p>
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          "mt-0.5 rounded-sm font-semibold uppercase",
+                          session.cycleCountType?.lookupValue?.toLowerCase() ===
+                            "daily"
+                            ? "border-green-500/60 bg-green-500/10 text-green-600"
+                            : session.cycleCountType?.lookupValue?.toLowerCase() ===
+                                "weekly"
+                              ? "border-blue-500/60 bg-blue-500/10 text-blue-600"
+                              : "border-purple-500/60 bg-purple-500/10 text-purple-600",
+                        )}
+                      >
+                        {session.cycleCountType?.lookupValue ?? "Unknown"}
+                      </Badge>
+                    </div>
                   </div>
 
-                  {/* Verification Status */}
-                  <div className="rounded-lg border bg-card p-3">
-                    <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                      Verification Status
-                    </p>
-                    <p className="font-medium text-sm">
-                      {zone.matchedCount} of {zone.totalCount} matched
-                    </p>
-                  </div>
-
-                  {/* Count Type */}
-                  <div className="rounded-lg border bg-card p-3">
-                    <p className="mb-1 font-medium text-muted-foreground text-xs uppercase tracking-wide">
-                      Count Type
-                    </p>
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "mt-0.5 rounded-sm font-semibold uppercase",
-                        session.cycleCountType?.lookupValue?.toLowerCase() ===
-                          "daily"
-                          ? "border-green-500/60 bg-green-500/10 text-green-600"
-                          : session.cycleCountType?.lookupValue?.toLowerCase() ===
-                              "weekly"
-                            ? "border-blue-500/60 bg-blue-500/10 text-blue-600"
-                            : "border-purple-500/60 bg-purple-500/10 text-purple-600",
-                      )}
-                    >
-                      {session.cycleCountType?.lookupValue ?? "Unknown"}
-                    </Badge>
-                  </div>
-                </div>
-
-                {/* Line Items Table */}
-                <div className="overflow-hidden rounded-md border">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead className="w-25 font-semibold text-xs uppercase">
-                          Product ID
-                        </TableHead>
-                        <TableHead className="font-semibold text-xs uppercase">
-                          Product Name
-                        </TableHead>
-                        <TableHead className="w-30 text-center font-semibold text-xs uppercase">
-                          Expected Qty
-                        </TableHead>
-                        <TableHead className="w-30 text-center font-semibold text-xs uppercase">
-                          Counted Qty
-                        </TableHead>
-                        <TableHead className="w-25 text-center font-semibold text-xs uppercase">
-                          Variance
-                        </TableHead>
-                        <TableHead className="w-35 font-semibold text-xs uppercase">
-                          Action
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {zone.lineItems.map((item) => (
-                        <TableRow key={item._id as string}>
-                          <TableCell className="font-medium">
-                            {item.productId}
-                          </TableCell>
-                          <TableCell>{item.productName}</TableCell>
-                          <TableCell className="text-center">
-                            {item.expectedQuantity}
-                          </TableCell>
-                          <TableCell className="text-center">
-                            <Input
-                              type="number"
-                              value={item.actualQuantity}
-                              readOnly
-                              className="mx-auto h-8 w-20 text-center"
-                            />
-                          </TableCell>
-                          <TableCell className="text-center">
-                            {getVarianceDisplay(item.variance)}
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              className="text-foreground"
-                              variant="link"
-                              size="sm"
-                              onClick={() =>
-                                handleCreateAdjustment(item, zone.zoneId)
-                              }
-                            >
-                              Create Adjustment
-                            </Button>
-                          </TableCell>
+                  {/* Line Items Table */}
+                  <div className="max-h-80 overflow-auto rounded-md border">
+                    <Table>
+                      <TableHeader>
+                        <TableRow className="bg-muted/50">
+                          <TableHead className="w-25 font-semibold text-xs uppercase">
+                            SKU Code
+                          </TableHead>
+                          <TableHead className="font-semibold text-xs uppercase">
+                            Product Name
+                          </TableHead>
+                          <TableHead className="w-30 text-center font-semibold text-xs uppercase">
+                            Expected Qty
+                          </TableHead>
+                          <TableHead className="w-30 text-center font-semibold text-xs uppercase">
+                            Counted Qty
+                          </TableHead>
+                          <TableHead className="w-25 text-center font-semibold text-xs uppercase">
+                            Variance
+                          </TableHead>
+                          <TableHead className="w-35 font-semibold text-xs uppercase">
+                            Action
+                          </TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </TabsContent>
-            ))}
-          </Tabs>
+                      </TableHeader>
+                      <TableBody>
+                        {zone.lineItems.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={6} className="h-24 text-center text-muted-foreground">
+                              No items in this zone
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          zone.lineItems.map((item) => (
+                            <TableRow key={item._id?.toString()}>
+                              <TableCell className="font-medium">
+                                {item.skuCode}
+                              </TableCell>
+                              <TableCell>{item.productName}</TableCell>
+                              <TableCell className="text-center">
+                                {item.expectedQuantity}
+                              </TableCell>
+                              <TableCell className="text-center">
+                                <Input
+                                  type="number"
+                                  value={item.actualQuantity}
+                                  readOnly
+                                  className="mx-auto h-8 w-20 text-center"
+                                />
+                              </TableCell>
+                              <TableCell className="text-center">
+                                {getVarianceDisplay(item.variance)}
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  className="text-foreground"
+                                  variant="link"
+                                  size="sm"
+                                  onClick={() =>
+                                    handleCreateAdjustment(item, zone.zoneId?.toString() ?? "")
+                                  }
+                                >
+                                  Create Adjustment
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </TabsContent>
+              ))}
+            </Tabs>
+          )}
 
           {/* Footer */}
           <DialogFooter className="flex-row gap-2 sm:justify-between">

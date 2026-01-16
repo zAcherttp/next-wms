@@ -190,6 +190,31 @@ export const seedAllTestData = mutation({
       sortOrder: 2,
     });
 
+    // Zone Assignment Status types (for cycle count zone assignments)
+    const zoneAssignmentNotStartedId = await ctx.db.insert("system_lookups", {
+      lookupType: "ZoneAssignmentStatus",
+      lookupCode: "NOT_STARTED",
+      lookupValue: "Not Started",
+      description: "Zone assignment has not been started",
+      sortOrder: 1,
+    });
+
+    const zoneAssignmentInProgressId = await ctx.db.insert("system_lookups", {
+      lookupType: "ZoneAssignmentStatus",
+      lookupCode: "IN_PROGRESS",
+      lookupValue: "In Progress",
+      description: "Worker is actively counting in this zone",
+      sortOrder: 2,
+    });
+
+    const zoneAssignmentCompletedId = await ctx.db.insert("system_lookups", {
+      lookupType: "ZoneAssignmentStatus",
+      lookupCode: "COMPLETED",
+      lookupValue: "Completed",
+      description: "Zone count has been completed by the worker",
+      sortOrder: 3,
+    });
+
     // Batch Status types
     const batchActiveStatusId = await ctx.db.insert("system_lookups", {
       lookupType: "BatchStatus",
@@ -349,12 +374,20 @@ export const seedAllTestData = mutation({
       sortOrder: 2,
     });
 
+    const returnRejectedStatusId = await ctx.db.insert("system_lookups", {
+      lookupType: "ReturnStatus",
+      lookupCode: "REJECTED",
+      lookupValue: "Rejected",
+      description: "Return request has been rejected",
+      sortOrder: 3,
+    });
+
     const returnCompletedStatusId = await ctx.db.insert("system_lookups", {
       lookupType: "ReturnStatus",
       lookupCode: "COMPLETED",
       lookupValue: "Completed",
       description: "Return has been completed",
-      sortOrder: 3,
+      sortOrder: 4,
     });
 
     // Return Reason types

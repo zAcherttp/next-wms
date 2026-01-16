@@ -1,7 +1,7 @@
 "use client";
 
 import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -16,7 +16,9 @@ import {
 } from "@tanstack/react-table";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { useConvexMutation } from "@convex-dev/react-query";
 import {
+  CheckCircle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -25,10 +27,11 @@ import {
   Eye,
   Filter,
   MoreHorizontal,
+  XCircle,
 } from "lucide-react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import * as React from "react";
+import { toast } from "sonner";
+import { ReturnRequestDetailDialog } from "@/components/return-request-detail-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
@@ -62,27 +65,75 @@ import type { ReturnRequestListItem } from "@/lib/types";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 
 export function ReturnRequestsTable() {
-  const params = useParams();
-  const workspace = params.workspace as string;
   const { organizationId } = useCurrentUser();
-
   const { currentBranch } = useBranches({
     organizationId: organizationId as Id<"organizations"> | undefined,
     includeDeleted: false,
   });
 
-  const { data: returnRequests, isPending } = useQuery({
-    ...convexQuery(
-      api.returnRequest.listWithDetails,
-      organizationId && currentBranch
-        ? {
-            organizationId: organizationId as Id<"organizations">,
-            branchId: currentBranch._id,
-          }
-        : "skip",
-    ),
+  const { data: returnRequests, isLoading } = useQuery({
+    ...convexQuery(api.returnRequest.listWithDetails, {
+      organizationId: organizationId as string,
+      branchId: currentBranch?._id as string,
+    }),
     enabled: !!organizationId && !!currentBranch,
   });
+
+  // Mutations for approve and reject
+  const { mutate: approveRequest, isPending: isApproving } = useMutation({
+    mutationFn: useConvexMutation(api.returnRequest.approveReturnRequest),
+  });
+
+  const { mutate: rejectRequest, isPending: isRejecting } = useMutation({
+    mutationFn: useConvexMutation(api.returnRequest.rejectReturnRequest),
+  });
+
+  // Memoize supplier options separately to avoid recreating columns on data changes
+  const supplierOptions = React.useMemo(() => {
+    if (!returnRequests) return [];
+    return Array.from(
+      new Set(
+        returnRequests.map((rr) => rr.supplier?.name).filter(Boolean),
+      ),
+    ).map((name) => ({
+      label: name as string,
+      value: name as string,
+    }));
+  }, [returnRequests]);
+
+  const handleApprove = React.useCallback((returnRequestId: Id<"return_requests">, requestCode: string) => {
+    console.log('Approving return request:', returnRequestId, requestCode);
+    approveRequest(
+      { returnRequestId },
+      {
+        onSuccess: () => {
+          console.log('Approval successful');
+          toast.success(`Return request ${requestCode} has been approved`);
+        },
+        onError: (error) => {
+          console.error('Approval failed:', error);
+          toast.error(`Failed to approve return request: ${error.message}`);
+        },
+      },
+    );
+  }, [approveRequest]);
+
+  const handleReject = React.useCallback((returnRequestId: Id<"return_requests">, requestCode: string) => {
+    console.log('Rejecting return request:', returnRequestId, requestCode);
+    rejectRequest(
+      { returnRequestId },
+      {
+        onSuccess: () => {
+          console.log('Rejection successful');
+          toast.success(`Return request ${requestCode} has been rejected`);
+        },
+        onError: (error) => {
+          console.error('Rejection failed:', error);
+          toast.error(`Failed to reject return request: ${error.message}`);
+        },
+      },
+    );
+  }, [rejectRequest]);
 
   const columns: ColumnDef<ReturnRequestListItem>[] = React.useMemo(
     () => [
@@ -97,23 +148,12 @@ export function ReturnRequestsTable() {
         id: "supplier.name",
         accessorFn: (row) => row.supplier?.name,
         header: ({ column }) => {
-          const suppliers = returnRequests
-            ? Array.from(
-                new Set(
-                  returnRequests.map((rr) => rr.supplier?.name).filter(Boolean),
-                ),
-              ).map((name) => ({
-                label: name as string,
-                value: name as string,
-              }))
-            : [];
-
           const currentFilter = column.getFilterValue() as string[] | undefined;
 
           return (
             <FilterPopover
               label="Supplier"
-              options={suppliers}
+              options={supplierOptions}
               currentValue={currentFilter}
               onChange={(value) => column.setFilterValue(value)}
               variant="multi-select"
@@ -207,12 +247,15 @@ export function ReturnRequestsTable() {
                 label="Status"
                 options={statusFilterOptions}
                 currentValue={currentFilter}
-                onChange={(value) => column.setFilterValue(value)}
+                onChange={(value) =>
+                  column.setFilterValue(value === "all" ? undefined : value)
+                }
               />
             </div>
           );
         },
         filterFn: (row, id, value) => {
+          if (!value || value === "all") return true;
           const rowValue = row.getValue(id) as string;
           return rowValue?.toLowerCase() === value?.toLowerCase();
         },
@@ -238,6 +281,8 @@ export function ReturnRequestsTable() {
         enableHiding: false,
         cell: ({ row }) => {
           const returnRequest = row.original;
+          const status = returnRequest.returnStatus?.lookupValue?.toLowerCase();
+          const isPending = status === "pending" || status === "waiting";
 
           return (
             <DropdownMenu>
@@ -257,21 +302,47 @@ export function ReturnRequestsTable() {
                   Copy Request ID
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={`/${workspace}/return-requests/${returnRequest._id as string}`}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View details
-                  </Link>
-                </DropdownMenuItem>
+                <ReturnRequestDetailDialog
+                  returnRequestId={returnRequest._id as Id<"return_requests">}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      View details
+                    </DropdownMenuItem>
+                  }
+                />
+                {isPending && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleApprove(returnRequest._id as Id<"return_requests">, returnRequest.requestCode);
+                      }}
+                      disabled={isApproving}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                      Approve
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleReject(returnRequest._id as Id<"return_requests">, returnRequest.requestCode);
+                      }}
+                      disabled={isRejecting}
+                    >
+                      <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                      Reject
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [returnRequests, workspace],
+    [supplierOptions, handleApprove, handleReject, isApproving, isRejecting],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -285,8 +356,14 @@ export function ReturnRequestsTable() {
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
 
+  // Memoize the data to prevent unnecessary table re-renders
+  const tableData = React.useMemo(
+    () => returnRequests ?? [],
+    [returnRequests],
+  );
+
   const table = useReactTable({
-    data: returnRequests ?? [],
+    data: tableData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -304,9 +381,13 @@ export function ReturnRequestsTable() {
     },
   });
 
+  // Use a ref to avoid table dependency in useEffect
+  const tableRef = React.useRef(table);
+  tableRef.current = table;
+
   React.useEffect(() => {
-    table.getColumn("requestCode")?.setFilterValue(debouncedFilterValue);
-  }, [debouncedFilterValue, table]);
+    tableRef.current.getColumn("requestCode")?.setFilterValue(debouncedFilterValue);
+  }, [debouncedFilterValue]);
 
   const activeFiltersCount =
     sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);
@@ -317,23 +398,10 @@ export function ReturnRequestsTable() {
     setFilterValue("");
   };
 
-  if (isPending) {
+  if (isLoading) {
     return (
-      <div className="w-full space-y-4">
-        <div className="flex flex-row justify-between pb-4">
-          <div className="h-10 w-50 animate-pulse rounded bg-muted" />
-          <div className="h-10 w-25 animate-pulse rounded bg-muted" />
-        </div>
-        <div className="overflow-hidden rounded-md border">
-          <div className="bg-card p-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="mb-2 h-12 w-full animate-pulse rounded bg-muted"
-              />
-            ))}
-          </div>
-        </div>
+      <div className="flex h-40 items-center justify-center">
+        <p className="text-muted-foreground">Loading return requests...</p>
       </div>
     );
   }
@@ -456,3 +524,4 @@ export function ReturnRequestsTable() {
     </div>
   );
 }
+
