@@ -5,14 +5,14 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Doc, Id } from "@wms/backend/convex/_generated/dataModel";
 
-import { 
+import {
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  MoreHorizontal, 
-  Plus 
+  MoreHorizontal,
+  Plus,
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
@@ -73,10 +73,10 @@ function CreateCategoryDialog() {
     if (!name.trim() || !organizationId) return;
 
     mutate(
-      { 
-        name: name.trim(), 
+      {
+        name: name.trim(),
         organizationId,
-        isActive: true
+        isActive: true,
       },
       {
         onSuccess: () => {
@@ -86,7 +86,9 @@ function CreateCategoryDialog() {
         },
         onError: (error) => {
           toast.error(
-            error instanceof Error ? error.message : "Failed to create category",
+            error instanceof Error
+              ? error.message
+              : "Failed to create category",
           );
         },
       },
@@ -161,21 +163,25 @@ function CreateSubcategoryDialog({
     if (!name.trim() || !organizationId) return;
 
     mutate(
-      { 
-        name: name.trim(), 
+      {
+        name: name.trim(),
         organizationId,
         parentPath: parentCategory.path,
-        isActive: true
+        isActive: true,
       },
       {
         onSuccess: () => {
-          toast.success(`Subcategory "${name}" created under "${parentCategory.name}"`);
+          toast.success(
+            `Subcategory "${name}" created under "${parentCategory.name}"`,
+          );
           setName("");
           onOpenChange(false);
         },
         onError: (error) => {
           toast.error(
-            error instanceof Error ? error.message : "Failed to create subcategory",
+            error instanceof Error
+              ? error.message
+              : "Failed to create subcategory",
           );
         },
       },
@@ -259,7 +265,9 @@ function EditCategoryDialog({
         },
         onError: (error) => {
           toast.error(
-            error instanceof Error ? error.message : "Failed to update category",
+            error instanceof Error
+              ? error.message
+              : "Failed to update category",
           );
         },
       },
@@ -328,7 +336,9 @@ function ActionsCell({ category }: { category: CategoryItem }) {
         },
         onError: (error) => {
           toast.error(
-            error instanceof Error ? error.message : "Failed to delete category",
+            error instanceof Error
+              ? error.message
+              : "Failed to delete category",
           );
         },
       },
@@ -341,12 +351,14 @@ function ActionsCell({ category }: { category: CategoryItem }) {
       {
         onSuccess: () => {
           toast.success(
-            `Category "${category.name}" ${category.isActive ? "deactivated" : "activated"}`
+            `Category "${category.name}" ${category.isActive ? "deactivated" : "activated"}`,
           );
         },
         onError: (error) => {
           toast.error(
-            error instanceof Error ? error.message : "Failed to update category",
+            error instanceof Error
+              ? error.message
+              : "Failed to update category",
           );
         },
       },
@@ -389,7 +401,7 @@ function ActionsCell({ category }: { category: CategoryItem }) {
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="text-destructive"
               onClick={handleDelete}
             >
@@ -432,7 +444,7 @@ function CategoryRow({
   return (
     <>
       <TableRow>
-        <TableCell 
+        <TableCell
           onClick={toggleExpand}
           className={hasChildren ? "cursor-pointer" : ""}
         >
@@ -477,11 +489,7 @@ function CategoryRow({
       {hasChildren &&
         isExpanded &&
         category.children?.map((child) => (
-          <CategoryRow
-            key={child._id}
-            category={child}
-            level={level + 1}
-          />
+          <CategoryRow key={child._id} category={child} level={level + 1} />
         ))}
     </>
   );
@@ -500,20 +508,20 @@ export function CategoriesTable() {
   // Build hierarchical structure from flat list
   const buildTree = (items: CategoryItem[]): CategoryItem[] => {
     if (!items) return [];
-    
+
     const itemMap = new Map<string, CategoryItem>();
     const rootItems: CategoryItem[] = [];
 
     // First pass: create map of all items
-    items.forEach(item => {
+    items.forEach((item) => {
       itemMap.set(item.path, { ...item, children: [] });
     });
 
     // Second pass: build tree
-    items.forEach(item => {
+    items.forEach((item) => {
       const categoryItem = itemMap.get(item.path)!;
       const pathParts = item.path.split(".");
-      
+
       if (pathParts.length === 1) {
         // Root level
         rootItems.push(categoryItem);
@@ -541,7 +549,7 @@ export function CategoriesTable() {
   const totalPages = Math.ceil(hierarchicalCategories.length / pageSize);
   const paginatedCategories = hierarchicalCategories.slice(
     currentPage * pageSize,
-    (currentPage + 1) * pageSize
+    (currentPage + 1) * pageSize,
   );
 
   const canPreviousPage = currentPage > 0;
@@ -580,10 +588,7 @@ export function CategoriesTable() {
           <TableBody>
             {paginatedCategories.length ? (
               paginatedCategories.map((category) => (
-                <CategoryRow
-                  key={category._id}
-                  category={category}
-                />
+                <CategoryRow key={category._id} category={category} />
               ))
             ) : (
               <TableRow>
@@ -624,8 +629,8 @@ export function CategoriesTable() {
         </div>
         <div className="flex w-full items-center gap-8 lg:w-fit">
           <div className="flex w-fit items-center justify-center font-medium text-sm">
-            Showing {paginatedCategories.length} category(s) of {totalRootCategories}{" "}
-            total
+            Showing {paginatedCategories.length} category(s) of{" "}
+            {totalRootCategories} total
           </div>
           <div className="ml-auto flex items-center gap-2 lg:ml-0">
             <Button

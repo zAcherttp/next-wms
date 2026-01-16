@@ -92,12 +92,18 @@ function CreateSupplierDialog() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.email.trim() || !formData.brandId || !organizationId) return;
+    if (
+      !formData.name.trim() ||
+      !formData.email.trim() ||
+      !formData.brandId ||
+      !organizationId
+    )
+      return;
 
     console.log("Creating supplier with brandId:", formData.brandId);
-    
+
     mutate(
-      { 
+      {
         name: formData.name,
         contactPerson: formData.contactPerson,
         email: formData.email,
@@ -105,7 +111,7 @@ function CreateSupplierDialog() {
         defaultLeadTimeDays: formData.defaultLeadTimeDays,
         brandId: formData.brandId as Id<"brands">,
         organizationId,
-        isActive: true
+        isActive: true,
       },
       {
         onSuccess: () => {
@@ -122,7 +128,9 @@ function CreateSupplierDialog() {
         },
         onError: (error) => {
           toast.error(
-            error instanceof Error ? error.message : "Failed to create supplier",
+            error instanceof Error
+              ? error.message
+              : "Failed to create supplier",
           );
         },
       },
@@ -151,12 +159,14 @@ function CreateSupplierDialog() {
               <Input
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="Enter supplier name..."
                 autoFocus
               />
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="brand-select">Brand *</Label>
               <Select
@@ -178,13 +188,15 @@ function CreateSupplierDialog() {
                 </SelectContent>
               </Select>
             </div>
-            
+
             <div className="grid gap-2">
               <Label htmlFor="contactPerson">Contact Person *</Label>
               <Input
                 id="contactPerson"
                 value={formData.contactPerson}
-                onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, contactPerson: e.target.value })
+                }
                 placeholder="Enter contact person name..."
               />
             </div>
@@ -194,7 +206,9 @@ function CreateSupplierDialog() {
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 placeholder="supplier@example.com"
               />
             </div>
@@ -203,7 +217,9 @@ function CreateSupplierDialog() {
               <Input
                 id="phone"
                 value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
                 placeholder="+84 123 456 789"
               />
             </div>
@@ -213,7 +229,12 @@ function CreateSupplierDialog() {
                 id="leadTime"
                 type="number"
                 value={formData.defaultLeadTimeDays}
-                onChange={(e) => setFormData({...formData, defaultLeadTimeDays: Number(e.target.value)})}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    defaultLeadTimeDays: Number(e.target.value),
+                  })
+                }
                 placeholder="7"
                 min="0"
               />
@@ -227,7 +248,15 @@ function CreateSupplierDialog() {
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending || !formData.name.trim() || !formData.email.trim() || !formData.brandId}>
+            <Button
+              type="submit"
+              disabled={
+                isPending ||
+                !formData.name.trim() ||
+                !formData.email.trim() ||
+                !formData.brandId
+              }
+            >
               {isPending ? "Creating..." : "Create"}
             </Button>
           </DialogFooter>
@@ -282,7 +311,9 @@ function EditSupplierDialog({
         },
         onError: (error) => {
           toast.error(
-            error instanceof Error ? error.message : "Failed to update supplier",
+            error instanceof Error
+              ? error.message
+              : "Failed to update supplier",
           );
         },
       },
@@ -303,7 +334,9 @@ function EditSupplierDialog({
               <Input
                 id="edit-name"
                 value={formData.name}
-                onChange={(e) => setFormData({...formData, name: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
                 placeholder="Enter supplier name..."
                 autoFocus
               />
@@ -313,7 +346,9 @@ function EditSupplierDialog({
               <Input
                 id="edit-contactPerson"
                 value={formData.contactPerson}
-                onChange={(e) => setFormData({...formData, contactPerson: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, contactPerson: e.target.value })
+                }
                 placeholder="Enter contact person name..."
               />
             </div>
@@ -323,7 +358,9 @@ function EditSupplierDialog({
                 id="edit-email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData({...formData, email: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
                 placeholder="supplier@example.com"
               />
             </div>
@@ -332,7 +369,9 @@ function EditSupplierDialog({
               <Input
                 id="edit-phone"
                 value={formData.phone}
-                onChange={(e) => setFormData({...formData, phone: e.target.value})}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
                 placeholder="+84 123 456 789"
               />
             </div>
@@ -342,7 +381,12 @@ function EditSupplierDialog({
                 id="edit-leadTime"
                 type="number"
                 value={formData.defaultLeadTimeDays}
-                onChange={(e) => setFormData({...formData, defaultLeadTimeDays: Number(e.target.value)})}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    defaultLeadTimeDays: Number(e.target.value),
+                  })
+                }
                 placeholder="7"
                 min="0"
               />
@@ -356,7 +400,12 @@ function EditSupplierDialog({
             >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending || !formData.name.trim() || !formData.email.trim()}>
+            <Button
+              type="submit"
+              disabled={
+                isPending || !formData.name.trim() || !formData.email.trim()
+              }
+            >
               {isPending ? "Saving..." : "Save Changes"}
             </Button>
           </DialogFooter>
@@ -389,7 +438,9 @@ function ActionsCell({ supplier }: { supplier: SupplierTableItem }) {
         },
         onError: (error) => {
           toast.error(
-            error instanceof Error ? error.message : "Failed to delete supplier",
+            error instanceof Error
+              ? error.message
+              : "Failed to delete supplier",
           );
         },
       },
@@ -402,12 +453,14 @@ function ActionsCell({ supplier }: { supplier: SupplierTableItem }) {
       {
         onSuccess: () => {
           toast.success(
-            `Supplier "${supplier.name}" ${supplier.isActive ? "deactivated" : "activated"}`
+            `Supplier "${supplier.name}" ${supplier.isActive ? "deactivated" : "activated"}`,
           );
         },
         onError: (error) => {
           toast.error(
-            error instanceof Error ? error.message : "Failed to update supplier",
+            error instanceof Error
+              ? error.message
+              : "Failed to update supplier",
           );
         },
       },
@@ -447,7 +500,7 @@ function ActionsCell({ supplier }: { supplier: SupplierTableItem }) {
               </DropdownMenuItem>
             )}
             <DropdownMenuSeparator />
-            <DropdownMenuItem 
+            <DropdownMenuItem
               className="text-destructive"
               onClick={handleDelete}
             >
@@ -491,17 +544,33 @@ export const columns: ColumnDef<SupplierTableItem>[] = [
   {
     accessorKey: "email",
     header: () => <span className="font-medium">Email</span>,
-    cell: ({ row }) => <div className="text-muted-foreground text-sm">{row.getValue("email")}</div>,
+    cell: ({ row }) => (
+      <div className="text-muted-foreground text-sm">
+        {row.getValue("email")}
+      </div>
+    ),
   },
   {
     accessorKey: "phone",
     header: () => <span className="font-medium">Phone</span>,
-    cell: ({ row }) => <div className="text-muted-foreground text-sm">{row.getValue("phone")}</div>,
+    cell: ({ row }) => (
+      <div className="text-muted-foreground text-sm">
+        {row.getValue("phone")}
+      </div>
+    ),
   },
   {
     accessorKey: "defaultLeadTimeDays",
-    header: () => <div className="text-center"><span className="font-medium">Lead Time</span></div>,
-    cell: ({ row }) => <div className="text-center">{row.getValue("defaultLeadTimeDays")} days</div>,
+    header: () => (
+      <div className="text-center">
+        <span className="font-medium">Lead Time</span>
+      </div>
+    ),
+    cell: ({ row }) => (
+      <div className="text-center">
+        {row.getValue("defaultLeadTimeDays")} days
+      </div>
+    ),
   },
   {
     id: "actions",
@@ -536,7 +605,7 @@ export function SuppliersTable() {
           name: s.name,
           brandId: s.brandId,
           brandName: s.brandName || "<<< MISSING >>>",
-          fullData: s
+          fullData: s,
         });
       });
     }

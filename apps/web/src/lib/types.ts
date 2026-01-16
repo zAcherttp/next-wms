@@ -175,7 +175,6 @@ export type ProductListItem = {
 
 export type Branch = Doc<"branches">;
 
-
 // ============================================================
 // Receive Session Types
 // ============================================================
