@@ -19,6 +19,8 @@ import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
 import type * as inventory from "../inventory.js";
 import type * as notifications from "../notifications.js";
+import type * as outboundOrders from "../outboundOrders.js";
+import type * as pickingSessions from "../pickingSessions.js";
 import type * as privateData from "../privateData.js";
 import type * as products from "../products.js";
 import type * as purchaseOrders from "../purchaseOrders.js";
@@ -46,6 +48,8 @@ declare const fullApi: ApiFromModules<{
   http: typeof http;
   inventory: typeof inventory;
   notifications: typeof notifications;
+  outboundOrders: typeof outboundOrders;
+  pickingSessions: typeof pickingSessions;
   privateData: typeof privateData;
   products: typeof products;
   purchaseOrders: typeof purchaseOrders;
