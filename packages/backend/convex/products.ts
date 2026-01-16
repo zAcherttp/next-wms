@@ -89,6 +89,163 @@ export const list = query({
 });
 
 /**
+ * LIST WITH DETAILS - Get all products with category, brand, variants info (no pagination)
+ */
+export const listWithDetails = query({
+  args: {
+    organizationId: v.id("organizations"),
+    categoryId: v.optional(v.id("categories")),
+    brandId: v.optional(v.id("brands")),
+    isActive: v.optional(v.boolean()),
+    includeDeleted: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const {
+      organizationId,
+      categoryId,
+      brandId,
+      isActive,
+      includeDeleted = false,
+    } = args;
+
+    let queryBuilder = ctx.db
+      .query("products")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organizationId),
+      );
+
+    // Apply filters
+    if (categoryId) {
+      queryBuilder = queryBuilder.filter((q) =>
+        q.eq(q.field("categoryId"), categoryId),
+      );
+    }
+
+    if (brandId) {
+      queryBuilder = queryBuilder.filter((q) =>
+        q.eq(q.field("brandId"), brandId),
+      );
+    }
+
+    if (isActive !== undefined) {
+      queryBuilder = queryBuilder.filter((q) =>
+        q.eq(q.field("isActive"), isActive),
+      );
+    }
+
+    if (!includeDeleted) {
+      queryBuilder = queryBuilder.filter((q) =>
+        q.eq(q.field("isDeleted"), false),
+      );
+    }
+
+    const products = await queryBuilder.order("desc").collect();
+
+    // Enrich products with related data
+    const enrichedProducts = await Promise.all(
+      products.map(async (product) => {
+        // Get category
+        const category = await ctx.db.get(product.categoryId);
+
+        // Get brand
+        const brand = await ctx.db.get(product.brandId);
+
+        // Get storage requirement type
+        const storageRequirement = await ctx.db.get(
+          product.storageRequirementTypeId,
+        );
+
+        // Get tracking method type
+        const trackingMethod = await ctx.db.get(product.trackingMethodTypeId);
+
+        // Get variants with barcodes
+        const variants = await ctx.db
+          .query("product_variants")
+          .withIndex("productId", (q) => q.eq("productId", product._id))
+          .filter((q) => q.eq(q.field("isDeleted"), false))
+          .collect();
+
+        const variantsWithDetails = await Promise.all(
+          variants.map(async (variant) => {
+            // Get barcodes
+            const barcodes = await ctx.db
+              .query("product_barcodes")
+              .withIndex("skuId", (q) => q.eq("skuId", variant._id))
+              .collect();
+
+            // Get barcode types
+            const barcodesWithTypes = await Promise.all(
+              barcodes.map(async (barcode) => {
+                const barcodeType = await ctx.db.get(barcode.barcodeTypeId);
+                return {
+                  ...barcode,
+                  barcodeType: barcodeType
+                    ? {
+                        _id: barcodeType._id,
+                        lookupValue: barcodeType.lookupValue,
+                        lookupCode: barcodeType.lookupCode,
+                      }
+                    : null,
+                };
+              }),
+            );
+
+            // Get unit of measure
+            const unitOfMeasure = await ctx.db.get(variant.unitOfMeasureId);
+
+            return {
+              ...variant,
+              barcodes: barcodesWithTypes,
+              unitOfMeasure: unitOfMeasure
+                ? {
+                    _id: unitOfMeasure._id,
+                    lookupValue: unitOfMeasure.lookupValue,
+                    lookupCode: unitOfMeasure.lookupCode,
+                  }
+                : null,
+            };
+          }),
+        );
+
+        return {
+          ...product,
+          category: category
+            ? {
+                _id: category._id,
+                name: category.name,
+                path: category.path,
+              }
+            : null,
+          brand: brand
+            ? {
+                _id: brand._id,
+                name: brand.name,
+              }
+            : null,
+          storageRequirement: storageRequirement
+            ? {
+                _id: storageRequirement._id,
+                lookupValue: storageRequirement.lookupValue,
+                lookupCode: storageRequirement.lookupCode,
+              }
+            : null,
+          trackingMethod: trackingMethod
+            ? {
+                _id: trackingMethod._id,
+                lookupValue: trackingMethod.lookupValue,
+                lookupCode: trackingMethod.lookupCode,
+              }
+            : null,
+          variants: variantsWithDetails,
+        };
+      }),
+    );
+
+    return enrichedProducts;
+  },
+});
+
+/**
  * GET - Get a single product by ID
  */
 export const get = query({

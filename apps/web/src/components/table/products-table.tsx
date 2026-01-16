@@ -7,14 +7,21 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Edit,
+  Eye,
   MoreHorizontal,
+  Trash2,
 } from "lucide-react";
+import { useMemo, useState } from "react";
 import { CreateProductDialog } from "@/components/products/create-product-dialog";
+import { DeleteProductDialog } from "@/components/products/delete-product-dialog";
+import { EditProductDialog } from "@/components/products/edit-product-dialog";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,22 +48,37 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { type ProductListItem, useProductsList } from "@/hooks/use-products";
 
-// Product type for the table
+// Product table item type - flattened view showing one row per variant
 export type ProductTableItem = {
   _id: string;
+  productId: string;
+  variantId: string;
   barcode: string;
   sku: string;
   name: string;
   category: string;
   brand: string;
-  variant: string;
-  zoneType: string;
-  itemType: string;
+  variantDescription: string;
+  storageRequirement: string;
+  trackingMethod: string;
+  costPrice: number;
+  sellingPrice: number;
+  isActive: boolean;
 };
 
 // Actions Cell Component
-function ActionsCell({ product }: { product: ProductTableItem }) {
+function ActionsCell({
+  product,
+  onEdit,
+  onDelete,
+}: {
+  product: ProductTableItem;
+  onEdit: (productId: Id<"products">) => void;
+  onDelete: (productId: Id<"products">, name: string) => void;
+}) {
   return (
     <div className="flex justify-end">
       <DropdownMenu>
@@ -69,10 +91,24 @@ function ActionsCell({ product }: { product: ProductTableItem }) {
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>View details</DropdownMenuItem>
-          <DropdownMenuItem>Edit product</DropdownMenuItem>
+          <DropdownMenuItem>
+            <Eye className="mr-2 h-4 w-4" />
+            View details
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            onClick={() => onEdit(product.productId as Id<"products">)}
+          >
+            <Edit className="mr-2 h-4 w-4" />
+            Edit product
+          </DropdownMenuItem>
           <DropdownMenuSeparator />
-          <DropdownMenuItem className="text-destructive">
+          <DropdownMenuItem
+            className="text-destructive"
+            onClick={() =>
+              onDelete(product.productId as Id<"products">, product.name)
+            }
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
             Delete
           </DropdownMenuItem>
         </DropdownMenuContent>
@@ -86,13 +122,15 @@ export const columns: ColumnDef<ProductTableItem>[] = [
     accessorKey: "barcode",
     header: () => <span className="font-medium">Barcode</span>,
     cell: ({ row }) => (
-      <TableCellFirst>{row.getValue("barcode")}</TableCellFirst>
+      <TableCellFirst>{row.getValue("barcode") || "-"}</TableCellFirst>
     ),
   },
   {
     accessorKey: "sku",
     header: () => <span className="font-medium">SKU</span>,
-    cell: ({ row }) => <div>{row.getValue("sku")}</div>,
+    cell: ({ row }) => (
+      <div className="font-mono text-sm">{row.getValue("sku")}</div>
+    ),
   },
   {
     accessorKey: "name",
@@ -104,27 +142,57 @@ export const columns: ColumnDef<ProductTableItem>[] = [
   {
     accessorKey: "category",
     header: () => <span className="font-medium">Category</span>,
-    cell: ({ row }) => <div>{row.getValue("category")}</div>,
+    cell: ({ row }) => <div>{row.getValue("category") || "-"}</div>,
   },
   {
     accessorKey: "brand",
     header: () => <span className="font-medium">Brand</span>,
-    cell: ({ row }) => <div>{row.getValue("brand")}</div>,
+    cell: ({ row }) => <div>{row.getValue("brand") || "-"}</div>,
   },
   {
-    accessorKey: "variant",
+    accessorKey: "variantDescription",
     header: () => <span className="font-medium">Variant</span>,
-    cell: ({ row }) => <div>{row.getValue("variant")}</div>,
+    cell: ({ row }) => <div>{row.getValue("variantDescription") || "-"}</div>,
   },
   {
-    accessorKey: "zoneType",
-    header: () => <span className="font-medium">Zone Type</span>,
-    cell: ({ row }) => <div>{row.getValue("zoneType")}</div>,
+    accessorKey: "storageRequirement",
+    header: () => <span className="font-medium">Storage</span>,
+    cell: ({ row }) => <div>{row.getValue("storageRequirement") || "-"}</div>,
   },
   {
-    accessorKey: "itemType",
-    header: () => <span className="font-medium">Item Type</span>,
-    cell: ({ row }) => <div>{row.getValue("itemType")}</div>,
+    accessorKey: "trackingMethod",
+    header: () => <span className="font-medium">Tracking</span>,
+    cell: ({ row }) => <div>{row.getValue("trackingMethod") || "-"}</div>,
+  },
+  {
+    accessorKey: "costPrice",
+    header: () => <span className="block text-right font-medium">Cost</span>,
+    cell: ({ row }) => {
+      const price = row.getValue("costPrice") as number;
+      return (
+        <div className="text-right">
+          {price?.toLocaleString("vi-VN", {
+            style: "currency",
+            currency: "VND",
+          }) ?? "-"}
+        </div>
+      );
+    },
+  },
+  {
+    accessorKey: "sellingPrice",
+    header: () => <span className="block text-right font-medium">Price</span>,
+    cell: ({ row }) => {
+      const price = row.getValue("sellingPrice") as number;
+      return (
+        <div className="text-right">
+          {price?.toLocaleString("vi-VN", {
+            style: "currency",
+            currency: "VND",
+          }) ?? "-"}
+        </div>
+      );
+    },
   },
   {
     id: "actions",
@@ -134,54 +202,125 @@ export const columns: ColumnDef<ProductTableItem>[] = [
       </div>
     ),
     enableHiding: false,
-    cell: ({ row }) => {
-      return <ActionsCell product={row.original} />;
-    },
+    cell: () => null, // Will be overridden in component
   },
 ];
 
+// Helper function to flatten products into table rows
+function flattenProductsToTableItems(
+  products: ProductListItem[],
+): ProductTableItem[] {
+  const items: ProductTableItem[] = [];
+
+  for (const product of products) {
+    const variants = product.variants ?? [];
+
+    if (variants.length === 0) {
+      // Product has no variants - show product without variant info
+      items.push({
+        _id: `${product._id}-no-variant`,
+        productId: product._id,
+        variantId: "",
+        barcode: "",
+        sku: "-",
+        name: product.name,
+        category: product.category?.name ?? "",
+        brand: product.brand?.name ?? "",
+        variantDescription: "-",
+        storageRequirement: product.storageRequirement?.lookupValue ?? "",
+        trackingMethod: product.trackingMethod?.lookupValue ?? "",
+        costPrice: 0,
+        sellingPrice: 0,
+        isActive: product.isActive,
+      });
+    } else {
+      // Create one row per variant
+      for (const variant of variants) {
+        const primaryBarcode = variant.barcodes?.[0]?.barcodeValue ?? "";
+
+        items.push({
+          _id: `${product._id}-${variant._id}`,
+          productId: product._id,
+          variantId: variant._id,
+          barcode: primaryBarcode,
+          sku: variant.skuCode,
+          name: product.name,
+          category: product.category?.name ?? "",
+          brand: product.brand?.name ?? "",
+          variantDescription: variant.description,
+          storageRequirement: product.storageRequirement?.lookupValue ?? "",
+          trackingMethod: product.trackingMethod?.lookupValue ?? "",
+          costPrice: variant.costPrice,
+          sellingPrice: variant.sellingPrice,
+          isActive: product.isActive && variant.isActive,
+        });
+      }
+    }
+  }
+
+  return items;
+}
+
 export function ProductsTable() {
-  // Mock data for testing
-  const products: ProductTableItem[] = [
-    {
-      _id: "1",
-      barcode: "",
-      sku: "",
-      name: "PROD-01",
-      category: "",
-      brand: "",
-      variant: "",
-      zoneType: "",
-      itemType: "",
-    },
-    {
-      _id: "2",
-      barcode: "",
-      sku: "",
-      name: "PROD-02",
-      category: "",
-      brand: "",
-      variant: "",
-      zoneType: "",
-      itemType: "",
-    },
-    {
-      _id: "3",
-      barcode: "",
-      sku: "",
-      name: "PROD-03",
-      category: "",
-      brand: "",
-      variant: "",
-      zoneType: "",
-      itemType: "",
-    },
-  ];
-  const isLoading = false;
+  const { organizationId } = useCurrentUser();
+
+  // Dialog states
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedProductId, setSelectedProductId] =
+    useState<Id<"products"> | null>(null);
+  const [selectedProductName, setSelectedProductName] = useState("");
+
+  // Fetch products from Convex
+  const {
+    products: rawProducts,
+    isPending,
+    error,
+  } = useProductsList({
+    organizationId: organizationId,
+  });
+
+  // Transform products to table items
+  const products = useMemo(
+    () => flattenProductsToTableItems(rawProducts as ProductListItem[]),
+    [rawProducts],
+  );
+
+  // Handle edit
+  const handleEdit = (productId: Id<"products">) => {
+    setSelectedProductId(productId);
+    setEditDialogOpen(true);
+  };
+
+  // Handle delete
+  const handleDelete = (productId: Id<"products">, name: string) => {
+    setSelectedProductId(productId);
+    setSelectedProductName(name);
+    setDeleteDialogOpen(true);
+  };
+
+  // Dynamic columns with callbacks
+  const tableColumns = useMemo(() => {
+    return columns.map((col) => {
+      if (col.id === "actions") {
+        return {
+          ...col,
+          cell: ({ row }: { row: { original: ProductTableItem } }) => (
+            <ActionsCell
+              product={row.original}
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+            />
+          ),
+        };
+      }
+      return col;
+    });
+  }, []);
 
   const table = useReactTable({
     data: products ?? [],
-    columns,
+    columns: tableColumns,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
     initialState: {
@@ -191,10 +330,20 @@ export function ProductsTable() {
     },
   });
 
-  if (isLoading) {
+  if (isPending) {
     return (
       <div className="flex h-40 items-center justify-center">
         <p className="text-muted-foreground">Loading products...</p>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex h-40 items-center justify-center">
+        <p className="text-destructive">
+          Error loading products: {error.message}
+        </p>
       </div>
     );
   }
@@ -323,6 +472,21 @@ export function ProductsTable() {
           </div>
         </div>
       </div>
+
+      {/* Edit Product Dialog */}
+      <EditProductDialog
+        open={editDialogOpen}
+        onOpenChange={setEditDialogOpen}
+        productId={selectedProductId}
+      />
+
+      {/* Delete Product Dialog */}
+      <DeleteProductDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        productId={selectedProductId}
+        productName={selectedProductName}
+      />
     </div>
   );
 }
