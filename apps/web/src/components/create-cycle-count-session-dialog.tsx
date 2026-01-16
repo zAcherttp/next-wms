@@ -75,9 +75,12 @@ export const CreateCycleCountSessionDialog = React.memo(
 
     // Fetch storage zones for the current branch
     const { data: storageZones } = useQuery({
-      ...convexQuery(api.cycleCount.getStorageZones, {
-        branchId: currentBranch?._id as Id<"branches">,
-      }),
+      ...convexQuery(
+        api.cycleCount.getStorageZones,
+        currentBranch?._id
+          ? { branchId: currentBranch._id as Id<"branches"> }
+          : "skip",
+      ),
       enabled: !!currentBranch?._id,
     });
 

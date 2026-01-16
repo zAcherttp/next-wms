@@ -1,7 +1,7 @@
 "use client";
 
 import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -16,7 +16,9 @@ import {
 } from "@tanstack/react-table";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { useConvexMutation } from "@convex-dev/react-query";
 import {
+  CheckCircle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
@@ -25,8 +27,10 @@ import {
   Eye,
   Filter,
   MoreHorizontal,
+  XCircle,
 } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
 import { ReturnRequestDetailDialog } from "@/components/return-request-detail-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
@@ -75,6 +79,15 @@ export function ReturnRequestsTable() {
     enabled: !!organizationId && !!currentBranch,
   });
 
+  // Mutations for approve and reject
+  const { mutate: approveRequest, isPending: isApproving } = useMutation({
+    mutationFn: useConvexMutation(api.returnRequest.approveReturnRequest),
+  });
+
+  const { mutate: rejectRequest, isPending: isRejecting } = useMutation({
+    mutationFn: useConvexMutation(api.returnRequest.rejectReturnRequest),
+  });
+
   // Memoize supplier options separately to avoid recreating columns on data changes
   const supplierOptions = React.useMemo(() => {
     if (!returnRequests) return [];
@@ -87,6 +100,40 @@ export function ReturnRequestsTable() {
       value: name as string,
     }));
   }, [returnRequests]);
+
+  const handleApprove = React.useCallback((returnRequestId: Id<"return_requests">, requestCode: string) => {
+    console.log('Approving return request:', returnRequestId, requestCode);
+    approveRequest(
+      { returnRequestId },
+      {
+        onSuccess: () => {
+          console.log('Approval successful');
+          toast.success(`Return request ${requestCode} has been approved`);
+        },
+        onError: (error) => {
+          console.error('Approval failed:', error);
+          toast.error(`Failed to approve return request: ${error.message}`);
+        },
+      },
+    );
+  }, [approveRequest]);
+
+  const handleReject = React.useCallback((returnRequestId: Id<"return_requests">, requestCode: string) => {
+    console.log('Rejecting return request:', returnRequestId, requestCode);
+    rejectRequest(
+      { returnRequestId },
+      {
+        onSuccess: () => {
+          console.log('Rejection successful');
+          toast.success(`Return request ${requestCode} has been rejected`);
+        },
+        onError: (error) => {
+          console.error('Rejection failed:', error);
+          toast.error(`Failed to reject return request: ${error.message}`);
+        },
+      },
+    );
+  }, [rejectRequest]);
 
   const columns: ColumnDef<ReturnRequestListItem>[] = React.useMemo(
     () => [
@@ -234,6 +281,8 @@ export function ReturnRequestsTable() {
         enableHiding: false,
         cell: ({ row }) => {
           const returnRequest = row.original;
+          const status = returnRequest.returnStatus?.lookupValue?.toLowerCase();
+          const isPending = status === "pending" || status === "waiting";
 
           return (
             <DropdownMenu>
@@ -262,13 +311,38 @@ export function ReturnRequestsTable() {
                     </DropdownMenuItem>
                   }
                 />
+                {isPending && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleApprove(returnRequest._id as Id<"return_requests">, returnRequest.requestCode);
+                      }}
+                      disabled={isApproving}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                      Approve
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleReject(returnRequest._id as Id<"return_requests">, returnRequest.requestCode);
+                      }}
+                      disabled={isRejecting}
+                    >
+                      <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                      Reject
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [supplierOptions],
+    [supplierOptions, handleApprove, handleReject, isApproving, isRejecting],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);

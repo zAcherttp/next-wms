@@ -27,6 +27,7 @@ import {
   Play,
   Trash2,
 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
 import { CreateCycleCountSessionDialog } from "@/components/create-cycle-count-session-dialog";
 import { CycleCountSessionDetailDialog } from "@/components/cycle-count-session-detail-dialog";
@@ -63,6 +64,8 @@ import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 
 export function CycleCountSessionsTable() {
   const { organizationId } = useCurrentUser();
+  const router = useRouter();
+  const params = useParams();
 
   const { currentBranch } = useBranches({
     organizationId: organizationId as Id<"organizations"> | undefined,
@@ -70,11 +73,16 @@ export function CycleCountSessionsTable() {
   });
 
   const { data: cycleCountSessions, isLoading } = useQuery({
-    ...convexQuery(api.cycleCount.listWithDetails, {
-      organizationId: organizationId as string,
-      branchId: currentBranch?._id as string,
-    }),
-    enabled: !!organizationId && !!currentBranch,
+    ...convexQuery(
+      api.cycleCount.listWithDetails,
+      organizationId && currentBranch?._id
+        ? {
+            organizationId: organizationId as string,
+            branchId: currentBranch._id as string,
+          }
+        : "skip",
+    ),
+    enabled: !!organizationId && !!currentBranch?._id,
   });
 
   // Detail dialog state
@@ -236,8 +244,16 @@ export function CycleCountSessionsTable() {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                {status === "active" || status === "pending" ? (
-                  <DropdownMenuItem>
+                {status === "active" ||
+                status === "pending" ||
+                status === "in progress" ? (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      router.push(
+                        `/${params.workspace}/inventory/cycle-count/${session._id}/proceed`,
+                      )
+                    }
+                  >
                     <Play className="mr-2 h-4 w-4" />
                     Proceed
                   </DropdownMenuItem>
@@ -261,7 +277,7 @@ export function CycleCountSessionsTable() {
         },
       },
     ],
-    [handleViewDetailsCallback],
+    [handleViewDetailsCallback, router, params.workspace],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);

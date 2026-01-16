@@ -2,6 +2,59 @@ import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
 
+export const seedZoneAssignmentStatuses = mutation({
+  args: {},
+  handler: async (ctx) => {
+    // Check if the lookups already exist
+    const existing = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType", (q) => q.eq("lookupType", "ZoneAssignmentStatus"))
+      .collect();
+    
+    if (existing.length > 0) {
+      return { 
+        message: "ZoneAssignmentStatus lookups already exist", 
+        count: existing.length,
+        statuses: existing.map(s => s.lookupCode)
+      };
+    }
+
+    // Insert the three required statuses
+    const notStartedId = await ctx.db.insert("system_lookups", {
+      lookupType: "ZoneAssignmentStatus",
+      lookupCode: "NOT_STARTED",
+      lookupValue: "Not Started",
+      description: "Zone assignment has not been started",
+      sortOrder: 1,
+    });
+
+    const inProgressId = await ctx.db.insert("system_lookups", {
+      lookupType: "ZoneAssignmentStatus",
+      lookupCode: "IN_PROGRESS",
+      lookupValue: "In Progress",
+      description: "Worker is actively counting in this zone",
+      sortOrder: 2,
+    });
+
+    const completedId = await ctx.db.insert("system_lookups", {
+      lookupType: "ZoneAssignmentStatus",
+      lookupCode: "COMPLETED",
+      lookupValue: "Completed",
+      description: "Zone count has been completed by the worker",
+      sortOrder: 3,
+    });
+
+    return { 
+      message: "Successfully created ZoneAssignmentStatus lookups",
+      ids: {
+        notStartedId,
+        inProgressId,
+        completedId
+      }
+    };
+  },
+});
+
 // ================================================================
 // REFERENCE DATA QUERIES
 // ================================================================
@@ -389,14 +442,11 @@ export const createCycleCountSession = mutation({
       sessionStatusTypeId: args.sessionStatusTypeId,
     });
 
-    // Step 3: Get the "not_started" status for zone assignments
+    // Step 3: Get the "not_started" status for zone assignments using the compound index
     const notStartedStatus = await ctx.db
       .query("system_lookups")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("lookupType"), "ZoneAssignmentStatus"),
-          q.eq(q.field("lookupCode"), "NOT_STARTED"),
-        ),
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ZoneAssignmentStatus").eq("lookupCode", "NOT_STARTED")
       )
       .first();
 
@@ -511,6 +561,182 @@ export const viewCycleCountSessionDetail = query({
       zoneAssignments,
       lineItems,
       inventoryTransactions,
+    };
+  },
+});
+
+/**
+ * getSessionDetailForDialog
+ *
+ * Purpose: Retrieves a cycle count session with all enriched data for the detail dialog
+ *
+ * Process:
+ * 1. Fetches the work session by ID
+ * 2. Fetches session type, cycle count type, and status lookups
+ * 3. Fetches the user who created the session
+ * 4. Queries all zone assignments with zone details and assigned users
+ * 5. Queries all line items with SKU and product details
+ * 6. Groups line items by zone for display
+ * 7. Returns the complete enriched session data
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const getSessionDetailForDialog = query({
+  args: {
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Fetch the work session by ID
+    const session = await ctx.db.get(args.sessionId as Id<"work_sessions">);
+
+    if (!session) {
+      return null;
+    }
+
+    // Step 2: Fetch lookups
+    const cycleCountType = session.cycleCountTypeId
+      ? await ctx.db.get(session.cycleCountTypeId)
+      : null;
+
+    const sessionStatus = await ctx.db.get(session.sessionStatusTypeId);
+
+    // Step 3: Fetch the user who created the session
+    const createdByUser = await ctx.db.get(session.assignedUserId);
+
+    // Step 4: Query all zone assignments for this session
+    const zoneAssignments = await ctx.db
+      .query("session_zone_assignments")
+      .withIndex("sessionId", (q) =>
+        q.eq("sessionId", args.sessionId as Id<"work_sessions">),
+      )
+      .collect();
+
+    // Step 5: Enrich zone assignments with zone details and assigned users
+    const enrichedZones = await Promise.all(
+      zoneAssignments.map(async (assignment) => {
+        const zone = await ctx.db.get(assignment.zoneId);
+        const assignedUser = await ctx.db.get(assignment.assignedUserId);
+
+        return {
+          zoneId: assignment.zoneId,
+          zoneName: zone?.name ?? "Unknown Zone",
+          assignedWorker: assignedUser
+            ? { fullName: assignedUser.fullName ?? assignedUser.email }
+            : null,
+          assignmentStatus: assignment.assignmentStatusTypeId
+            ? await ctx.db.get(assignment.assignmentStatusTypeId)
+            : null,
+          startedAt: assignment.startedAt,
+          completedAt: assignment.completedAt,
+        };
+      }),
+    );
+
+    // Step 6: Query all line items for this session
+    const lineItems = await ctx.db
+      .query("session_line_items")
+      .withIndex("sessionId", (q) =>
+        q.eq("sessionId", args.sessionId as Id<"work_sessions">),
+      )
+      .collect();
+
+    // Step 7: Enrich line items with SKU and product details
+    const enrichedLineItems = await Promise.all(
+      lineItems.map(async (item) => {
+        const sku = await ctx.db.get(item.skuId);
+        let productName = "Unknown Product";
+        let skuCode = "Unknown SKU";
+
+        if (sku) {
+          skuCode = sku.skuCode;
+          const product = await ctx.db.get(sku.productId);
+          productName = product?.name ?? "Unknown Product";
+        }
+
+        const variance = item.actualQuantity - item.expectedQuantity;
+
+        return {
+          _id: item._id,
+          skuId: item.skuId,
+          skuCode,
+          productName,
+          zoneId: item.zoneId,
+          batchId: item.batchId,
+          expectedQuantity: item.expectedQuantity,
+          actualQuantity: item.actualQuantity,
+          variance,
+          scannedAt: item.scannedAt,
+          notes: item.notes,
+        };
+      }),
+    );
+
+    // Step 8: Group line items by zone
+    const zonesWithLineItems = enrichedZones.map((zone) => {
+      const zoneLineItems = enrichedLineItems.filter(
+        (item) => item.zoneId?.toString() === zone.zoneId.toString(),
+      );
+
+      const matchedCount = zoneLineItems.filter(
+        (item) => item.variance === 0,
+      ).length;
+      const totalCount = zoneLineItems.length;
+
+      return {
+        ...zone,
+        lineItems: zoneLineItems,
+        matchedCount,
+        totalCount,
+      };
+    });
+
+    // Also include line items without a specific zone assignment
+    const unassignedLineItems = enrichedLineItems.filter(
+      (item) =>
+        !item.zoneId ||
+        !enrichedZones.some(
+          (z) => z.zoneId.toString() === item.zoneId?.toString(),
+        ),
+    );
+
+    // If there are unassigned line items, add them to a default zone
+    if (unassignedLineItems.length > 0) {
+      const matchedCount = unassignedLineItems.filter(
+        (item) => item.variance === 0,
+      ).length;
+
+      zonesWithLineItems.push({
+        zoneId: "unassigned" as unknown as Id<"storage_zones">,
+        zoneName: "Unassigned Items",
+        assignedWorker: null,
+        assignmentStatus: null,
+        startedAt: undefined,
+        completedAt: undefined,
+        lineItems: unassignedLineItems,
+        matchedCount,
+        totalCount: unassignedLineItems.length,
+      });
+    }
+
+    // Step 9: Return the complete enriched session
+    return {
+      _id: session._id,
+      sessionCode: session.sessionCode,
+      name: session.name ?? session.sessionCode,
+      description: session.description,
+      cycleCountType: cycleCountType
+        ? { lookupValue: cycleCountType.lookupValue }
+        : null,
+      sessionStatus: sessionStatus
+        ? { lookupValue: sessionStatus.lookupValue }
+        : null,
+      createdByUser: createdByUser
+        ? { fullName: createdByUser.fullName ?? createdByUser.email }
+        : null,
+      createdAt: session._creationTime,
+      startedAt: session.startedAt,
+      completedAt: session.completedAt,
+      zones: zonesWithLineItems,
     };
   },
 });
@@ -882,6 +1108,535 @@ export const getZoneAssignmentDetail = query({
         itemsWithVariance,
         progressPercent: totalItems > 0 ? Math.round((scannedItems / totalItems) * 100) : 0,
       },
+    };
+  },
+});
+
+/**
+ * getSessionForProceed
+ *
+ * Purpose: Retrieves cycle count session data for the proceed/scanning page
+ *
+ * Process:
+ * 1. Fetches the session with status and type info
+ * 2. Gets all zone assignments with status
+ * 3. Gets all line items grouped by zone with inventory batch data
+ * 4. Calculates progress for each zone
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const getSessionForProceed = query({
+  args: {
+    sessionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Get the session
+    const session = await ctx.db.get(args.sessionId as Id<"work_sessions">);
+    if (!session) return null;
+
+    // Step 2: Get status and type lookups
+    const sessionStatus = await ctx.db.get(session.sessionStatusTypeId);
+    const cycleCountType = session.cycleCountTypeId
+      ? await ctx.db.get(session.cycleCountTypeId)
+      : null;
+    const createdByUser = await ctx.db.get(session.assignedUserId);
+
+    // Step 3: Get all zone assignments
+    const zoneAssignments = await ctx.db
+      .query("session_zone_assignments")
+      .withIndex("sessionId", (q) =>
+        q.eq("sessionId", args.sessionId as Id<"work_sessions">),
+      )
+      .collect();
+
+    // Step 4: Get all line items for this session
+    const allLineItems = await ctx.db
+      .query("session_line_items")
+      .withIndex("sessionId", (q) =>
+        q.eq("sessionId", args.sessionId as Id<"work_sessions">),
+      )
+      .collect();
+
+    // Step 5: Enrich zone assignments with zone details, user info, and line items
+    const enrichedZones = await Promise.all(
+      zoneAssignments.map(async (assignment) => {
+        const zone = await ctx.db.get(assignment.zoneId);
+        const assignedUser = await ctx.db.get(assignment.assignedUserId);
+        const assignmentStatus = assignment.assignmentStatusTypeId
+          ? await ctx.db.get(assignment.assignmentStatusTypeId)
+          : null;
+
+        // Get line items for this zone
+        const zoneLineItems = allLineItems.filter(
+          (item) => item.zoneId?.toString() === assignment.zoneId.toString(),
+        );
+
+        // Enrich line items with SKU and product info
+        const enrichedLineItems = await Promise.all(
+          zoneLineItems.map(async (item) => {
+            const sku = await ctx.db.get(item.skuId);
+            const product = sku?.productId
+              ? await ctx.db.get(sku.productId)
+              : null;
+
+            // Get the inventory batch for expected quantity from inventory
+            const inventoryBatch = item.batchId
+              ? await ctx.db.get(item.batchId)
+              : null;
+
+            return {
+              _id: item._id,
+              skuId: item.skuId,
+              skuCode: sku?.skuCode ?? "Unknown SKU",
+              productName: product?.name ?? "Unknown Product",
+              expectedQuantity: item.expectedQuantity,
+              actualQuantity: item.actualQuantity,
+              inventoryQuantity: inventoryBatch?.quantity ?? item.expectedQuantity,
+              variance: item.actualQuantity - item.expectedQuantity,
+              isScanned: item.scannedAt !== undefined,
+              scannedAt: item.scannedAt,
+              batchId: item.batchId,
+              notes: item.notes,
+            };
+          }),
+        );
+
+        // Calculate zone progress
+        const totalItems = enrichedLineItems.length;
+        const scannedItems = enrichedLineItems.filter((i) => i.isScanned).length;
+        const matchedItems = enrichedLineItems.filter(
+          (i) => i.isScanned && i.variance === 0,
+        ).length;
+
+        return {
+          assignmentId: assignment._id,
+          zoneId: assignment.zoneId,
+          zoneName: zone?.name ?? "Unknown Zone",
+          assignedUser: assignedUser
+            ? {
+                _id: assignedUser._id,
+                fullName: assignedUser.fullName ?? assignedUser.email,
+              }
+            : null,
+          status: assignmentStatus?.lookupValue ?? "Not Started",
+          statusCode: assignmentStatus?.lookupCode ?? "NOT_STARTED",
+          startedAt: assignment.startedAt,
+          completedAt: assignment.completedAt,
+          lineItems: enrichedLineItems,
+          progress: {
+            totalItems,
+            scannedItems,
+            matchedItems,
+            progressPercent:
+              totalItems > 0
+                ? Math.round((scannedItems / totalItems) * 100)
+                : 0,
+          },
+        };
+      }),
+    );
+
+    // Calculate overall progress
+    const totalLineItems = allLineItems.length;
+    const totalScanned = allLineItems.filter(
+      (i) => i.scannedAt !== undefined,
+    ).length;
+    const totalZones = zoneAssignments.length;
+    const completedZones = enrichedZones.filter(
+      (z) => z.statusCode?.toLowerCase() === "completed",
+    ).length;
+
+    return {
+      _id: session._id,
+      sessionCode: session.sessionCode,
+      name: session.name ?? session.sessionCode,
+      description: session.description,
+      sessionStatus: sessionStatus?.lookupValue ?? "Unknown",
+      sessionStatusCode: sessionStatus?.lookupCode ?? "UNKNOWN",
+      cycleCountType: cycleCountType?.lookupValue ?? null,
+      createdByUser: createdByUser
+        ? { fullName: createdByUser.fullName ?? createdByUser.email }
+        : null,
+      createdAt: session._creationTime,
+      startedAt: session.startedAt,
+      zones: enrichedZones,
+      overallProgress: {
+        totalItems: totalLineItems,
+        scannedItems: totalScanned,
+        totalZones,
+        completedZones,
+        progressPercent:
+          totalLineItems > 0
+            ? Math.round((totalScanned / totalLineItems) * 100)
+            : 0,
+      },
+    };
+  },
+});
+
+/**
+ * recordLineItemCount
+ *
+ * Purpose: Records the counted quantity for a line item during cycle count
+ *
+ * Process:
+ * 1. Validates the line item exists
+ * 2. Updates the actual quantity and marks as scanned
+ * 3. Returns the updated line item
+ *
+ * Access: Available to assigned workers
+ */
+export const recordLineItemCount = mutation({
+  args: {
+    lineItemId: v.id("session_line_items"),
+    actualQuantity: v.number(),
+    scannedByUserId: v.id("users"),
+    notes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const lineItem = await ctx.db.get(args.lineItemId);
+    if (!lineItem) {
+      throw new Error("Line item not found");
+    }
+
+    await ctx.db.patch(args.lineItemId, {
+      actualQuantity: args.actualQuantity,
+      scannedAt: Date.now(),
+      scannedByUserId: args.scannedByUserId,
+      notes: args.notes,
+    });
+
+    return args.lineItemId;
+  },
+});
+
+/**
+ * completeZoneAssignment
+ *
+ * Purpose: Marks a zone assignment as completed
+ *
+ * Process:
+ * 1. Gets the "COMPLETED" status lookup
+ * 2. Updates the zone assignment status
+ * 3. Checks if all zones are completed
+ * 4. If all zones completed, updates session status to completed
+ *
+ * Access: Available to assigned workers
+ */
+export const completeZoneAssignment = mutation({
+  args: {
+    assignmentId: v.id("session_zone_assignments"),
+  },
+  handler: async (ctx, args) => {
+    // Get the assignment
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment) {
+      throw new Error("Zone assignment not found");
+    }
+
+    // Get the "COMPLETED" status lookup using the compound index
+    const completedStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ZoneAssignmentStatus").eq("lookupCode", "COMPLETED")
+      )
+      .first();
+
+    if (!completedStatus) {
+      throw new Error("COMPLETED status lookup not found for ZoneAssignmentStatus. Please ensure seed data has been run.");
+    }
+
+    // Update the assignment status
+    await ctx.db.patch(args.assignmentId, {
+      assignmentStatusTypeId: completedStatus._id,
+      completedAt: Date.now(),
+    });
+
+    // Check if all zone assignments for this session are completed
+    const allAssignments = await ctx.db
+      .query("session_zone_assignments")
+      .withIndex("sessionId", (q) => q.eq("sessionId", assignment.sessionId))
+      .collect();
+
+    const allCompleted = allAssignments.every(
+      (a) =>
+        a._id === args.assignmentId ||
+        a.assignmentStatusTypeId === completedStatus._id,
+    );
+
+    // If all zones are completed, update session status
+    if (allCompleted) {
+      const sessionCompletedStatus = await ctx.db
+        .query("system_lookups")
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("lookupType"), "SessionStatus"),
+            q.eq(q.field("lookupCode"), "COMPLETED"),
+          ),
+        )
+        .first();
+
+      if (sessionCompletedStatus) {
+        await ctx.db.patch(assignment.sessionId, {
+          sessionStatusTypeId: sessionCompletedStatus._id,
+          completedAt: Date.now(),
+        });
+      }
+    }
+
+    return {
+      assignmentId: args.assignmentId,
+      sessionCompleted: allCompleted,
+    };
+  },
+});
+
+/**
+ * startZoneAssignment
+ *
+ * Purpose: Marks a zone assignment as in progress (started)
+ *
+ * Process:
+ * 1. Gets the "IN_PROGRESS" status lookup
+ * 2. Updates the zone assignment status and start time
+ * 3. If session hasn't started, updates session status to "In Progress"
+ *
+ * Access: Available to assigned workers
+ */
+export const startZoneAssignment = mutation({
+  args: {
+    assignmentId: v.id("session_zone_assignments"),
+  },
+  handler: async (ctx, args) => {
+    const assignment = await ctx.db.get(args.assignmentId);
+    if (!assignment) {
+      throw new Error("Zone assignment not found");
+    }
+
+    // Get the "IN_PROGRESS" status lookup using the compound index
+    const inProgressStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ZoneAssignmentStatus").eq("lookupCode", "IN_PROGRESS")
+      )
+      .first();
+
+    if (!inProgressStatus) {
+      // Provide diagnostic information
+      const allZoneStatuses = await ctx.db
+        .query("system_lookups")
+        .withIndex("lookupType", (q) => q.eq("lookupType", "ZoneAssignmentStatus"))
+        .collect();
+      
+      throw new Error(
+        `IN_PROGRESS status lookup not found for ZoneAssignmentStatus. ` +
+        `Available statuses: ${allZoneStatuses.map(s => s.lookupCode).join(", ") || "none"}. ` +
+        `Please ensure seed data has been run.`
+      );
+    }
+
+    // Update the assignment
+    await ctx.db.patch(args.assignmentId, {
+      assignmentStatusTypeId: inProgressStatus._id,
+      startedAt: Date.now(),
+    });
+
+    // Check if session needs to be updated to "In Progress"
+    const session = await ctx.db.get(assignment.sessionId);
+    if (session && !session.startedAt) {
+      const sessionInProgressStatus = await ctx.db
+        .query("system_lookups")
+        .filter((q) =>
+          q.and(
+            q.eq(q.field("lookupType"), "SessionStatus"),
+            q.eq(q.field("lookupCode"), "IN_PROGRESS"),
+          ),
+        )
+        .first();
+
+      if (sessionInProgressStatus) {
+        await ctx.db.patch(assignment.sessionId, {
+          sessionStatusTypeId: sessionInProgressStatus._id,
+          startedAt: Date.now(),
+        });
+      }
+    }
+
+    return args.assignmentId;
+  },
+});
+
+/**
+ * completeSession
+ *
+ * Purpose: Completes a cycle count session (called from the main page)
+ *
+ * Process:
+ * 1. Validates session exists
+ * 2. Checks all zone assignments are completed
+ * 3. Updates session status to completed
+ * 4. Calculates and stores session metrics
+ *
+ * Access: Available to supervisors and managers
+ */
+export const completeSession = mutation({
+  args: {
+    sessionId: v.id("work_sessions"),
+  },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    // Get all zone assignments
+    const assignments = await ctx.db
+      .query("session_zone_assignments")
+      .withIndex("sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect();
+
+    // Get completed status lookup
+    const completedAssignmentStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "AssignmentStatus"),
+          q.eq(q.field("lookupCode"), "COMPLETED"),
+        ),
+      )
+      .first();
+
+    // Check if all zones are completed
+    const allZonesCompleted =
+      assignments.length > 0 &&
+      assignments.every(
+        (a) => a.assignmentStatusTypeId === completedAssignmentStatus?._id,
+      );
+
+    if (!allZonesCompleted && assignments.length > 0) {
+      throw new Error(
+        "Cannot complete session: not all zone assignments are completed",
+      );
+    }
+
+    // Get completed session status
+    const completedSessionStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "SessionStatus"),
+          q.eq(q.field("lookupCode"), "COMPLETED"),
+        ),
+      )
+      .first();
+
+    if (!completedSessionStatus) {
+      throw new Error("Completed status not found");
+    }
+
+    // Get all line items for metrics
+    const lineItems = await ctx.db
+      .query("session_line_items")
+      .withIndex("sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect();
+
+    // Calculate metrics
+    const totalItems = lineItems.length;
+    const scannedItems = lineItems.filter((i) => i.scannedAt !== undefined).length;
+    const matchedItems = lineItems.filter(
+      (i) => i.scannedAt !== undefined && i.actualQuantity === i.expectedQuantity,
+    ).length;
+    const accuracyRate =
+      scannedItems > 0 ? Math.round((matchedItems / scannedItems) * 100) : 0;
+    const totalTimeSeconds = session.startedAt
+      ? Math.round((Date.now() - session.startedAt) / 1000)
+      : 0;
+
+    // Update session
+    await ctx.db.patch(args.sessionId, {
+      sessionStatusTypeId: completedSessionStatus._id,
+      completedAt: Date.now(),
+    });
+
+    // Store session metrics
+    await ctx.db.insert("session_metrics", {
+      sessionId: args.sessionId,
+      totalTimeSeconds,
+      totalItemsProcessed: scannedItems,
+      accuracyRate,
+      calculatedAt: Date.now(),
+    });
+
+    return {
+      sessionId: args.sessionId,
+      metrics: {
+        totalItems,
+        scannedItems,
+        matchedItems,
+        accuracyRate,
+        totalTimeSeconds,
+      },
+    };
+  },
+});
+
+/**
+ * getSessionCompletionStatus
+ *
+ * Purpose: Gets the completion status of all zones in a session
+ *
+ * Access: Available to all authenticated users
+ */
+export const getSessionCompletionStatus = query({
+  args: {
+    sessionId: v.id("work_sessions"),
+  },
+  handler: async (ctx, args) => {
+    const assignments = await ctx.db
+      .query("session_zone_assignments")
+      .withIndex("sessionId", (q) => q.eq("sessionId", args.sessionId))
+      .collect();
+
+    const completedStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "AssignmentStatus"),
+          q.eq(q.field("lookupCode"), "COMPLETED"),
+        ),
+      )
+      .first();
+
+    const enrichedAssignments = await Promise.all(
+      assignments.map(async (a) => {
+        const zone = await ctx.db.get(a.zoneId);
+        const user = await ctx.db.get(a.assignedUserId);
+        const status = a.assignmentStatusTypeId
+          ? await ctx.db.get(a.assignmentStatusTypeId)
+          : null;
+
+        return {
+          zoneId: a.zoneId,
+          zoneName: zone?.name ?? "Unknown",
+          assignedUser: user?.fullName ?? "Unknown",
+          status: status?.lookupValue ?? "Not Started",
+          isCompleted: a.assignmentStatusTypeId === completedStatus?._id,
+          completedAt: a.completedAt,
+        };
+      }),
+    );
+
+    const allCompleted =
+      assignments.length > 0 &&
+      assignments.every(
+        (a) => a.assignmentStatusTypeId === completedStatus?._id,
+      );
+
+    return {
+      zones: enrichedAssignments,
+      totalZones: assignments.length,
+      completedZones: enrichedAssignments.filter((a) => a.isCompleted).length,
+      allCompleted,
     };
   },
 });
@@ -1314,17 +2069,94 @@ export const getAdjustmentRequestById = query({
       return null;
     }
 
-    // Step 3: Query all associated adjustment request details
-    const details = await ctx.db
+    // Step 3: Get related data
+    const adjustmentType = adjustmentRequest.adjustmentTypeId
+      ? await ctx.db
+          .query("system_lookups")
+          .filter((q) => q.eq(q.field("_id"), adjustmentRequest.adjustmentTypeId))
+          .first()
+      : null;
+
+    const adjustmentStatus = adjustmentRequest.adjustmentStatusTypeId
+      ? await ctx.db
+          .query("system_lookups")
+          .filter((q) => q.eq(q.field("_id"), adjustmentRequest.adjustmentStatusTypeId))
+          .first()
+      : null;
+
+    const requestedBy = adjustmentRequest.requestedByUserId
+      ? await ctx.db
+          .query("users")
+          .filter((q) => q.eq(q.field("_id"), adjustmentRequest.requestedByUserId))
+          .first()
+      : null;
+
+    const approvedByUser = adjustmentRequest.approvedByUserId
+      ? await ctx.db
+          .query("users")
+          .filter((q) => q.eq(q.field("_id"), adjustmentRequest.approvedByUserId))
+          .first()
+      : null;
+
+    // Step 4: Query all associated adjustment request details
+    const detailsRaw = await ctx.db
       .query("adjustment_request_details")
       .withIndex("adjustmentRequestId", (q) =>
         q.eq("adjustmentRequestId", args.adjustmentRequestId),
       )
       .collect();
 
-    // Step 4: Return the complete adjustment request with details
+    // Step 5: Enrich details with related data
+    const details = await Promise.all(
+      detailsRaw.map(async (detail) => {
+        const productVariant = detail.skuId
+          ? await ctx.db
+              .query("product_variants")
+              .filter((q) => q.eq(q.field("_id"), detail.skuId))
+              .first()
+          : null;
+
+        const product = productVariant?.productId
+          ? await ctx.db
+              .query("products")
+              .filter((q) => q.eq(q.field("_id"), productVariant.productId))
+              .first()
+          : null;
+
+        const fromZone = detail.fromZoneId
+          ? await ctx.db
+              .query("storage_zones")
+              .filter((q) => q.eq(q.field("_id"), detail.fromZoneId))
+              .first()
+          : null;
+
+        const toZone = detail.toZoneId
+          ? await ctx.db
+              .query("storage_zones")
+              .filter((q) => q.eq(q.field("_id"), detail.toZoneId))
+              .first()
+          : null;
+
+        return {
+          ...detail,
+          productName: product?.name,
+          skuCode: productVariant?.skuCode,
+          fromLocationName: fromZone?.name,
+          toLocationName: toZone?.name,
+          currentQuantity: detail.expectedQuantity,
+          adjustedQuantity: detail.actualQuantity,
+          quantityToTransfer: detail.quantity,
+        };
+      }),
+    );
+
+    // Step 6: Return the complete adjustment request with enriched details
     return {
       ...adjustmentRequest,
+      adjustmentType,
+      status: adjustmentStatus?.lookupValue,
+      requestedBy,
+      approvedByUser,
       details,
     };
   },
@@ -1459,6 +2291,106 @@ export const setAdjustmentRequestStatus = mutation({
     await ctx.db.patch(args.adjustmentRequestId, updateData);
 
     // Step 4: Return the updated request ID
+    return args.adjustmentRequestId;
+  },
+});
+
+/**
+ * approveAdjustmentRequest
+ *
+ * Purpose: Approves an adjustment request by updating its status to APPROVED
+ *
+ * Process:
+ * 1. Validates the adjustment request exists
+ * 2. Fetches the APPROVED status lookup
+ * 3. Updates the adjustment request status with approval details
+ *
+ * Access: Restricted to authorized users with permission to approve adjustments
+ * Typical users: Warehouse managers, inventory supervisors
+ */
+export const approveAdjustmentRequest = mutation({
+  args: {
+    adjustmentRequestId: v.id("adjustment_requests"),
+    approvedByUserId: v.optional(v.string()),
+    resolutionNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Validate adjustment request exists
+    const adjustmentRequest = await ctx.db.get(args.adjustmentRequestId);
+    if (!adjustmentRequest) {
+      throw new Error("Adjustment request not found");
+    }
+
+    // Step 2: Get the APPROVED status lookup
+    const approvedStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "AdjustmentStatus").eq("lookupCode", "APPROVED")
+      )
+      .first();
+
+    if (!approvedStatus) {
+      throw new Error("APPROVED status lookup not found. Please ensure seed data has been run.");
+    }
+
+    // Step 3: Update the adjustment request status
+    await ctx.db.patch(args.adjustmentRequestId, {
+      adjustmentStatusTypeId: approvedStatus._id,
+      approvedByUserId: args.approvedByUserId,
+      approvedAt: Date.now(),
+      resolutionNotes: args.resolutionNotes,
+    });
+
+    return args.adjustmentRequestId;
+  },
+});
+
+/**
+ * rejectAdjustmentRequest
+ *
+ * Purpose: Rejects an adjustment request by updating its status to REJECTED
+ *
+ * Process:
+ * 1. Validates the adjustment request exists
+ * 2. Fetches the REJECTED status lookup
+ * 3. Updates the adjustment request status with rejection details
+ *
+ * Access: Restricted to authorized users with permission to reject adjustments
+ * Typical users: Warehouse managers, inventory supervisors
+ */
+export const rejectAdjustmentRequest = mutation({
+  args: {
+    adjustmentRequestId: v.id("adjustment_requests"),
+    approvedByUserId: v.optional(v.string()),
+    resolutionNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Validate adjustment request exists
+    const adjustmentRequest = await ctx.db.get(args.adjustmentRequestId);
+    if (!adjustmentRequest) {
+      throw new Error("Adjustment request not found");
+    }
+
+    // Step 2: Get the REJECTED status lookup
+    const rejectedStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "AdjustmentStatus").eq("lookupCode", "REJECTED")
+      )
+      .first();
+
+    if (!rejectedStatus) {
+      throw new Error("REJECTED status lookup not found. Please ensure seed data has been run.");
+    }
+
+    // Step 3: Update the adjustment request status
+    await ctx.db.patch(args.adjustmentRequestId, {
+      adjustmentStatusTypeId: rejectedStatus._id,
+      approvedByUserId: args.approvedByUserId,
+      approvedAt: Date.now(),
+      resolutionNotes: args.resolutionNotes,
+    });
+
     return args.adjustmentRequestId;
   },
 });
@@ -1604,13 +2536,13 @@ export const listWithDetails = query({
     branchId: v.string(),
   },
   handler: async (ctx, args) => {
-    // Step 1: Get the cycle count session type lookup
+    // Step 1: Get the cycle count session type lookup (matching getCycleCountLookups)
     const cycleCountSessionType = await ctx.db
       .query("system_lookups")
       .filter((q) =>
         q.and(
-          q.eq(q.field("lookupType"), "session_type"),
-          q.eq(q.field("lookupValue"), "Cycle Count"),
+          q.eq(q.field("lookupType"), "SessionType"),
+          q.eq(q.field("lookupCode"), "CYCLE_COUNT"),
         ),
       )
       .first();
@@ -1802,6 +2734,324 @@ export const getStats = query({
       totalZones,
       completedSessions,
       verificationRate,
+    };
+  },
+});
+
+/**
+ * getStatsWithChartData
+ *
+ * Purpose: Retrieves cycle count statistics with chart data for date range visualization
+ *
+ * Process:
+ * 1. Gets all cycle count sessions for the organization/branch within date range
+ * 2. Aggregates daily counts for active sessions, completed sessions, zones, and verification rate
+ * 3. Returns data suitable for ChartDataCard visualization
+ *
+ * Access: Available to all authenticated users within the organization
+ */
+export const getStatsWithChartData = query({
+  args: {
+    organizationId: v.string(),
+    branchId: v.string(),
+    startDate: v.number(), // timestamp in ms
+    endDate: v.number(), // timestamp in ms
+  },
+  handler: async (ctx, args) => {
+    const { startDate, endDate } = args;
+
+    // Step 1: Get the cycle count session type lookup
+    const cycleCountSessionType = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "session_type"),
+          q.eq(q.field("lookupValue"), "Cycle Count"),
+        ),
+      )
+      .first();
+
+    // Step 2: Get status lookups
+    const activeStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "session_status"),
+          q.eq(q.field("lookupValue"), "Active"),
+        ),
+      )
+      .first();
+
+    const completedStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "session_status"),
+          q.eq(q.field("lookupValue"), "Completed"),
+        ),
+      )
+      .first();
+
+    const inProgressStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "session_status"),
+          q.eq(q.field("lookupValue"), "In Progress"),
+        ),
+      )
+      .first();
+
+    if (!cycleCountSessionType) {
+      return {
+        activeSessions: { value: 0, changePercent: 0, data: [] },
+        completedSessions: { value: 0, changePercent: 0, data: [] },
+        totalZones: { value: 0, changePercent: 0, data: [] },
+        verificationRate: { value: 0, changePercent: 0, data: [] },
+      };
+    }
+
+    // Step 3: Query all cycle count sessions for this org/branch
+    const allSessions = await ctx.db
+      .query("work_sessions")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId as Id<"organizations">),
+      )
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("branchId"), args.branchId as Id<"branches">),
+          q.eq(q.field("sessionTypeId"), cycleCountSessionType._id),
+        ),
+      )
+      .collect();
+
+    // Step 4: Calculate the number of days in the period
+    const dayMs = 24 * 60 * 60 * 1000;
+    const periodDays = Math.ceil((endDate - startDate) / dayMs);
+
+    // Calculate the previous period for comparison
+    const prevStartDate = startDate - (endDate - startDate);
+    const prevEndDate = startDate;
+
+    // Helper to format date label based on period length
+    const formatLabel = (date: Date) => {
+      if (periodDays <= 7) {
+        return date.toLocaleDateString("en-US", { weekday: "short" });
+      } else if (periodDays <= 31) {
+        return date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+      } else {
+        return date.toLocaleDateString("en-US", {
+          month: "short",
+          day: "numeric",
+        });
+      }
+    };
+
+    // Step 5: Build daily data maps
+    const dailyActive: Map<string, number> = new Map();
+    const dailyCompleted: Map<string, number> = new Map();
+    const dailyZones: Map<string, Set<string>> = new Map();
+    const dailyVerification: Map<string, number[]> = new Map();
+
+    // Initialize all days in the period
+    for (let i = 0; i < periodDays; i++) {
+      const date = new Date(startDate + i * dayMs);
+      const dateKey = date.toISOString().split("T")[0];
+      dailyActive.set(dateKey, 0);
+      dailyCompleted.set(dateKey, 0);
+      dailyZones.set(dateKey, new Set());
+      dailyVerification.set(dateKey, []);
+    }
+
+    // Process sessions
+    for (const session of allSessions) {
+      const creationTime = session._creationTime;
+      const sessionDate = new Date(creationTime);
+      const dateKey = sessionDate.toISOString().split("T")[0];
+
+      // Only count sessions within the current period
+      if (creationTime >= startDate && creationTime <= endDate) {
+        // Count active/in-progress sessions
+        if (
+          session.sessionStatusTypeId === activeStatus?._id ||
+          session.sessionStatusTypeId === inProgressStatus?._id
+        ) {
+          dailyActive.set(dateKey, (dailyActive.get(dateKey) ?? 0) + 1);
+        }
+
+        // Count completed sessions
+        if (session.sessionStatusTypeId === completedStatus?._id) {
+          dailyCompleted.set(dateKey, (dailyCompleted.get(dateKey) ?? 0) + 1);
+        }
+      }
+    }
+
+    // Get zone assignments and metrics for all sessions
+    for (const session of allSessions) {
+      const creationTime = session._creationTime;
+
+      if (creationTime >= startDate && creationTime <= endDate) {
+        const sessionDate = new Date(creationTime);
+        const dateKey = sessionDate.toISOString().split("T")[0];
+
+        // Get zones for this session
+        const zoneAssignments = await ctx.db
+          .query("session_zone_assignments")
+          .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+          .collect();
+
+        const dateZones = dailyZones.get(dateKey) ?? new Set();
+        for (const assignment of zoneAssignments) {
+          dateZones.add(assignment.zoneId.toString());
+        }
+        dailyZones.set(dateKey, dateZones);
+
+        // Get metrics for this session
+        const metrics = await ctx.db
+          .query("session_metrics")
+          .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+          .first();
+
+        if (metrics?.accuracyRate !== undefined) {
+          const rates = dailyVerification.get(dateKey) ?? [];
+          rates.push(metrics.accuracyRate);
+          dailyVerification.set(dateKey, rates);
+        }
+      }
+    }
+
+    // Step 6: Convert maps to chart data arrays
+    const activeData: { label: string; value: number }[] = [];
+    const completedData: { label: string; value: number }[] = [];
+    const zonesData: { label: string; value: number }[] = [];
+    const verificationData: { label: string; value: number }[] = [];
+
+    // Running totals for cumulative view
+    let cumulativeActive = 0;
+    let cumulativeCompleted = 0;
+    const allZones = new Set<string>();
+    const allVerificationRates: number[] = [];
+
+    for (let i = 0; i < periodDays; i++) {
+      const date = new Date(startDate + i * dayMs);
+      const dateKey = date.toISOString().split("T")[0];
+      const label = formatLabel(date);
+
+      const dayActive = dailyActive.get(dateKey) ?? 0;
+      const dayCompleted = dailyCompleted.get(dateKey) ?? 0;
+      const dayZones = dailyZones.get(dateKey) ?? new Set();
+      const dayRates = dailyVerification.get(dateKey) ?? [];
+
+      cumulativeActive += dayActive;
+      cumulativeCompleted += dayCompleted;
+      for (const zone of dayZones) {
+        allZones.add(zone);
+      }
+      allVerificationRates.push(...dayRates);
+
+      // Calculate running average verification rate
+      const avgVerification =
+        allVerificationRates.length > 0
+          ? Math.round(
+              allVerificationRates.reduce((a, b) => a + b, 0) /
+                allVerificationRates.length,
+            )
+          : 0;
+
+      activeData.push({ label, value: cumulativeActive });
+      completedData.push({ label, value: cumulativeCompleted });
+      zonesData.push({ label, value: allZones.size });
+      verificationData.push({ label, value: avgVerification });
+    }
+
+    // Step 7: Calculate previous period totals for comparison
+    let prevActive = 0;
+    let prevCompleted = 0;
+    const prevZones = new Set<string>();
+    const prevVerificationRates: number[] = [];
+
+    for (const session of allSessions) {
+      const creationTime = session._creationTime;
+
+      if (creationTime >= prevStartDate && creationTime < prevEndDate) {
+        if (
+          session.sessionStatusTypeId === activeStatus?._id ||
+          session.sessionStatusTypeId === inProgressStatus?._id
+        ) {
+          prevActive++;
+        }
+
+        if (session.sessionStatusTypeId === completedStatus?._id) {
+          prevCompleted++;
+        }
+
+        // Get zones
+        const zoneAssignments = await ctx.db
+          .query("session_zone_assignments")
+          .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+          .collect();
+
+        for (const assignment of zoneAssignments) {
+          prevZones.add(assignment.zoneId.toString());
+        }
+
+        // Get metrics
+        const metrics = await ctx.db
+          .query("session_metrics")
+          .withIndex("sessionId", (q) => q.eq("sessionId", session._id))
+          .first();
+
+        if (metrics?.accuracyRate !== undefined) {
+          prevVerificationRates.push(metrics.accuracyRate);
+        }
+      }
+    }
+
+    const prevAvgVerification =
+      prevVerificationRates.length > 0
+        ? Math.round(
+            prevVerificationRates.reduce((a, b) => a + b, 0) /
+              prevVerificationRates.length,
+          )
+        : 0;
+
+    // Calculate change percentages
+    const calcChange = (current: number, previous: number) => {
+      if (previous === 0) return current > 0 ? 100 : 0;
+      return Math.round(((current - previous) / previous) * 100);
+    };
+
+    // Get final values (last day's cumulative values)
+    const finalActive = activeData[activeData.length - 1]?.value ?? 0;
+    const finalCompleted = completedData[completedData.length - 1]?.value ?? 0;
+    const finalZones = zonesData[zonesData.length - 1]?.value ?? 0;
+    const finalVerification =
+      verificationData[verificationData.length - 1]?.value ?? 0;
+
+    return {
+      activeSessions: {
+        value: finalActive,
+        changePercent: calcChange(finalActive, prevActive),
+        data: activeData,
+      },
+      completedSessions: {
+        value: finalCompleted,
+        changePercent: calcChange(finalCompleted, prevCompleted),
+        data: completedData,
+      },
+      totalZones: {
+        value: finalZones,
+        changePercent: calcChange(finalZones, prevZones.size),
+        data: zonesData,
+      },
+      verificationRate: {
+        value: finalVerification,
+        changePercent: calcChange(finalVerification, prevAvgVerification),
+        data: verificationData,
+      },
     };
   },
 });

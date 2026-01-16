@@ -13,19 +13,26 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { useConvexMutation } from "@convex-dev/react-query";
+import { toast } from "sonner";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
+  CheckCircle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Eye,
   Filter,
   Loader2,
+  MoreHorizontal,
+  XCircle,
 } from "lucide-react";
 import * as React from "react";
+import { AdjustmentRequestDetailDialog } from "@/components/adjustment-request-detail-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +41,9 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -77,13 +87,11 @@ const statusFilterOptions = [
 interface LocationAdjustmentsTableProps {
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
-  onView?: (id: string) => void;
 }
 
 export function LocationAdjustmentsTable({
   onApprove,
   onReject,
-  onView,
 }: LocationAdjustmentsTableProps) {
   const { organizationId } = useCurrentUser();
   const { currentBranch } = useBranches({ organizationId });
@@ -97,6 +105,45 @@ export function LocationAdjustmentsTable({
   const [rowSelection, setRowSelection] = React.useState({});
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
+
+  // Mutations for approve and reject
+  const { mutate: approveRequest, isPending: isApproving } = useMutation({
+    mutationFn: useConvexMutation(api.cycleCount.approveAdjustmentRequest),
+  });
+
+  const { mutate: rejectRequest, isPending: isRejecting } = useMutation({
+    mutationFn: useConvexMutation(api.cycleCount.rejectAdjustmentRequest),
+  });
+
+  const handleApprove = React.useCallback((adjustmentRequestId: Id<"adjustment_requests">, requestCode: string) => {
+    approveRequest(
+      { adjustmentRequestId },
+      {
+        onSuccess: () => {
+          toast.success(`Adjustment request ${requestCode} has been approved`);
+          onApprove?.(adjustmentRequestId as string);
+        },
+        onError: (error) => {
+          toast.error(`Failed to approve adjustment request: ${error.message}`);
+        },
+      },
+    );
+  }, [approveRequest, onApprove]);
+
+  const handleReject = React.useCallback((adjustmentRequestId: Id<"adjustment_requests">, requestCode: string) => {
+    rejectRequest(
+      { adjustmentRequestId },
+      {
+        onSuccess: () => {
+          toast.success(`Adjustment request ${requestCode} has been rejected`);
+          onReject?.(adjustmentRequestId as string);
+        },
+        onError: (error) => {
+          toast.error(`Failed to reject adjustment request: ${error.message}`);
+        },
+      },
+    );
+  }, [rejectRequest, onReject]);
 
   // Fetch real data from Convex
   const { data: adjustments, isLoading } = useQuery({
@@ -196,40 +243,62 @@ export function LocationAdjustmentsTable({
       header: "Actions",
       cell: ({ row }) => {
         const adjustment = row.original;
-        const isPending = adjustment.status === "Pending";
+        const isPending = adjustment.status?.toLowerCase() === "pending";
 
         return (
-          <div className="flex items-center gap-2">
-            {isPending ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto p-0 text-green-600 hover:bg-transparent hover:text-green-700"
-                  onClick={() => onApprove?.(adjustment._id as string)}
-                >
-                  Approve
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto p-0 text-red-600 hover:bg-transparent hover:text-red-700"
-                  onClick={() => onReject?.(adjustment._id as string)}
-                >
-                  Reject
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto p-0 text-primary hover:bg-transparent hover:text-primary/80"
-                onClick={() => onView?.(adjustment._id as string)}
-              >
-                View
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size={"icon-sm"}>
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal />
               </Button>
-            )}
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuItem
+                onClick={() =>
+                  navigator.clipboard.writeText(adjustment.requestCode)
+                }
+              >
+                Copy Request ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <AdjustmentRequestDetailDialog
+                adjustmentRequestId={adjustment._id}
+                trigger={
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View details
+                  </DropdownMenuItem>
+                }
+              />
+              {isPending && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleApprove(adjustment._id, adjustment.requestCode);
+                    }}
+                    disabled={isApproving}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                    Approve
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleReject(adjustment._id, adjustment.requestCode);
+                    }}
+                    disabled={isRejecting}
+                  >
+                    <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                    Reject
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },

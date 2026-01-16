@@ -374,12 +374,20 @@ export const seedAllTestData = mutation({
       sortOrder: 2,
     });
 
+    const returnRejectedStatusId = await ctx.db.insert("system_lookups", {
+      lookupType: "ReturnStatus",
+      lookupCode: "REJECTED",
+      lookupValue: "Rejected",
+      description: "Return request has been rejected",
+      sortOrder: 3,
+    });
+
     const returnCompletedStatusId = await ctx.db.insert("system_lookups", {
       lookupType: "ReturnStatus",
       lookupCode: "COMPLETED",
       lookupValue: "Completed",
       description: "Return has been completed",
-      sortOrder: 3,
+      sortOrder: 4,
     });
 
     // Return Reason types

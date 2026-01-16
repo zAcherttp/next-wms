@@ -461,3 +461,94 @@ export const createReturnRequest = mutation({
     return returnRequestId;
   },
 });
+
+/**
+ * approveReturnRequest
+ *
+ * Purpose: Approves a return request by updating its status to APPROVED
+ *
+ * Process:
+ * 1. Validates the return request exists
+ * 2. Fetches the APPROVED status lookup
+ * 3. Updates the return request status
+ *
+ * Access: Restricted to authorized users with permission to approve returns
+ * Typical users: Warehouse managers, inventory supervisors
+ */
+export const approveReturnRequest = mutation({
+  args: {
+    returnRequestId: v.id("return_requests"),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Validate return request exists
+    const returnRequest = await ctx.db.get(args.returnRequestId);
+    if (!returnRequest || returnRequest.isDeleted) {
+      throw new Error("Return request not found or has been deleted");
+    }
+
+    // Step 2: Get the APPROVED status lookup
+    const approvedStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ReturnStatus").eq("lookupCode", "APPROVED")
+      )
+      .first();
+
+    if (!approvedStatus) {
+      throw new Error("APPROVED status lookup not found. Please ensure seed data has been run.");
+    }
+
+    // Step 3: Update the return request status
+    await ctx.db.patch(args.returnRequestId, {
+      returnStatusTypeId: approvedStatus._id,
+    });
+
+    return args.returnRequestId;
+  },
+});
+
+/**
+ * rejectReturnRequest
+ *
+ * Purpose: Rejects a return request by updating its status to REJECTED
+ *
+ * Process:
+ * 1. Validates the return request exists
+ * 2. Fetches the REJECTED status lookup
+ * 3. Updates the return request status
+ *
+ * Access: Restricted to authorized users with permission to reject returns
+ * Typical users: Warehouse managers, inventory supervisors
+ */
+export const rejectReturnRequest = mutation({
+  args: {
+    returnRequestId: v.id("return_requests"),
+    rejectionNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Validate return request exists
+    const returnRequest = await ctx.db.get(args.returnRequestId);
+    if (!returnRequest || returnRequest.isDeleted) {
+      throw new Error("Return request not found or has been deleted");
+    }
+
+    // Step 2: Get the REJECTED status lookup
+    const rejectedStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ReturnStatus").eq("lookupCode", "REJECTED")
+      )
+      .first();
+
+    if (!rejectedStatus) {
+      throw new Error("REJECTED status lookup not found. Please ensure seed data has been run.");
+    }
+
+    // Step 3: Update the return request status
+    await ctx.db.patch(args.returnRequestId, {
+      returnStatusTypeId: rejectedStatus._id,
+    });
+
+    return args.returnRequestId;
+  },
+});

@@ -28,7 +28,7 @@ export type ChartDataCardProps = {
   /** Card title (e.g., "Total Completed", "Active Orders") */
   title: string;
   /** Current period value to display */
-  value: number;
+  value: number | string;
   /** Percentage change from previous period (can be negative) */
   changePercent: number;
   /** Whether the change is favorable/good (controls color: green=true, red=false) */
@@ -122,7 +122,8 @@ export function ChartDataCard({
     },
   };
 
-  const formattedValue = value.toLocaleString("en-US");
+  const formattedValue =
+    typeof value === "number" ? value.toLocaleString("en-US") : value;
 
   return (
     <div
