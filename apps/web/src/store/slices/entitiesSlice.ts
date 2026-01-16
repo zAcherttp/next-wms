@@ -17,7 +17,7 @@ import { getCollisionDetector } from "@/lib/utils/collision";
 // ============================================================================
 
 export interface StorageEntity {
-  id: Id<"storage_zones">;
+  _id?: Id<"storage_zones">;
   name: string;
   parentId: Id<"storage_zones"> | null;
   branchId: Id<"branches">;
@@ -49,12 +49,12 @@ export interface EntitiesActions {
     parentId: Id<"storage_zones"> | null,
     name: string,
     attributes?: Partial<Record<string, unknown>>,
-  ) => Id<"storage_zones">;
+  ) => Id<"storage_zones"> | undefined;
   updateEntity: (
-    id: Id<"storage_zones">,
+    _id: Id<"storage_zones">,
     updates: Partial<Record<string, unknown>>,
   ) => void;
-  removeEntity: (id: Id<"storage_zones">, soft?: boolean) => void;
+  removeEntity: (_id: Id<"storage_zones">, soft?: boolean) => void;
 
   // Batch operations
   addEntityBatch: (
@@ -62,7 +62,7 @@ export interface EntitiesActions {
   ) => Id<"storage_zones">[];
 
   // Queries
-  getEntity: (id: Id<"storage_zones">) => StorageEntity | undefined;
+  getEntity: (_id: Id<"storage_zones">) => StorageEntity | undefined;
   getEntitiesByType: (blockType: BlockType) => StorageEntity[];
   getEntitiesByParent: (parentId: Id<"storage_zones">) => StorageEntity[];
   getEntitiesByPath: (path: string) => StorageEntity[];
@@ -127,7 +127,6 @@ export const createEntitiesSlice: StateCreator<
     name,
     attributes = { name: "new entity" },
   ) => {
-    const id: Id<"storage_zones"> = crypto.randomUUID() as Id<"storage_zones">;
     const parent = parentId ? get().entities.get(parentId) : undefined;
     const parentPath = parent?.path ?? null;
     const path = getPathForBlockType(parentPath, blockType);
@@ -143,7 +142,6 @@ export const createEntitiesSlice: StateCreator<
     }
 
     const entity: StorageEntity = {
-      id,
       parentId,
       branchId,
       name,
@@ -154,40 +152,44 @@ export const createEntitiesSlice: StateCreator<
     };
 
     set((state) => {
+      console.log("Adding entity:", entity);
+      if (!entity?._id) return;
+      console.log("Assigned ID:", entity._id);
       // Add to main map
-      state.entities.set(id, entity);
+      state.entities.set(entity._id, entity);
 
       // Update type index
       if (!state.entitiesByType.has(blockType)) {
         state.entitiesByType.set(blockType, new Set());
       }
-      state.entitiesByType.get(blockType)?.add(id);
+      state.entitiesByType.get(blockType)?.add(entity._id);
 
       // Update parent index
       if (parentId) {
         if (!state.entitiesByParent.has(parentId)) {
           state.entitiesByParent.set(parentId, new Set());
         }
-        state.entitiesByParent.get(parentId)?.add(id);
+        state.entitiesByParent.get(parentId)?.add(entity._id);
       }
 
       // Update path index
       if (!state.entitiesByPath.has(path)) {
         state.entitiesByPath.set(path, new Set());
       }
-      state.entitiesByPath.get(path)?.add(id);
+      state.entitiesByPath.get(path)?.add(entity._id);
 
       state.isDirty = true;
-      state.pendingChanges.add(id);
+      state.pendingChanges.add(entity._id);
     });
 
     // Update collision detection for collidable entities
     if (blockType === "rack" || blockType === "obstacle") {
       const detector = getCollisionDetector();
-      const newEntity = get().entities.get(id);
+      if (!entity._id) return;
+      const newEntity = get().entities.get(entity._id);
       if (detector && newEntity) {
         const collidable = {
-          id,
+          _id: entity._id,
           position: mergedAttrs.position as { x: number; y: number; z: number },
           rotation: mergedAttrs.rotation as { x: number; y: number; z: number },
           dimensions: mergedAttrs.dimensions as {
@@ -200,11 +202,11 @@ export const createEntitiesSlice: StateCreator<
       }
     }
 
-    return id;
+    return entity._id;
   },
 
-  updateEntity: (id, updates) => {
-    const entity = get().entities.get(id);
+  updateEntity: (_id, updates) => {
+    const entity = get().entities.get(_id);
     if (!entity) return;
 
     // Validate merged attributes
@@ -218,11 +220,11 @@ export const createEntitiesSlice: StateCreator<
     }
 
     set((state) => {
-      const e = state.entities.get(id);
+      const e = state.entities.get(_id);
       if (e) {
         e.zoneAttributes = { ...e.zoneAttributes, ...updates };
         state.isDirty = true;
-        state.pendingChanges.add(id);
+        state.pendingChanges.add(_id);
       }
     });
 
@@ -237,11 +239,11 @@ export const createEntitiesSlice: StateCreator<
         "rotation" in updates;
       if (posOrDimChanged) {
         const detector = getCollisionDetector();
-        const updated = get().entities.get(id);
+        const updated = get().entities.get(_id);
         if (detector && updated) {
           const attrs = updated.zoneAttributes;
           const collidable = {
-            id,
+            _id,
             position: attrs.position as { x: number; y: number; z: number },
             rotation: attrs.rotation as { x: number; y: number; z: number },
             dimensions: attrs.dimensions as {
@@ -259,8 +261,8 @@ export const createEntitiesSlice: StateCreator<
     }
   },
 
-  removeEntity: (id, soft = true) => {
-    const entity = get().entities.get(id);
+  removeEntity: (_id, soft = true) => {
+    const entity = get().entities.get(_id);
     if (!entity) return;
 
     // Remove from collision detection
@@ -269,48 +271,50 @@ export const createEntitiesSlice: StateCreator<
       entity.storageBlockType === "obstacle"
     ) {
       const detector = getCollisionDetector();
-      detector?.removeEntity(id);
+      detector?.removeEntity(_id);
     }
 
     set((state) => {
       if (soft) {
-        const e = state.entities.get(id);
+        const e = state.entities.get(_id);
         if (e) {
           e.isDeleted = true;
           e.deletedAt = Date.now();
         }
       } else {
-        state.entities.delete(id);
+        state.entities.delete(_id);
 
         // Remove from indices
-        state.entitiesByType.get(entity.storageBlockType)?.delete(id);
+        state.entitiesByType.get(entity.storageBlockType)?.delete(_id);
         if (entity.parentId) {
-          state.entitiesByParent.get(entity.parentId)?.delete(id);
+          state.entitiesByParent.get(entity.parentId)?.delete(_id);
         }
-        state.entitiesByPath.get(entity.path)?.delete(id);
+        state.entitiesByPath.get(entity.path)?.delete(_id);
       }
 
       state.isDirty = true;
-      state.pendingChanges.add(id);
+      state.pendingChanges.add(_id);
     });
 
     // Recursively soft-delete children
-    const children = get().getEntitiesByParent(id);
+    const children = get().getEntitiesByParent(_id);
     children.forEach((child) => {
-      get().removeEntity(child.id, soft);
+      if (child?._id) get().removeEntity(child._id, soft);
     });
   },
 
   addEntityBatch: (entities) => {
     const ids: Id<"storage_zones">[] = [];
     entities.forEach((e) => {
-      const id = get().addEntity(
+      const _id = get().addEntity(
         e.storageBlockType,
         e.parentId,
         e.name,
         e.zoneAttributes,
       );
-      ids.push(id);
+      if (_id) {
+        ids.push(_id);
+      }
     });
     return ids;
   },
@@ -319,13 +323,13 @@ export const createEntitiesSlice: StateCreator<
   // Queries
   // ========================================================================
 
-  getEntity: (id) => get().entities.get(id),
+  getEntity: (_id) => get().entities.get(_id),
 
   getEntitiesByType: (blockType) => {
     const ids = get().entitiesByType.get(blockType);
     if (!ids) return [];
     return Array.from(ids)
-      .map((id) => get().entities.get(id))
+      .map((_id) => get().entities.get(_id))
       .filter((e): e is StorageEntity => e !== undefined && !e.isDeleted);
   },
 
@@ -333,7 +337,7 @@ export const createEntitiesSlice: StateCreator<
     const ids = get().entitiesByParent.get(parentId);
     if (!ids) return [];
     return Array.from(ids)
-      .map((id) => get().entities.get(id))
+      .map((_id) => get().entities.get(_id))
       .filter((e): e is StorageEntity => e !== undefined && !e.isDeleted);
   },
 
@@ -341,7 +345,7 @@ export const createEntitiesSlice: StateCreator<
     const ids = get().entitiesByPath.get(path);
     if (!ids) return [];
     return Array.from(ids)
-      .map((id) => get().entities.get(id))
+      .map((_id) => get().entities.get(_id))
       .filter((e): e is StorageEntity => e !== undefined && !e.isDeleted);
   },
 
@@ -382,27 +386,28 @@ export const createEntitiesSlice: StateCreator<
 
       // Load new entities
       entities.forEach((entity) => {
-        state.entities.set(entity.id, entity);
+        if (!entity._id) return;
+        state.entities.set(entity._id, entity);
 
         // Type index
         if (!state.entitiesByType.has(entity.storageBlockType)) {
           state.entitiesByType.set(entity.storageBlockType, new Set());
         }
-        state.entitiesByType.get(entity.storageBlockType)?.add(entity.id);
+        state.entitiesByType.get(entity.storageBlockType)?.add(entity._id);
 
         // Parent index
         if (entity.parentId) {
           if (!state.entitiesByParent.has(entity.parentId)) {
             state.entitiesByParent.set(entity.parentId, new Set());
           }
-          state.entitiesByParent.get(entity.parentId)?.add(entity.id);
+          state.entitiesByParent.get(entity.parentId)?.add(entity._id);
         }
 
         // Path index
         if (!state.entitiesByPath.has(entity.path)) {
           state.entitiesByPath.set(entity.path, new Set());
         }
-        state.entitiesByPath.get(entity.path)?.add(entity.id);
+        state.entitiesByPath.get(entity.path)?.add(entity._id);
       });
 
       state.isDirty = false;

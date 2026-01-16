@@ -25,6 +25,8 @@ interface AttributeFieldProps {
   value: unknown;
   onChange: (value: unknown) => void;
   disabled?: boolean;
+  /** Validation error message to display */
+  error?: string;
 }
 
 interface Vector3Value {
@@ -61,7 +63,6 @@ function PositionInput({
             {axis}
           </Label>
           <Input
-            type="number"
             step={0.1}
             value={value?.[axis] ?? 0}
             onChange={(e) =>
@@ -236,6 +237,7 @@ export function AttributeField({
   value,
   onChange,
   disabled,
+  error,
 }: AttributeFieldProps) {
   const {
     key,
@@ -359,6 +361,8 @@ export function AttributeField({
       {description && (
         <p className="text-muted-foreground text-xs">{description}</p>
       )}
+
+      {error && <p className="text-destructive text-xs">{error}</p>}
     </div>
   );
 }

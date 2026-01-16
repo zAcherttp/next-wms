@@ -1,101 +1,330 @@
-"use client";
-
-import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
-import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
-import { useMutation } from "convex/react";
+import React, { forwardRef, useCallback, useImperativeHandle } from "react";
 import {
   ResizableHandle,
   ResizablePanel,
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
-import EntityBrowser from "@/components/zones/entity-browser";
+import { Canvas3D } from "@/components/zones/canvas-3d";
+import { EntityBrowser } from "@/components/zones/entity-browser";
+import { ErrorBoundary } from "@/components/zones/error-boundary";
 import { SchemaPropertyPanel } from "@/components/zones/properties";
-import { useBranches } from "@/hooks/use-branches";
-import { useConvexLayoutSync } from "@/hooks/use-convex-layout-sync";
-import { useCurrentUser } from "@/hooks/use-current-user";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import { useSyncOnUndoRedo } from "@/hooks/use-sync-on-undo-redo";
+import type {
+  EditorConfig,
+  EditorError,
+  EditorState,
+  ValidationResult,
+  WarehouseEditorHandle,
+} from "@/lib/types/layout-editor";
+import type { StorageEntity } from "@/store/layout-editor-store";
+import {
+  canRedo,
+  canUndo,
+  redo,
+  undo,
+  useLayoutStore,
+} from "@/store/layout-editor-store";
 
-export function LayoutEditor() {
-  const { organizationId } = useCurrentUser();
-  const { currentBranch } = useBranches({ organizationId });
+export interface WarehouseEditorProps {
+  /** Editor configuration */
+  config?: Partial<EditorConfig>;
 
-  const { data: zones } = useQuery({
-    ...convexQuery(
-      api.storageZones.getByBranch,
-      currentBranch?._id
-        ? { branchId: currentBranch._id, includeDeleted: false }
-        : "skip",
-    ),
-    enabled: !!currentBranch,
-  });
-  const createZone = useMutation(api.storageZones.create);
-  const updateZone = useMutation(api.storageZones.update);
-  const deleteZone = useMutation(api.storageZones.softDelete);
+  /** Callback when entity changes occur */
+  onEntityChange?: (
+    entity: StorageEntity,
+    changeType: "create" | "update" | "delete",
+  ) => void;
 
-  const currentBranchId = currentBranch?._id ?? null;
+  /** Callback when errors occur */
+  onError?: (error: EditorError) => void;
 
-  const { isLoading, isConnected } = useConvexLayoutSync(
-    currentBranchId,
-    zones,
+  /** CSS class name */
+  className?: string;
+
+  /** Inline styles */
+  style?: React.CSSProperties;
+
+  /** Show entity browser (left panel) */
+  showEntityBrowser?: boolean;
+
+  /** Show properties panel (right panel) */
+  showPropertiesPanel?: boolean;
+
+  /** Read-only mode */
+  readOnly?: boolean;
+}
+
+/**
+ * WarehouseEditor - Main component for 3D warehouse layout editing
+ * Uses SmartStore architecture with real-time sync support
+ *
+ * @example
+ * ```tsx
+ * const editorRef = useRef<WarehouseEditorHandle>(null);
+ *
+ * <WarehouseEditor
+ *   ref={editorRef}
+ *   onEntityChange={(entity, type) => console.log(type, entity)}
+ *   config={{ grid: { visible: true } }}
+ * />
+ * ```
+ */
+export const WarehouseEditor = forwardRef<
+  WarehouseEditorHandle,
+  WarehouseEditorProps
+>(
+  (
     {
-      onMutateCreate: async (entity) => {
-        if (!currentBranchId) {
-          throw new Error("No current branch selected");
+      config,
+      onEntityChange,
+      onError,
+      className,
+      showEntityBrowser = true,
+      showPropertiesPanel = true,
+      readOnly = false,
+    },
+    ref,
+  ) => {
+    // Store actions
+    const setEditorConfig = useLayoutStore((s) => s.setEditorConfig);
+    const addEntity = useLayoutStore((s) => s.addEntity);
+    const removeEntity = useLayoutStore((s) => s.removeEntity);
+    const entities = useLayoutStore((s) => s.entities);
+    const selectedEntityId = useLayoutStore((s) => s.selectedEntityId);
+    const cameraPosition = useLayoutStore((s) => s.cameraPosition);
+    const isDirty = useLayoutStore((s) => s.isDirty);
+
+    // Enable keyboard shortcuts (Ctrl+Z, Ctrl+Y)
+    useKeyboardShortcuts();
+
+    // Enable Convex sync on undo/redo operations
+    useSyncOnUndoRedo();
+
+    // ========================================================================
+    // Initialization
+    // ========================================================================
+
+    React.useEffect(() => {
+      if (config) {
+        setEditorConfig(config);
+      }
+    }, [config, setEditorConfig]);
+
+    // ========================================================================
+    // Event Handlers
+    // ========================================================================
+
+    React.useEffect(() => {
+      if (!onEntityChange) return;
+
+      // Subscribe to pending changes using comparison
+      let previousPendingChanges = new Set<string>();
+      const unsubscribe = useLayoutStore.subscribe((state) => {
+        const newChanges = Array.from(state.pendingChanges).filter(
+          (id) => !previousPendingChanges.has(id),
+        );
+
+        newChanges.forEach((entityId) => {
+          const entity = state.entities.get(entityId);
+          if (entity) {
+            const changeType = entity.isDeleted ? "delete" : "update";
+            onEntityChange(entity, changeType);
+          }
+        });
+
+        previousPendingChanges = new Set(state.pendingChanges);
+      });
+
+      return unsubscribe;
+    }, [onEntityChange]);
+
+    React.useEffect(() => {
+      if (!onError) return;
+
+      // Subscribe to errors
+      let previousLength = 0;
+      const unsubscribe = useLayoutStore.subscribe((state) => {
+        const errors = state.errors;
+        if (errors.length > previousLength) {
+          const lastError = errors[errors.length - 1];
+          if (lastError) {
+            onError(lastError);
+          }
+          previousLength = errors.length;
         }
-        const id = await createZone({
-          branchId: currentBranchId,
-          parentId: entity.parentId as Id<"storage_zones"> | undefined,
-          name: entity.name,
-          path: entity.path,
-          storageBlockType: entity.storageBlockType,
-          zoneAttributes: entity.zoneAttributes,
+      });
+
+      return unsubscribe;
+    }, [onError]);
+
+    // ========================================================================
+    // Imperative Handle (Ref API)
+    // ========================================================================
+
+    const validateLayout = useCallback((): ValidationResult => {
+      // TODO: Implement full validation using new entity system
+      return {
+        valid: true,
+        errors: [],
+        warnings: [],
+      };
+    }, []);
+
+    const resetCamera = useCallback(() => {
+      useLayoutStore.getState().resetCamera();
+    }, []);
+
+    const zoomToEntity = useCallback((_entityId: Id<"storage_zones">) => {
+      // TODO: Implement zoom to entity
+    }, []);
+
+    const addRack = useCallback(
+      (rackData: {
+        position: object;
+        dimensions: object;
+        rotation?: object;
+      }): Id<"storage_zones"> | undefined => {
+        const id = addEntity("rack", null, "New Rack", {
+          position: rackData.position,
+          dimensions: rackData.dimensions,
+          rotation: rackData.rotation ?? { x: 0, y: 0, z: 0 },
+          shelfCount: 4,
+          storageType: "dry",
         });
         return id;
       },
-      onMutateUpdate: async (id, attributes) => {
-        await updateZone({
-          id: id as Id<"storage_zones">,
-          zoneAttributes: attributes,
-        });
+      [addEntity],
+    );
+
+    const removeRackById = useCallback(
+      (rackId: Id<"storage_zones">): boolean => {
+        try {
+          removeEntity(rackId);
+          return true;
+        } catch {
+          return false;
+        }
       },
-      onMutateDelete: async (id) => {
-        await deleteZone({ id: id as Id<"storage_zones"> });
-      },
-    },
-  );
+      [removeEntity],
+    );
 
-  return (
-    <ResizablePanelGroup direction="horizontal" className="h-full w-full grow">
-      {/* Main 3D Canvas */}
-      <ResizablePanel defaultSize={75} minSize={50}>
-        <div className="p-4">
-          <pre className="whitespace-pre-wrap break-all text-xs bg-muted rounded-md p-2">
-            {JSON.stringify(zones, null, 2)}
-          </pre>
-        </div>
-        <div>3d canvas</div>
-      </ResizablePanel>
+    const getState = useCallback((): EditorState => {
+      const racks = useLayoutStore.getState().getEntitiesByType("rack");
+      const lockedRacks = racks.filter(
+        (r) => r.zoneAttributes.isLocked === true,
+      );
 
-      <ResizableHandle withHandle />
+      return {
+        selectedEntityId,
+        cameraPosition: cameraPosition ?? { x: 0, y: 0, z: 0 },
+        isDirty,
+        lockedRackCount: lockedRacks.length,
+        totalRackCount: racks.length,
+      };
+    }, [selectedEntityId, cameraPosition, isDirty]);
 
-      {/* Right Sidebar: Entity List + Properties */}
-      <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
-        <ResizablePanelGroup direction="vertical" className="h-full border-l">
-          {/* Entity List */}
-          <ResizablePanel defaultSize={50} minSize={20}>
-            <div className="bg-primary/50 font-mono">{currentBranch?.name}</div>
-            <EntityBrowser />
-          </ResizablePanel>
+    const captureScreenshot = useCallback(async (): Promise<Blob> => {
+      // TODO: Implement screenshot capture
+      return new Blob([], { type: "image/png" });
+    }, []);
 
-          <ResizableHandle withHandle />
+    // New SmartStore-specific methods
+    const getEntities = useCallback(() => {
+      return Array.from(entities.values()).filter((e) => !e.isDeleted);
+    }, [entities]);
 
-          {/* Properties Panel */}
-          <ResizablePanel defaultSize={50} minSize={20}>
-            <SchemaPropertyPanel />
-          </ResizablePanel>
-        </ResizablePanelGroup>
-      </ResizablePanel>
-    </ResizablePanelGroup>
-  );
-}
+    const undoAction = useCallback(() => {
+      if (canUndo()) undo();
+    }, []);
+
+    const redoAction = useCallback(() => {
+      if (canRedo()) redo();
+    }, []);
+
+    useImperativeHandle(
+      ref,
+      () => ({
+        // Core API
+        validateLayout,
+        resetCamera,
+        zoomToRack: zoomToEntity,
+        zoomToZone: zoomToEntity,
+        addRack,
+        removeRack: removeRackById,
+        getState,
+        captureScreenshot,
+        // New SmartStore API
+        getEntities,
+        undo: undoAction,
+        redo: redoAction,
+        canUndo,
+        canRedo,
+      }),
+      [
+        validateLayout,
+        resetCamera,
+        zoomToEntity,
+        addRack,
+        removeRackById,
+        getState,
+        captureScreenshot,
+        getEntities,
+        undoAction,
+        redoAction,
+      ],
+    );
+
+    // ========================================================================
+    // Render
+    // ========================================================================
+
+    // const logLevel: "info" | "debug" = "info"; // Default log level
+
+    return (
+      <div
+        className={`relative h-full min-h-100 w-full overflow-hidden border-t ${className ?? ""}`}
+      >
+        <ErrorBoundary onError={onError}>
+          <ResizablePanelGroup direction="horizontal">
+            {/* Main 3D Canvas */}
+            <ResizablePanel defaultSize={75} minSize={50}>
+              {/* <div className="p-4">
+                <pre className="whitespace-pre-wrap break-all rounded-md bg-muted p-2 text-xs">
+                  {JSON.stringify(zones, null, 2)}
+                </pre>
+              </div> */}
+              <Canvas3D />
+            </ResizablePanel>
+
+            <ResizableHandle withHandle />
+
+            {/* Right Sidebar: Entity List + Properties */}
+            <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
+              <ResizablePanelGroup direction="vertical" className="h-full">
+                {/* Entity List */}
+                {showEntityBrowser && (
+                  <ResizablePanel defaultSize={50} minSize={20}>
+                    <EntityBrowser />
+                  </ResizablePanel>
+                )}
+
+                <ResizableHandle withHandle />
+
+                {/* Properties Panel */}
+                {showPropertiesPanel && (
+                  <ResizablePanel defaultSize={50} minSize={20}>
+                    <SchemaPropertyPanel readOnly={readOnly} />
+                  </ResizablePanel>
+                )}
+              </ResizablePanelGroup>
+            </ResizablePanel>
+          </ResizablePanelGroup>
+        </ErrorBoundary>
+      </div>
+    );
+  },
+);
+
+WarehouseEditor.displayName = "WarehouseEditor";

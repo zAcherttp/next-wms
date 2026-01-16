@@ -3,6 +3,7 @@
 // Unified entity-based OBB collision detection for Y-axis rotated placements
 // With spatial grid partitioning for O(1) culling optimization
 
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import type {
   CollidableEntity,
   CollisionCheckOptions,
@@ -19,7 +20,42 @@ import type {
   Vector3,
   ZoneBounds,
 } from "@/lib/types/layout-editor";
+import { useLayoutStore } from "@/store/layout-editor-store";
 import { getEntityDisplayName } from "./typeUtils";
+
+// ============================================================================
+// World Position Conversion (for zone-relative positioning)
+// ============================================================================
+
+/**
+ * Get world position by adding parent zone offset
+ * Entities with a floor/zone parent have positions relative to that zone.
+ */
+function getWorldPosition(
+  localPosition: Vector3,
+  parentId: Id<"storage_zones"> | null | undefined,
+): Vector3 {
+  if (!parentId) {
+    return localPosition; // Root-level entity, position is already world
+  }
+
+  const parent = useLayoutStore.getState().entities.get(parentId);
+  if (!parent?.zoneAttributes) {
+    return localPosition;
+  }
+
+  const parentPos = parent.zoneAttributes.position as Vector3 | undefined;
+  if (!parentPos) {
+    return localPosition;
+  }
+
+  // Child positions are relative to parent origin
+  return {
+    x: localPosition.x + parentPos.x,
+    y: localPosition.y + parentPos.y,
+    z: localPosition.z + parentPos.z,
+  };
+}
 
 // ============================================================================
 // Debug callback for visual collision debugging
@@ -316,10 +352,14 @@ function checkCollisionsBruteForce(
   for (const [rackId, rack] of racks) {
     if (excludeEntityId && rackId === excludeEntityId) continue;
 
+    // Lookup from store to get parentId for world position conversion
+    const storeEntity = useLayoutStore.getState().entities.get(rackId as Id<"storage_zones">);
+    const worldPosition = getWorldPosition(rack.position, storeEntity?.parentId);
+
     const rackRotationY = Number.isFinite(rack.rotation?.y)
       ? rack.rotation.y
       : 0;
-    const rackOBB = createOBB2D(rack.position, rack.dimensions, rackRotationY);
+    const rackOBB = createOBB2D(worldPosition, rack.dimensions, rackRotationY);
 
     if (checkOBBCollision(entityOBB, rackOBB)) {
       if (enableDebug) {
@@ -345,11 +385,15 @@ function checkCollisionsBruteForce(
     for (const [obstacleId, obstacle] of obstacles) {
       if (excludeEntityId && obstacleId === excludeEntityId) continue;
 
+      // Lookup from store to get parentId for world position conversion
+      const storeEntity = useLayoutStore.getState().entities.get(obstacleId as Id<"storage_zones">);
+      const worldPosition = getWorldPosition(obstacle.position, storeEntity?.parentId);
+
       const obstacleRotationY = Number.isFinite(obstacle.rotation?.y)
         ? obstacle.rotation.y
         : 0;
       const obstacleOBB = createOBB2D(
-        obstacle.position,
+        worldPosition,
         obstacle.dimensions,
         obstacleRotationY,
       );
@@ -639,7 +683,7 @@ export class CollisionDetector {
   addEntity(entity: Entity, entityType: EntityType): void {
     const rotationY = entity.rotation?.y ?? 0;
     this.spatialGrid.insert(
-      entity.id,
+      entity._id,
       entityType,
       entity.position,
       entity.dimensions,
@@ -660,7 +704,7 @@ export class CollisionDetector {
   updateEntity(entity: Entity, entityType: EntityType): void {
     const rotationY = entity.rotation?.y ?? 0;
     this.spatialGrid.update(
-      entity.id,
+      entity._id,
       entityType,
       entity.position,
       entity.dimensions,
@@ -737,11 +781,15 @@ export class CollisionDetector {
       // Try rack first
       const rack = racks.get(entityId);
       if (rack) {
+        // Lookup from store to get parentId for world position conversion
+        const storeEntity = useLayoutStore.getState().entities.get(entityId as Id<"storage_zones">);
+        const worldPosition = getWorldPosition(rack.position, storeEntity?.parentId);
+
         const rackRotationY = Number.isFinite(rack.rotation?.y)
           ? rack.rotation.y
           : 0;
         const rackOBB = createOBB2D(
-          rack.position,
+          worldPosition,
           rack.dimensions,
           rackRotationY,
         );
@@ -769,11 +817,15 @@ export class CollisionDetector {
       // Try obstacle
       const obstacle = obstacles.get(entityId);
       if (obstacle) {
+        // Lookup from store to get parentId for world position conversion
+        const storeEntity = useLayoutStore.getState().entities.get(entityId as Id<"storage_zones">);
+        const worldPosition = getWorldPosition(obstacle.position, storeEntity?.parentId);
+
         const obstacleRotationY = Number.isFinite(obstacle.rotation?.y)
           ? obstacle.rotation.y
           : 0;
         const obstacleOBB = createOBB2D(
-          obstacle.position,
+          worldPosition,
           obstacle.dimensions,
           obstacleRotationY,
         );

@@ -1,7 +1,7 @@
 "use client";
-
 import { ArrowRight, Check, ScanLine } from "lucide-react";
 import * as React from "react";
+import { useEffect } from "react";
 import { FoundSkuDialog } from "@/components/found-sku-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -20,6 +20,21 @@ export default function VerifyingPage() {
     null,
   );
   const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+
+  useEffect(() => {
+    const enableVideoStream = async () => {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+        });
+        //  setMediaStream(stream);
+      } catch (error) {
+        console.error("Error accessing webcam", error);
+      }
+    };
+
+    enableVideoStream();
+  }, []);
 
   const session = MOCK_VERIFYING_SESSION;
   const totalExpected = getTotalExpected(session);
@@ -94,9 +109,13 @@ export default function VerifyingPage() {
         {/* Scanner Placeholder */}
         <Card>
           <CardContent className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <div className="text-center">
-              <p>No camera detected</p>
+            <div className="mb-2 rounded-md border-2 border-dashed p-12">
+              {/* Scanner video feed would go here */}
+              <span className="text-sm">[Scanner Feed Placeholder]</span>
             </div>
+            <p className="text-center text-sm">
+              Point your camera at a barcode to scan an item.
+            </p>
           </CardContent>
         </Card>
 

@@ -112,3 +112,51 @@ export function getBadgeStyleByStatus(status: string): string {
       return "bg-slate-500/10 text-slate-600 border-slate-500/60";
   }
 }
+
+/**
+ * Brightens a hex color by mixing it with white
+ * @param hex - Hex color string (e.g., "#FF6B6B" or "#F00")
+ * @param amount - Amount to brighten (0-1), default 0.25
+ * @returns Brightened hex color string
+ */
+export function brightenHex(hex: string, amount = 0.25): string {
+  const clean = hex.replace("#", "");
+  const full =
+    clean.length === 3
+      ? clean
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : clean;
+  const num = Number.parseInt(full, 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  const mix = (c: number) =>
+    Math.max(0, Math.min(255, Math.round(c + (255 - c) * amount)));
+  const r2 = mix(r);
+  const g2 = mix(g);
+  const b2 = mix(b);
+  return `#${[r2, g2, b2].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}
+
+export function darkenHex(hex: string, amount = 0.25): string {
+  const clean = hex.replace("#", "");
+  const full =
+    clean.length === 3
+      ? clean
+          .split("")
+          .map((c) => c + c)
+          .join("")
+      : clean;
+  const num = Number.parseInt(full, 16);
+  const r = (num >> 16) & 255;
+  const g = (num >> 8) & 255;
+  const b = num & 255;
+  const mix = (c: number) =>
+    Math.max(0, Math.min(255, Math.round(c - c * amount)));
+  const r2 = mix(r);
+  const g2 = mix(g);
+  const b2 = mix(b);
+  return `#${[r2, g2, b2].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}

@@ -1,9 +1,8 @@
 // API Types for Warehouse Layout Editor
 // Component ref handle and external data interfaces
 
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import type { EditorState } from "./editor";
-import type { Rack } from "./entities";
-import type { WarehouseLayout } from "./layout";
 import type { ValidationResult } from "./validation";
 
 // ============================================================================
@@ -11,15 +10,28 @@ import type { ValidationResult } from "./validation";
 // ============================================================================
 
 export interface WarehouseEditorHandle {
-  exportLayout: () => WarehouseLayout;
+  // Core camera/view operations
   validateLayout: () => ValidationResult;
   resetCamera: () => void;
-  zoomToRack: (rackId: string) => void;
-  zoomToZone: (zoneId: string) => void;
-  addRack: (rack: Omit<Rack, "id">) => string;
-  removeRack: (rackId: string) => boolean;
+  zoomToRack: (rackId: Id<"storage_zones">) => void;
+  zoomToZone: (zoneId: Id<"storage_zones">) => void;
+
+  // Entity operations (now via storage_zone table)
+  addRack: (rackData: {
+    position: object;
+    dimensions: object;
+    rotation?: object;
+  }) => Id<"storage_zones"> | undefined;
+  removeRack: (rackId: Id<"storage_zones">) => boolean;
   getState: () => EditorState;
   captureScreenshot: () => Promise<Blob>;
+
+  // SmartStore API
+  getEntities: () => unknown[];
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
 }
 
 // ============================================================================

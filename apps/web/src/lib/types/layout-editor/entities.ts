@@ -26,7 +26,7 @@ export type EntityType = (typeof EntityTypes.values)[number];
 export type ZoneType = (typeof ZoneTypes.values)[number];
 
 export interface Zone {
-  id: string;
+  _id: string;
   type: ZoneType;
   name: string;
   bounds: {
@@ -47,7 +47,7 @@ export interface Zone {
 export type RackType = (typeof RackTypes.values)[number];
 
 export interface Rack {
-  id: string;
+  _id: string;
   type: RackType;
   position: Vector3;
   rotation: Vector3; // Euler angles in radians
@@ -69,7 +69,7 @@ export interface RackMetadata {
 // ============================================================================
 
 export interface Shelf {
-  id: string;
+  _id: string;
   levelIndex: number; // 0 = ground level
   heightFromGround: number;
   dimensions?: Dimension;
@@ -77,7 +77,7 @@ export interface Shelf {
 }
 
 export interface Bin {
-  id: string;
+  _id: string;
   capacity: number;
   currentLoad: number; // > 0 triggers parent rack lock
   position?: {
@@ -94,7 +94,7 @@ export interface Bin {
 export type EntryPointType = (typeof EntryPointTypes.values)[number];
 
 export interface EntryPoint {
-  id: string;
+  _id: string;
   position: Vector3;
   label: string;
   type?: EntryPointType;
@@ -107,7 +107,7 @@ export interface EntryPoint {
 export type ObstacleType = (typeof ObstacleTypes.values)[number];
 
 export interface Obstacle {
-  id: string;
+  _id: string;
   type?: ObstacleType;
   position: Vector3;
   rotation: Vector3;
@@ -124,7 +124,7 @@ export interface Obstacle {
  * Both Rack and Obstacle satisfy this interface.
  */
 export interface CollidableEntity {
-  id: string;
+  _id: string;
   position: Vector3;
   rotation: Vector3;
   dimensions: Dimension;

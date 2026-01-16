@@ -9,7 +9,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "@/components/ui/empty";
-import { LayoutEditor } from "@/components/zones/layout-editor";
+import { EditorPage } from "@/components/zones/editor-page";
 
 export default function Page() {
   return (
@@ -33,7 +33,7 @@ export default function Page() {
       </div>
       {/* Desktop view */}
       <div className="hidden flex-1 md:flex">
-        <LayoutEditor />
+        <EditorPage />
       </div>
     </div>
   );

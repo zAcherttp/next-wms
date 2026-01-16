@@ -20,7 +20,7 @@ import type { StorageEntity } from "../store/slices/entitiesSlice";
 
 interface UseConvexLayoutSyncOptions {
   /** Called when an entity is created locally */
-  onMutateCreate?: (entity: StorageEntity) => Promise<string>;
+  onMutateCreate?: (entity: StorageEntity) => Promise<Id<"storage_zones">>;
   /** Called when an entity is updated locally */
   onMutateUpdate?: (
     id: Id<"storage_zones">,
@@ -50,7 +50,7 @@ interface UseConvexLayoutSyncReturn {
  */
 function convexToEntity(doc: StorageZone): StorageEntity {
   return {
-    id: doc._id,
+    _id: doc._id,
     parentId: doc.parentId ?? null,
     branchId: doc.branchId,
     name: doc.name,
@@ -176,7 +176,9 @@ export function useConvexLayoutSync(
         } else if (!hasLoadedRef.current) {
           // Create mutation (new entity)
           if (onMutateCreate) {
-            await onMutateCreate(entity);
+            const realId = await onMutateCreate(entity);
+            // Update the entity with the real ID from Convex
+            useLayoutStore.getState().updateEntityId(entity._id, realId);
           }
         } else {
           // Update mutation
