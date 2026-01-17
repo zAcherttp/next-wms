@@ -485,6 +485,7 @@ export default defineSchema({
     vehicleArrivedAt: v.optional(v.number()),
     createdByUserId: v.id("users"),
     outboundStatusTypeId: v.id("system_lookups"),
+    vehicleArrivedAt: v.optional(v.number()), // Timestamp when vehicle arrived
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
   })
@@ -503,6 +504,41 @@ export default defineSchema({
   })
     .index("outboundOrderId", ["outboundOrderId"])
     .index("skuId", ["skuId"]),
+
+  // ================================================================
+  // PICKING SESSIONS
+  // ================================================================
+
+  picking_sessions: defineTable({
+    organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
+    outboundOrderId: v.id("outbound_orders"),
+    sessionCode: v.string(),
+    assignedUserId: v.optional(v.id("users")),
+    statusTypeId: v.optional(v.id("system_lookups")),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    isDeleted: v.boolean(),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("branchId", ["branchId"])
+    .index("outboundOrderId", ["outboundOrderId"])
+    .index("sessionCode", ["sessionCode"])
+    .index("assignedUserId", ["assignedUserId"])
+    .index("statusTypeId", ["statusTypeId"])
+    .index("isDeleted", ["isDeleted"]),
+
+  picking_session_details: defineTable({
+    pickingSessionId: v.id("picking_sessions"),
+    skuId: v.id("product_variants"),
+    batchId: v.optional(v.id("inventory_batches")),
+    quantityRequired: v.number(),
+    quantityPicked: v.number(),
+  })
+    .index("pickingSessionId", ["pickingSessionId"])
+    .index("skuId", ["skuId"])
+    .index("batchId", ["batchId"]),
 
   // ================================================================
   // INVENTORY ADJUSTMENTS

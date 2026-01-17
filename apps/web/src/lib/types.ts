@@ -375,3 +375,51 @@ export type ReceiveSessionProgress = {
   completedItems: number;
   items: ReceiveSessionProgressItem[];
 };
+
+// ============================================================================
+// OUTBOUND ORDER TYPES
+// ============================================================================
+
+/**
+ * Outbound order list item - used in the outbound orders table
+ */
+export type OutboundOrderListItem = {
+  _id: Id<"outbound_orders">;
+  orderCode: string;
+  orderDate: number;
+  requestedShipDate: number | null;
+  trackingNumber: string | null;
+  vehicleArrivedAt: number | null;
+  createdByUser: Pick<User, "fullName"> | null;
+  outboundStatus: Pick<SystemLookups, "lookupValue" | "lookupCode"> | null;
+};
+
+/**
+ * Outbound order detailed item - line item in an outbound order detail view
+ */
+export type OutboundOrderDetailedItem = {
+  _id: Id<"outbound_order_details">;
+  skuCode: string;
+  productName: string | null;
+  quantityRequested: number;
+  quantityPicked: number;
+  quantityPacked: number;
+};
+
+/**
+ * Outbound order with full details - used in the detail view dialog
+ */
+export type OutboundOrderDetailed = {
+  _id: Id<"outbound_orders">;
+  orderCode: string;
+  orderDate: number;
+  requestedShipDate: number | null;
+  trackingNumber: string | null;
+  createdByUser: Pick<User, "fullName"> | null;
+  outboundStatus: Pick<SystemLookups, "lookupValue"> | null;
+  items: OutboundOrderDetailedItem[];
+  totalItems: number;
+  totalQuantityRequested: number;
+  totalQuantityPicked: number;
+  totalQuantityPacked: number;
+};

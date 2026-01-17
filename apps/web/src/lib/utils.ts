@@ -89,6 +89,8 @@ export function getBadgeStyleByStatus(status: string): string {
     case "active":
     case "in progress":
     case "receiving":
+    case "picking":
+    case "processing":
       return "bg-blue-500/10 text-blue-600 border-blue-500/60";
 
     // 4. Success / Final States
@@ -96,11 +98,13 @@ export function getBadgeStyleByStatus(status: string): string {
     case "complete":
     case "received":
     case "confirmed":
+    case "picked":
       return "bg-green-500/10 text-green-600 border-green-500/60";
 
     // 5. Exception / Rework States
     // "Returned" is rarely "Active" - it usually implies a revision is needed
     case "returned":
+    case "loading":
       return "bg-orange-500/10 text-orange-600 border-orange-500/60";
 
     // 6. Failure States
@@ -108,7 +112,12 @@ export function getBadgeStyleByStatus(status: string): string {
     case "cancelled":
       return "bg-red-500/10 text-red-600 border-red-500/60";
 
-    // 7. Neutral / Archived
+    // 7. Shipped / Archived States
+    case "shipped":
+    case "delivered":
+      return "bg-slate-600/15 text-slate-700 border-slate-600/60";
+
+    // 8. Neutral / Default
     default:
       return "bg-slate-500/10 text-slate-600 border-slate-500/60";
   }
