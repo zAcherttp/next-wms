@@ -7,6 +7,7 @@ import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { ArrowRight, Check, Loader2 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import * as React from "react";
+import { toast } from "sonner";
 import { springTransition } from "@/components/easing";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -108,6 +109,19 @@ export function LocationTransferDialog({
     enabled: open,
   });
 
+  // Debug logging for zones
+  React.useEffect(() => {
+    if (open) {
+      console.log("Location Transfer Dialog - Data Status:", {
+        zones: zones?.length ?? 0,
+        isLoadingZones,
+        fromZone,
+        currentBranch: !!currentBranch?._id,
+        organizationId: !!organizationId,
+      });
+    }
+  }, [open, zones, isLoadingZones, fromZone, currentBranch?._id, organizationId]);
+
   // Create adjustment request mutation - extract hook to top level
   const createAdjustmentFn = useConvexMutation(
     api.cycleCount.createNewAdjustmentRequest,
@@ -161,7 +175,14 @@ export function LocationTransferDialog({
       !lookups?.locationTypeId ||
       !lookups?.defaultStatusId
     ) {
-      console.error("Missing required data for location transfer");
+      console.error("Missing required data for location transfer", {
+        organizationId: !!organizationId,
+        branchId: !!currentBranch?._id,
+        userId: !!user?._id,
+        locationTypeId: !!lookups?.locationTypeId,
+        defaultStatusId: !!lookups?.defaultStatusId,
+      });
+      toast.error("Missing required information. Please ensure you're logged in and try again.");
       return;
     }
 
@@ -172,6 +193,7 @@ export function LocationTransferDialog({
 
     if (!selectedBatchData || selectedBatchData.length === 0) {
       console.error("No items selected for transfer");
+      toast.error("Please select at least one item to transfer.");
       return;
     }
 
@@ -206,10 +228,12 @@ export function LocationTransferDialog({
         })),
       });
 
+      toast.success("Location transfer request created successfully");
       onSuccess?.();
       handleClose();
     } catch (error) {
       console.error("Failed to create location transfer:", error);
+      toast.error("Failed to create location transfer. Please try again.");
     }
   };
 
@@ -287,14 +311,18 @@ export function LocationTransferDialog({
                       <SelectItem value="_loading" disabled>
                         Loading...
                       </SelectItem>
-                    ) : (
+                    ) : zones && zones.length > 0 ? (
                       zones
-                        ?.filter((z) => z._id !== fromZone) // Exclude source zone
+                        .filter((z) => z._id !== fromZone)
                         .map((zone) => (
                           <SelectItem key={zone._id} value={zone._id}>
                             {zone.name}
                           </SelectItem>
                         ))
+                    ) : (
+                      <SelectItem value="_empty" disabled>
+                        No zones available
+                      </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -453,12 +481,16 @@ export function LocationTransferDialog({
                       <SelectItem value="_loading" disabled>
                         Loading...
                       </SelectItem>
-                    ) : (
-                      zones?.map((zone) => (
+                    ) : zones && zones.length > 0 ? (
+                      zones.map((zone) => (
                         <SelectItem key={zone._id} value={zone._id}>
                           {zone.name}
                         </SelectItem>
                       ))
+                    ) : (
+                      <SelectItem value="_empty" disabled>
+                        No zones available
+                      </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
@@ -501,14 +533,18 @@ export function LocationTransferDialog({
                       <SelectItem value="_loading" disabled>
                         Loading...
                       </SelectItem>
-                    ) : (
+                    ) : zones && zones.length > 0 ? (
                       zones
-                        ?.filter((z) => z._id !== fromZone)
+                        .filter((z) => z._id !== fromZone)
                         .map((zone) => (
                           <SelectItem key={zone._id} value={zone._id}>
                             {zone.name}
                           </SelectItem>
                         ))
+                    ) : (
+                      <SelectItem value="_empty" disabled>
+                        No zones available
+                      </SelectItem>
                     )}
                   </SelectContent>
                 </Select>
