@@ -30,8 +30,8 @@ export default function Page() {
       api.cycleCount.getStatsWithChartData,
       organizationId && currentBranch?._id
         ? {
-            organizationId: organizationId as string,
-            branchId: currentBranch._id as string,
+            organizationId: organizationId as Id<"organizations">,
+            branchId: currentBranch._id as Id<"branches">,
             startDate: dateRange.from.getTime(),
             endDate: dateRange.to?.getTime() ?? dateRange.from.getTime(),
           }
@@ -61,34 +61,34 @@ export default function Page() {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <ChartDataCard
           title="Active Sessions"
-          value={stats?.activeSessions.value ?? 0}
-          changePercent={stats?.activeSessions.changePercent ?? 0}
+          value={stats?.activeSessions?.value ?? 0}
+          changePercent={stats?.activeSessions?.changePercent ?? 0}
           periodLabel={periodLabel}
-          data={stats?.activeSessions.data ?? []}
+          data={stats?.activeSessions?.data ?? []}
           color="var(--chart-1)"
         />
         <ChartDataCard
           title="Total Zones"
-          value={stats?.totalZones.value ?? 0}
-          changePercent={stats?.totalZones.changePercent ?? 0}
+          value={stats?.totalZones?.value ?? 0}
+          changePercent={stats?.totalZones?.changePercent ?? 0}
           periodLabel={periodLabel}
-          data={stats?.totalZones.data ?? []}
+          data={stats?.totalZones?.data ?? []}
           color="var(--chart-2)"
         />
         <ChartDataCard
           title="Completed"
-          value={stats?.completedSessions.value ?? 0}
-          changePercent={stats?.completedSessions.changePercent ?? 0}
+          value={stats?.completedSessions?.value ?? 0}
+          changePercent={stats?.completedSessions?.changePercent ?? 0}
           periodLabel={periodLabel}
-          data={stats?.completedSessions.data ?? []}
+          data={stats?.completedSessions?.data ?? []}
           color="var(--chart-3)"
         />
         <ChartDataCard
           title="Verification Rate"
-          value={`${stats?.verificationRate.value ?? 0}%`}
-          changePercent={stats?.verificationRate.changePercent ?? 0}
+          value={`${stats?.verificationRate?.value ?? 0}%`}
+          changePercent={stats?.verificationRate?.changePercent ?? 0}
           periodLabel={periodLabel}
-          data={stats?.verificationRate.data ?? []}
+          data={stats?.verificationRate?.data ?? []}
           color="var(--chart-4)"
         />
       </div>

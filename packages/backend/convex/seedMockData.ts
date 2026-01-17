@@ -3578,3 +3578,1128 @@ export const clearAllDatabaseData = mutation({
     };
   },
 });
+
+/**
+ * Seed product inventory data for an existing organization and branch
+ * Use this to populate products, variants, batches, etc. for testing the Product Inventory page
+ */
+import { v } from "convex/values";
+import type { Id } from "./_generated/dataModel";
+
+export const seedProductInventoryData = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId, branchId } = args;
+    const now = Date.now();
+    const oneDay = 24 * 60 * 60 * 1000;
+
+    // Verify organization and branch exist
+    const organization = await ctx.db.get(organizationId);
+    if (!organization) {
+      throw new Error("Organization not found");
+    }
+
+    const branch = await ctx.db.get(branchId);
+    if (!branch) {
+      throw new Error("Branch not found");
+    }
+
+    // ================================================================
+    // 1. GET OR CREATE SYSTEM LOOKUPS
+    // ================================================================
+
+    // Helper function to get or create lookup
+    const getOrCreateLookup = async (
+      lookupType: string,
+      lookupCode: string,
+      lookupValue: string,
+      description: string,
+      sortOrder: number
+    ) => {
+      const existing = await ctx.db
+        .query("system_lookups")
+        .withIndex("lookupType_lookupCode", (q) =>
+          q.eq("lookupType", lookupType).eq("lookupCode", lookupCode)
+        )
+        .first();
+
+      if (existing) return existing._id;
+
+      return await ctx.db.insert("system_lookups", {
+        lookupType,
+        lookupCode,
+        lookupValue,
+        description,
+        sortOrder,
+      });
+    };
+
+    // Storage Requirements
+    const normalStorageId = await getOrCreateLookup(
+      "StorageRequirement",
+      "NORMAL",
+      "Normal",
+      "Standard storage conditions",
+      1
+    );
+    const coldStorageId = await getOrCreateLookup(
+      "StorageRequirement",
+      "COLD",
+      "Cold Storage",
+      "Refrigerated storage required",
+      2
+    );
+    const freezerStorageId = await getOrCreateLookup(
+      "StorageRequirement",
+      "FREEZER",
+      "Freezer",
+      "Frozen storage required",
+      3
+    );
+
+    // Tracking Methods
+    const fifoTrackingId = await getOrCreateLookup(
+      "TrackingMethod",
+      "FIFO",
+      "FIFO",
+      "First In First Out tracking",
+      1
+    );
+    const fefoTrackingId = await getOrCreateLookup(
+      "TrackingMethod",
+      "FEFO",
+      "FEFO",
+      "First Expired First Out tracking",
+      2
+    );
+    const serialTrackingId = await getOrCreateLookup(
+      "TrackingMethod",
+      "SERIAL",
+      "Serial Number",
+      "Serial number tracking",
+      3
+    );
+
+    // Unit of Measures
+    const unitPieceId = await getOrCreateLookup(
+      "UnitOfMeasure",
+      "PCS",
+      "Piece",
+      "Individual piece/unit",
+      1
+    );
+    const unitBoxId = await getOrCreateLookup(
+      "UnitOfMeasure",
+      "BOX",
+      "Box",
+      "Box/carton unit",
+      2
+    );
+    const unitKgId = await getOrCreateLookup(
+      "UnitOfMeasure",
+      "KG",
+      "Kilogram",
+      "Weight in kilograms",
+      3
+    );
+    const unitLiterId = await getOrCreateLookup(
+      "UnitOfMeasure",
+      "L",
+      "Liter",
+      "Volume in liters",
+      4
+    );
+
+    // Barcode Types
+    const ean13BarcodeTypeId = await getOrCreateLookup(
+      "BarcodeType",
+      "EAN13",
+      "EAN-13",
+      "EAN-13 barcode format",
+      1
+    );
+    const qrBarcodeTypeId = await getOrCreateLookup(
+      "BarcodeType",
+      "QR",
+      "QR Code",
+      "QR code format",
+      2
+    );
+
+    // Batch Status
+    const batchActiveStatusId = await getOrCreateLookup(
+      "BatchStatus",
+      "ACTIVE",
+      "Active",
+      "Batch is active and available",
+      1
+    );
+    const batchReservedStatusId = await getOrCreateLookup(
+      "BatchStatus",
+      "RESERVED",
+      "Reserved",
+      "Batch is reserved for an order",
+      2
+    );
+
+    // Zone Types
+    const receivingZoneTypeId = await getOrCreateLookup(
+      "ZoneType",
+      "RECEIVING",
+      "Receiving",
+      "Receiving zone for inbound goods",
+      1
+    );
+    const storageZoneTypeId = await getOrCreateLookup(
+      "ZoneType",
+      "STORAGE",
+      "Storage",
+      "Main storage zone",
+      2
+    );
+    const pickingZoneTypeId = await getOrCreateLookup(
+      "ZoneType",
+      "PICKING",
+      "Picking",
+      "Picking zone for order fulfillment",
+      3
+    );
+    const coldZoneTypeId = await getOrCreateLookup(
+      "ZoneType",
+      "COLD_STORAGE",
+      "Cold Storage",
+      "Temperature controlled storage zone",
+      4
+    );
+
+    // ================================================================
+    // 2. CREATE CATEGORIES
+    // ================================================================
+
+    const electronicsCategory = await ctx.db.insert("categories", {
+      organizationId,
+      name: "Electronics",
+      path: "electronics",
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const computersCategory = await ctx.db.insert("categories", {
+      organizationId,
+      name: "Computers & Laptops",
+      path: "electronics.computers",
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const phonesCategory = await ctx.db.insert("categories", {
+      organizationId,
+      name: "Phones & Tablets",
+      path: "electronics.phones",
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const accessoriesCategory = await ctx.db.insert("categories", {
+      organizationId,
+      name: "Accessories",
+      path: "electronics.accessories",
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const foodBeverageCategory = await ctx.db.insert("categories", {
+      organizationId,
+      name: "Food & Beverage",
+      path: "food_beverage",
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const drinksCategory = await ctx.db.insert("categories", {
+      organizationId,
+      name: "Beverages",
+      path: "food_beverage.drinks",
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const snacksCategory = await ctx.db.insert("categories", {
+      organizationId,
+      name: "Snacks",
+      path: "food_beverage.snacks",
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const householdCategory = await ctx.db.insert("categories", {
+      organizationId,
+      name: "Household",
+      path: "household",
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const cleaningCategory = await ctx.db.insert("categories", {
+      organizationId,
+      name: "Cleaning Supplies",
+      path: "household.cleaning",
+      isActive: true,
+      isDeleted: false,
+    });
+
+    // ================================================================
+    // 3. CREATE BRANDS
+    // ================================================================
+
+    const appleBrand = await ctx.db.insert("brands", {
+      organizationId: organizationId as string,
+      name: "Apple",
+      isActive: true,
+    });
+
+    const samsungBrand = await ctx.db.insert("brands", {
+      organizationId: organizationId as string,
+      name: "Samsung",
+      isActive: true,
+    });
+
+    const dellBrand = await ctx.db.insert("brands", {
+      organizationId: organizationId as string,
+      name: "Dell",
+      isActive: true,
+    });
+
+    const sonyBrand = await ctx.db.insert("brands", {
+      organizationId: organizationId as string,
+      name: "Sony",
+      isActive: true,
+    });
+
+    const cocaColaBrand = await ctx.db.insert("brands", {
+      organizationId: organizationId as string,
+      name: "Coca-Cola",
+      isActive: true,
+    });
+
+    const nestleBrand = await ctx.db.insert("brands", {
+      organizationId: organizationId as string,
+      name: "Nestlé",
+      isActive: true,
+    });
+
+    const pgBrand = await ctx.db.insert("brands", {
+      organizationId: organizationId as string,
+      name: "P&G",
+      isActive: true,
+    });
+
+    const logitechBrand = await ctx.db.insert("brands", {
+      organizationId: organizationId as string,
+      name: "Logitech",
+      isActive: true,
+    });
+
+    // ================================================================
+    // 4. CREATE STORAGE ZONES
+    // ================================================================
+
+    const receivingZone = await ctx.db.insert("storage_zones", {
+      branchId,
+      name: "Receiving Dock A",
+      path: "receiving.dock_a",
+      zoneTypeId: receivingZoneTypeId,
+      storageBlockType: "FLOOR",
+      zoneAttributes: { maxCapacity: 500, temperature: "ambient" },
+      isDeleted: false,
+    });
+
+    const storageZoneA = await ctx.db.insert("storage_zones", {
+      branchId,
+      name: "Storage Zone A",
+      path: "storage.zone_a",
+      zoneTypeId: storageZoneTypeId,
+      storageBlockType: "RACK",
+      zoneAttributes: { maxCapacity: 2000, aisles: 5, levels: 4 },
+      isDeleted: false,
+    });
+
+    const storageZoneB = await ctx.db.insert("storage_zones", {
+      branchId,
+      name: "Storage Zone B",
+      path: "storage.zone_b",
+      zoneTypeId: storageZoneTypeId,
+      storageBlockType: "RACK",
+      zoneAttributes: { maxCapacity: 1500, aisles: 4, levels: 3 },
+      isDeleted: false,
+    });
+
+    const coldStorageZone = await ctx.db.insert("storage_zones", {
+      branchId,
+      name: "Cold Storage",
+      path: "storage.cold",
+      zoneTypeId: coldZoneTypeId,
+      storageBlockType: "SHELF",
+      zoneAttributes: { maxCapacity: 500, temperature: "2-8C" },
+      isDeleted: false,
+    });
+
+    const pickingZone = await ctx.db.insert("storage_zones", {
+      branchId,
+      name: "Picking Zone",
+      path: "picking.main",
+      zoneTypeId: pickingZoneTypeId,
+      storageBlockType: "BIN",
+      zoneAttributes: { maxCapacity: 300 },
+      isDeleted: false,
+    });
+
+    // ================================================================
+    // 5. CREATE PRODUCTS AND VARIANTS
+    // ================================================================
+
+    // Product 1: MacBook Pro
+    const macbookPro = await ctx.db.insert("products", {
+      organizationId,
+      name: 'MacBook Pro 14"',
+      description: "Apple MacBook Pro 14-inch with M3 Pro chip, professional laptop",
+      categoryId: computersCategory,
+      brandId: appleBrand,
+      storageRequirementTypeId: normalStorageId,
+      trackingMethodTypeId: serialTrackingId,
+      shelfLifeDays: undefined,
+      reorderPoint: 5,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const macbookVariant1 = await ctx.db.insert("product_variants", {
+      productId: macbookPro,
+      skuCode: "MBP14-M3P-512-SG",
+      description: "M3 Pro, 512GB SSD, Space Gray",
+      costPrice: 1800,
+      sellingPrice: 1999,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 1.55,
+      volumeM3: 0.003,
+      temperatureSensitive: false,
+      stackingLimit: 5,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const macbookVariant2 = await ctx.db.insert("product_variants", {
+      productId: macbookPro,
+      skuCode: "MBP14-M3P-1TB-SL",
+      description: "M3 Pro, 1TB SSD, Silver",
+      costPrice: 2100,
+      sellingPrice: 2499,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 1.55,
+      volumeM3: 0.003,
+      temperatureSensitive: false,
+      stackingLimit: 5,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    // Add barcodes for MacBook variants
+    await ctx.db.insert("product_barcodes", {
+      skuId: macbookVariant1,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "0194253721000",
+    });
+    await ctx.db.insert("product_barcodes", {
+      skuId: macbookVariant2,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "0194253721017",
+    });
+
+    // Product 2: iPhone 15 Pro
+    const iphone15Pro = await ctx.db.insert("products", {
+      organizationId,
+      name: "iPhone 15 Pro",
+      description: "Apple iPhone 15 Pro with A17 Pro chip, titanium design",
+      categoryId: phonesCategory,
+      brandId: appleBrand,
+      storageRequirementTypeId: normalStorageId,
+      trackingMethodTypeId: serialTrackingId,
+      shelfLifeDays: undefined,
+      reorderPoint: 20,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const iphoneVariant1 = await ctx.db.insert("product_variants", {
+      productId: iphone15Pro,
+      skuCode: "IP15P-128-NAT",
+      description: "128GB, Natural Titanium",
+      costPrice: 900,
+      sellingPrice: 999,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.187,
+      temperatureSensitive: false,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const iphoneVariant2 = await ctx.db.insert("product_variants", {
+      productId: iphone15Pro,
+      skuCode: "IP15P-256-BLU",
+      description: "256GB, Blue Titanium",
+      costPrice: 1000,
+      sellingPrice: 1099,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.187,
+      temperatureSensitive: false,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const iphoneVariant3 = await ctx.db.insert("product_variants", {
+      productId: iphone15Pro,
+      skuCode: "IP15P-512-BLK",
+      description: "512GB, Black Titanium",
+      costPrice: 1150,
+      sellingPrice: 1299,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.187,
+      temperatureSensitive: false,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("product_barcodes", {
+      skuId: iphoneVariant1,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "0194253820000",
+    });
+    await ctx.db.insert("product_barcodes", {
+      skuId: iphoneVariant2,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "0194253820017",
+    });
+
+    // Product 3: Samsung Galaxy S24 Ultra
+    const galaxyS24 = await ctx.db.insert("products", {
+      organizationId,
+      name: "Galaxy S24 Ultra",
+      description: "Samsung Galaxy S24 Ultra with S Pen, AI features",
+      categoryId: phonesCategory,
+      brandId: samsungBrand,
+      storageRequirementTypeId: normalStorageId,
+      trackingMethodTypeId: fifoTrackingId,
+      shelfLifeDays: undefined,
+      reorderPoint: 15,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const galaxyVariant1 = await ctx.db.insert("product_variants", {
+      productId: galaxyS24,
+      skuCode: "SGS24U-256-BLK",
+      description: "256GB, Titanium Black",
+      costPrice: 1100,
+      sellingPrice: 1299,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.232,
+      temperatureSensitive: false,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const galaxyVariant2 = await ctx.db.insert("product_variants", {
+      productId: galaxyS24,
+      skuCode: "SGS24U-512-GRY",
+      description: "512GB, Titanium Gray",
+      costPrice: 1250,
+      sellingPrice: 1419,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.232,
+      temperatureSensitive: false,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("product_barcodes", {
+      skuId: galaxyVariant1,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "8806095349817",
+    });
+
+    // Product 4: Dell XPS 15
+    const dellXps = await ctx.db.insert("products", {
+      organizationId,
+      name: "Dell XPS 15",
+      description: "Dell XPS 15 laptop with InfinityEdge display",
+      categoryId: computersCategory,
+      brandId: dellBrand,
+      storageRequirementTypeId: normalStorageId,
+      trackingMethodTypeId: serialTrackingId,
+      shelfLifeDays: undefined,
+      reorderPoint: 8,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const dellVariant1 = await ctx.db.insert("product_variants", {
+      productId: dellXps,
+      skuCode: "XPS15-I7-16-512",
+      description: "Intel i7, 16GB RAM, 512GB SSD",
+      costPrice: 1400,
+      sellingPrice: 1599,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 1.86,
+      temperatureSensitive: false,
+      stackingLimit: 4,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("product_barcodes", {
+      skuId: dellVariant1,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "5397184590126",
+    });
+
+    // Product 5: Logitech MX Master 3S
+    const mxMaster = await ctx.db.insert("products", {
+      organizationId,
+      name: "MX Master 3S Mouse",
+      description: "Logitech MX Master 3S wireless mouse for professionals",
+      categoryId: accessoriesCategory,
+      brandId: logitechBrand,
+      storageRequirementTypeId: normalStorageId,
+      trackingMethodTypeId: fifoTrackingId,
+      shelfLifeDays: undefined,
+      reorderPoint: 25,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const mouseVariant1 = await ctx.db.insert("product_variants", {
+      productId: mxMaster,
+      skuCode: "MXM3S-BLK",
+      description: "Graphite Black",
+      costPrice: 85,
+      sellingPrice: 99,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.141,
+      temperatureSensitive: false,
+      stackingLimit: 20,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const mouseVariant2 = await ctx.db.insert("product_variants", {
+      productId: mxMaster,
+      skuCode: "MXM3S-WHT",
+      description: "Pale Gray",
+      costPrice: 85,
+      sellingPrice: 99,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.141,
+      temperatureSensitive: false,
+      stackingLimit: 20,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("product_barcodes", {
+      skuId: mouseVariant1,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "5099206099784",
+    });
+    await ctx.db.insert("product_barcodes", {
+      skuId: mouseVariant2,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "5099206099791",
+    });
+
+    // Product 6: Sony WH-1000XM5
+    const sonyHeadphones = await ctx.db.insert("products", {
+      organizationId,
+      name: "Sony WH-1000XM5",
+      description: "Sony premium noise-canceling wireless headphones",
+      categoryId: accessoriesCategory,
+      brandId: sonyBrand,
+      storageRequirementTypeId: normalStorageId,
+      trackingMethodTypeId: fifoTrackingId,
+      shelfLifeDays: undefined,
+      reorderPoint: 12,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const headphoneVariant1 = await ctx.db.insert("product_variants", {
+      productId: sonyHeadphones,
+      skuCode: "WH1000XM5-BLK",
+      description: "Black",
+      costPrice: 320,
+      sellingPrice: 399,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.25,
+      temperatureSensitive: false,
+      stackingLimit: 10,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const headphoneVariant2 = await ctx.db.insert("product_variants", {
+      productId: sonyHeadphones,
+      skuCode: "WH1000XM5-SLV",
+      description: "Silver",
+      costPrice: 320,
+      sellingPrice: 399,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.25,
+      temperatureSensitive: false,
+      stackingLimit: 10,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("product_barcodes", {
+      skuId: headphoneVariant1,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "4548736132610",
+    });
+
+    // Product 7: Coca-Cola (Cold Storage Item)
+    const cocaCola = await ctx.db.insert("products", {
+      organizationId,
+      name: "Coca-Cola Classic",
+      description: "Coca-Cola Classic carbonated soft drink",
+      categoryId: drinksCategory,
+      brandId: cocaColaBrand,
+      storageRequirementTypeId: coldStorageId,
+      trackingMethodTypeId: fefoTrackingId,
+      shelfLifeDays: 180,
+      reorderPoint: 100,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const cokeVariant1 = await ctx.db.insert("product_variants", {
+      productId: cocaCola,
+      skuCode: "COKE-330ML-CAN",
+      description: "330ml Can",
+      costPrice: 0.5,
+      sellingPrice: 1.0,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.35,
+      temperatureSensitive: true,
+      stackingLimit: 24,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const cokeVariant2 = await ctx.db.insert("product_variants", {
+      productId: cocaCola,
+      skuCode: "COKE-1.5L-BTL",
+      description: "1.5L Bottle",
+      costPrice: 1.2,
+      sellingPrice: 2.0,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 1.55,
+      temperatureSensitive: true,
+      stackingLimit: 6,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("product_barcodes", {
+      skuId: cokeVariant1,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "5449000000996",
+    });
+    await ctx.db.insert("product_barcodes", {
+      skuId: cokeVariant2,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "5449000000439",
+    });
+
+    // Product 8: Nestlé KitKat
+    const kitkat = await ctx.db.insert("products", {
+      organizationId,
+      name: "KitKat",
+      description: "Nestlé KitKat chocolate wafer bar",
+      categoryId: snacksCategory,
+      brandId: nestleBrand,
+      storageRequirementTypeId: normalStorageId,
+      trackingMethodTypeId: fefoTrackingId,
+      shelfLifeDays: 365,
+      reorderPoint: 50,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const kitkatVariant1 = await ctx.db.insert("product_variants", {
+      productId: kitkat,
+      skuCode: "KITKAT-4F-45G",
+      description: "4 Finger 45g",
+      costPrice: 0.8,
+      sellingPrice: 1.5,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.045,
+      temperatureSensitive: false,
+      stackingLimit: 48,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("product_barcodes", {
+      skuId: kitkatVariant1,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "7613034626837",
+    });
+
+    // Product 9: Tide Detergent (Low Stock Item - for testing)
+    const tidePods = await ctx.db.insert("products", {
+      organizationId,
+      name: "Tide PODS",
+      description: "P&G Tide PODS laundry detergent pacs",
+      categoryId: cleaningCategory,
+      brandId: pgBrand,
+      storageRequirementTypeId: normalStorageId,
+      trackingMethodTypeId: fifoTrackingId,
+      shelfLifeDays: 730,
+      reorderPoint: 30,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const tideVariant1 = await ctx.db.insert("product_variants", {
+      productId: tidePods,
+      skuCode: "TIDE-PODS-42CT",
+      description: "42 Count Original",
+      costPrice: 15,
+      sellingPrice: 22,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 1.1,
+      temperatureSensitive: false,
+      stackingLimit: 8,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("product_barcodes", {
+      skuId: tideVariant1,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "0037000509615",
+    });
+
+    // Product 10: AirPods Pro (Out of Stock Item - for testing)
+    const airpodsPro = await ctx.db.insert("products", {
+      organizationId,
+      name: "AirPods Pro 2",
+      description: "Apple AirPods Pro 2nd generation with USB-C",
+      categoryId: accessoriesCategory,
+      brandId: appleBrand,
+      storageRequirementTypeId: normalStorageId,
+      trackingMethodTypeId: serialTrackingId,
+      shelfLifeDays: undefined,
+      reorderPoint: 15,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    const airpodsVariant1 = await ctx.db.insert("product_variants", {
+      productId: airpodsPro,
+      skuCode: "APP2-USBC",
+      description: "USB-C Charging Case",
+      costPrice: 200,
+      sellingPrice: 249,
+      unitOfMeasureId: unitPieceId,
+      weightKg: 0.061,
+      temperatureSensitive: false,
+      stackingLimit: 30,
+      isActive: true,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("product_barcodes", {
+      skuId: airpodsVariant1,
+      barcodeTypeId: ean13BarcodeTypeId,
+      barcodeValue: "0194253939306",
+    });
+
+    // ================================================================
+    // 6. CREATE INVENTORY BATCHES
+    // ================================================================
+
+    // MacBook Pro batches
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: macbookVariant1,
+      zoneId: storageZoneA,
+      quantity: 12,
+      branchId,
+      supplierBatchNumber: "APL-2024-001",
+      internalBatchNumber: "IB-MBP-001",
+      receivedAt: now - 30 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: macbookVariant2,
+      zoneId: storageZoneA,
+      quantity: 8,
+      branchId,
+      supplierBatchNumber: "APL-2024-002",
+      internalBatchNumber: "IB-MBP-002",
+      receivedAt: now - 20 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    // iPhone batches
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: iphoneVariant1,
+      zoneId: storageZoneA,
+      quantity: 45,
+      branchId,
+      supplierBatchNumber: "APL-2024-010",
+      internalBatchNumber: "IB-IP15-001",
+      receivedAt: now - 15 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: iphoneVariant2,
+      zoneId: storageZoneB,
+      quantity: 30,
+      branchId,
+      supplierBatchNumber: "APL-2024-011",
+      internalBatchNumber: "IB-IP15-002",
+      receivedAt: now - 10 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: iphoneVariant3,
+      zoneId: storageZoneB,
+      quantity: 18,
+      branchId,
+      supplierBatchNumber: "APL-2024-012",
+      internalBatchNumber: "IB-IP15-003",
+      receivedAt: now - 5 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    // Samsung Galaxy batches
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: galaxyVariant1,
+      zoneId: storageZoneA,
+      quantity: 25,
+      branchId,
+      supplierBatchNumber: "SAM-2024-001",
+      internalBatchNumber: "IB-SGS24-001",
+      receivedAt: now - 25 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: galaxyVariant2,
+      zoneId: storageZoneA,
+      quantity: 15,
+      branchId,
+      supplierBatchNumber: "SAM-2024-002",
+      internalBatchNumber: "IB-SGS24-002",
+      receivedAt: now - 18 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    // Dell XPS batch
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: dellVariant1,
+      zoneId: storageZoneB,
+      quantity: 6,
+      branchId,
+      supplierBatchNumber: "DEL-2024-001",
+      internalBatchNumber: "IB-XPS-001",
+      receivedAt: now - 40 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    // Logitech Mouse batches
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: mouseVariant1,
+      zoneId: pickingZone,
+      quantity: 50,
+      branchId,
+      supplierBatchNumber: "LOG-2024-001",
+      internalBatchNumber: "IB-MXM-001",
+      receivedAt: now - 45 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: mouseVariant2,
+      zoneId: pickingZone,
+      quantity: 35,
+      branchId,
+      supplierBatchNumber: "LOG-2024-002",
+      internalBatchNumber: "IB-MXM-002",
+      receivedAt: now - 30 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    // Sony Headphones batch
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: headphoneVariant1,
+      zoneId: storageZoneB,
+      quantity: 20,
+      branchId,
+      supplierBatchNumber: "SNY-2024-001",
+      internalBatchNumber: "IB-WH1K-001",
+      receivedAt: now - 20 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: headphoneVariant2,
+      zoneId: storageZoneB,
+      quantity: 15,
+      branchId,
+      supplierBatchNumber: "SNY-2024-002",
+      internalBatchNumber: "IB-WH1K-002",
+      receivedAt: now - 15 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    // Coca-Cola batches (with expiration dates)
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: cokeVariant1,
+      zoneId: coldStorageZone,
+      quantity: 480,
+      branchId,
+      supplierBatchNumber: "COKE-2024-001",
+      internalBatchNumber: "IB-COKE-001",
+      receivedAt: now - 60 * oneDay,
+      manufacturingDate: now - 90 * oneDay,
+      expiresAt: now + 90 * oneDay, // Expiring in 3 months
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: cokeVariant1,
+      zoneId: coldStorageZone,
+      quantity: 240,
+      branchId,
+      supplierBatchNumber: "COKE-2024-002",
+      internalBatchNumber: "IB-COKE-002",
+      receivedAt: now - 10 * oneDay,
+      manufacturingDate: now - 30 * oneDay,
+      expiresAt: now + 150 * oneDay, // Good for 5 months
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: cokeVariant2,
+      zoneId: coldStorageZone,
+      quantity: 120,
+      branchId,
+      supplierBatchNumber: "COKE-2024-003",
+      internalBatchNumber: "IB-COKE-003",
+      receivedAt: now - 5 * oneDay,
+      manufacturingDate: now - 15 * oneDay,
+      expiresAt: now + 165 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    // KitKat batches (with expiration - one expiring soon)
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: kitkatVariant1,
+      zoneId: storageZoneA,
+      quantity: 200,
+      branchId,
+      supplierBatchNumber: "NES-2024-001",
+      internalBatchNumber: "IB-KK-001",
+      receivedAt: now - 100 * oneDay,
+      manufacturingDate: now - 120 * oneDay,
+      expiresAt: now + 20 * oneDay, // Expiring soon!
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: kitkatVariant1,
+      zoneId: storageZoneA,
+      quantity: 300,
+      branchId,
+      supplierBatchNumber: "NES-2024-002",
+      internalBatchNumber: "IB-KK-002",
+      receivedAt: now - 30 * oneDay,
+      manufacturingDate: now - 45 * oneDay,
+      expiresAt: now + 320 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    // Tide PODS batch (LOW STOCK - below reorder point of 30)
+    await ctx.db.insert("inventory_batches", {
+      organizationId,
+      skuId: tideVariant1,
+      zoneId: storageZoneB,
+      quantity: 15, // Low stock!
+      branchId,
+      supplierBatchNumber: "PG-2024-001",
+      internalBatchNumber: "IB-TIDE-001",
+      receivedAt: now - 60 * oneDay,
+      manufacturingDate: now - 90 * oneDay,
+      expiresAt: now + 640 * oneDay,
+      batchStatusTypeId: batchActiveStatusId,
+      isDeleted: false,
+    });
+
+    // AirPods Pro - NO BATCHES (OUT OF STOCK for testing)
+
+    return {
+      success: true,
+      message: "Product inventory data seeded successfully!",
+      data: {
+        categories: 9,
+        brands: 8,
+        products: 10,
+        variants: 17,
+        barcodes: 14,
+        zones: 5,
+        batches: 18,
+      },
+    };
+  },
+});

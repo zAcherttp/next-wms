@@ -2752,80 +2752,49 @@ export const getStats = query({
  */
 export const getStatsWithChartData = query({
   args: {
-    organizationId: v.string(),
-    branchId: v.string(),
+    organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
     startDate: v.number(), // timestamp in ms
     endDate: v.number(), // timestamp in ms
   },
   handler: async (ctx, args) => {
     const { startDate, endDate } = args;
 
-    // Step 1: Get the cycle count session type lookup
-    const cycleCountSessionType = await ctx.db
-      .query("system_lookups")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("lookupType"), "session_type"),
-          q.eq(q.field("lookupValue"), "Cycle Count"),
-        ),
-      )
-      .first();
-
-    // Step 2: Get status lookups
-    const activeStatus = await ctx.db
-      .query("system_lookups")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("lookupType"), "session_status"),
-          q.eq(q.field("lookupValue"), "Active"),
-        ),
-      )
-      .first();
-
-    const completedStatus = await ctx.db
-      .query("system_lookups")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("lookupType"), "session_status"),
-          q.eq(q.field("lookupValue"), "Completed"),
-        ),
-      )
-      .first();
-
-    const inProgressStatus = await ctx.db
-      .query("system_lookups")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("lookupType"), "session_status"),
-          q.eq(q.field("lookupValue"), "In Progress"),
-        ),
-      )
-      .first();
-
-    if (!cycleCountSessionType) {
-      return {
-        activeSessions: { value: 0, changePercent: 0, data: [] },
-        completedSessions: { value: 0, changePercent: 0, data: [] },
-        totalZones: { value: 0, changePercent: 0, data: [] },
-        verificationRate: { value: 0, changePercent: 0, data: [] },
-      };
-    }
-
-    // Step 3: Query all cycle count sessions for this org/branch
+    // Step 1: Get all work sessions for this org/branch
     const allSessions = await ctx.db
       .query("work_sessions")
       .withIndex("organizationId", (q) =>
-        q.eq("organizationId", args.organizationId as Id<"organizations">),
+        q.eq("organizationId", args.organizationId),
       )
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("branchId"), args.branchId as Id<"branches">),
-          q.eq(q.field("sessionTypeId"), cycleCountSessionType._id),
-        ),
-      )
+      .filter((q) => q.eq(q.field("branchId"), args.branchId))
       .collect();
 
-    // Step 4: Calculate the number of days in the period
+    // Step 2: Get status lookups to identify session states
+    const statusLookups = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType", (q) => q.eq("lookupType", "SessionStatus"))
+      .collect();
+
+    const statusMap = new Map(
+      statusLookups.map((s) => [s._id, s.lookupValue?.toLowerCase() || ""]),
+    );
+
+    // Helper to check if status matches
+    const isActiveOrInProgress = (statusId: any) => {
+      const status = statusMap.get(statusId);
+      return (
+        status === "active" ||
+        status === "in progress" ||
+        status === "pending"
+      );
+    };
+
+    const isCompleted = (statusId: any) => {
+      const status = statusMap.get(statusId);
+      return status === "completed";
+    };
+
+    // Step 3: Calculate the number of days in the period
     const dayMs = 24 * 60 * 60 * 1000;
     const periodDays = Math.ceil((endDate - startDate) / dayMs);
 
@@ -2850,7 +2819,7 @@ export const getStatsWithChartData = query({
       }
     };
 
-    // Step 5: Build daily data maps
+    // Step 4: Build daily data maps
     const dailyActive: Map<string, number> = new Map();
     const dailyCompleted: Map<string, number> = new Map();
     const dailyZones: Map<string, Set<string>> = new Map();
@@ -2875,15 +2844,12 @@ export const getStatsWithChartData = query({
       // Only count sessions within the current period
       if (creationTime >= startDate && creationTime <= endDate) {
         // Count active/in-progress sessions
-        if (
-          session.sessionStatusTypeId === activeStatus?._id ||
-          session.sessionStatusTypeId === inProgressStatus?._id
-        ) {
+        if (isActiveOrInProgress(session.sessionStatusTypeId)) {
           dailyActive.set(dateKey, (dailyActive.get(dateKey) ?? 0) + 1);
         }
 
         // Count completed sessions
-        if (session.sessionStatusTypeId === completedStatus?._id) {
+        if (isCompleted(session.sessionStatusTypeId)) {
           dailyCompleted.set(dateKey, (dailyCompleted.get(dateKey) ?? 0) + 1);
         }
       }
@@ -2967,7 +2933,7 @@ export const getStatsWithChartData = query({
       verificationData.push({ label, value: avgVerification });
     }
 
-    // Step 7: Calculate previous period totals for comparison
+    // Step 6: Calculate previous period totals for comparison
     let prevActive = 0;
     let prevCompleted = 0;
     const prevZones = new Set<string>();
@@ -2977,14 +2943,11 @@ export const getStatsWithChartData = query({
       const creationTime = session._creationTime;
 
       if (creationTime >= prevStartDate && creationTime < prevEndDate) {
-        if (
-          session.sessionStatusTypeId === activeStatus?._id ||
-          session.sessionStatusTypeId === inProgressStatus?._id
-        ) {
+        if (isActiveOrInProgress(session.sessionStatusTypeId)) {
           prevActive++;
         }
 
-        if (session.sessionStatusTypeId === completedStatus?._id) {
+        if (isCompleted(session.sessionStatusTypeId)) {
           prevCompleted++;
         }
 
