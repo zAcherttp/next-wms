@@ -98,12 +98,12 @@ export function ReturnRequestsTable() {
 
   const handleApprove = React.useCallback(
     (returnRequestId: Id<"return_requests">, requestCode: string) => {
-      console.log("Approving return request:", returnRequestId, requestCode);
+      // console.log("Approving return request:", returnRequestId, requestCode);
       approveRequest(
         { returnRequestId },
         {
           onSuccess: () => {
-            console.log("Approval successful");
+            // console.log("Approval successful");
             toast.success(`Return request ${requestCode} has been approved`);
           },
           onError: (error) => {
@@ -118,12 +118,12 @@ export function ReturnRequestsTable() {
 
   const handleReject = React.useCallback(
     (returnRequestId: Id<"return_requests">, requestCode: string) => {
-      console.log("Rejecting return request:", returnRequestId, requestCode);
+      // console.log("Rejecting return request:", returnRequestId, requestCode);
       rejectRequest(
         { returnRequestId },
         {
           onSuccess: () => {
-            console.log("Rejection successful");
+            // console.log("Rejection successful");
             toast.success(`Return request ${requestCode} has been rejected`);
           },
           onError: (error) => {

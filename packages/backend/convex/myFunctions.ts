@@ -43,7 +43,7 @@
 
 //     const id = await ctx.db.insert("numbers", { value: args.value });
 
-//     console.log("Added new document with id:", id);
+//     // console.log("Added new document with id:", id);
 //     // Optionally, return a value from your mutation.
 //     // return id;
 //   },
@@ -68,7 +68,7 @@
 //     const data = await ctx.runQuery(api.myFunctions.listNumbers, {
 //       count: 10,
 //     });
-//     console.log(data);
+//     // console.log(data);
 
 //     //// Write data by running Convex mutations.
 //     await ctx.runMutation(api.myFunctions.addNumber, {

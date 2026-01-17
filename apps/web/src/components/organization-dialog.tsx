@@ -60,7 +60,7 @@ export function OrganizationDialog({
 
   const handleJoinOrg = async () => {
     // TODO: Implement join organization logic
-    console.log({ inviteCode });
+    // console.log({ inviteCode });
     handleClose();
   };
 

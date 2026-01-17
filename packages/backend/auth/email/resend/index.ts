@@ -23,15 +23,15 @@ export async function sendOrganizationInvitationDirect(
   const { to, url, organizationName, inviterName, role } = params;
   const from = process.env.RESEND_EMAIL_FROM || "";
 
-  console.log(LOG_PREFIX, "Sending organization invitation email:", {
-    to,
-    from,
-    organizationName,
-    inviterName,
-    role,
-    url,
-    hasApiKey: !!process.env.RESEND_API_KEY,
-  });
+  // console.log(LOG_PREFIX, "Sending organization invitation email:", {
+  //   to,
+  //   from,
+  //   organizationName,
+  //   inviterName,
+  //   role,
+  //   url,
+  //   hasApiKey: !!process.env.RESEND_API_KEY,
+  // });
 
   try {
     const result = await resend.emails.send({
@@ -51,7 +51,7 @@ export async function sendOrganizationInvitationDirect(
       `,
     });
 
-    console.log(LOG_PREFIX, "Organization invitation email result:", result);
+    // console.log(LOG_PREFIX, "Organization invitation email result:", result);
     return result;
   } catch (error) {
     console.error(LOG_PREFIX, "Failed to send organization invitation:", error);
@@ -68,12 +68,12 @@ export async function sendOTPVerificationDirect(params: OTPEmailParams) {
   const { to, code } = params;
   const from = process.env.RESEND_EMAIL_FROM || "";
 
-  console.log(LOG_PREFIX, "Sending OTP verification email:", {
-    to,
-    from,
-    codeLength: code.length,
-    hasApiKey: !!process.env.RESEND_API_KEY,
-  });
+  // console.log(LOG_PREFIX, "Sending OTP verification email:", {
+  //   to,
+  //   from,
+  //   codeLength: code.length,
+  //   hasApiKey: !!process.env.RESEND_API_KEY,
+  // });
 
   try {
     const result = await resend.emails.send({
@@ -93,7 +93,7 @@ export async function sendOTPVerificationDirect(params: OTPEmailParams) {
       `,
     });
 
-    console.log(LOG_PREFIX, "OTP verification email result:", result);
+    // console.log(LOG_PREFIX, "OTP verification email result:", result);
     return result;
   } catch (error) {
     console.error(LOG_PREFIX, "Failed to send OTP verification:", error);

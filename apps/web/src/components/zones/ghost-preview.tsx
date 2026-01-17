@@ -143,10 +143,8 @@ export const GhostPreview: React.FC = () => {
     | { x: number; y: number; z: number }
     | undefined;
   const dimensions = ghostEntity.zoneAttributes.dimensions as
-    | { width: number; height: number; depth: number }
+    | { width: number; height?: number; depth?: number; length?: number }
     | undefined;
-
-  if (!position || !dimensions) return null;
 
   // Get block-specific color
   const blockColors: Record<string, string> = {
@@ -157,24 +155,83 @@ export const GhostPreview: React.FC = () => {
   };
   const color = blockColors[ghostEntity.storageBlockType] ?? "#3b82f6";
 
+  // Handle floor specifically - uses width/length and custom height for thickness
+  if (ghostEntity.storageBlockType === "floor") {
+    const width = dimensions?.width ?? 50;
+    const length = dimensions?.length ?? dimensions?.depth ?? 50;
+    const height = (ghostEntity.zoneAttributes.height as number) ?? 0.2;
+
+    return (
+      <group position={[width / 2, height / 2, length / 2]}>
+        <mesh>
+          <boxGeometry args={[width, height, length]} />
+          <meshStandardMaterial
+            color={color}
+            transparent
+            opacity={0.4}
+            depthWrite={false}
+          />
+        </mesh>
+        <lineSegments>
+          <edgesGeometry
+            args={[new THREE.BoxGeometry(width, height, length)]}
+          />
+          <lineBasicMaterial color={color} linewidth={2} />
+        </lineSegments>
+      </group>
+    );
+  }
+
+  // Handle entrypoint - render as cylinder (4m tall, 2m diameter)
+  if (ghostEntity.storageBlockType === "entrypoint") {
+    const radius = 1; // 2m diameter = 1m radius
+    const height = 4; // 4m tall
+    const pos = position ?? { x: 0, y: 0, z: 0 };
+
+    return (
+      <group position={[pos.x, height / 2, pos.z]}>
+        <mesh>
+          <cylinderGeometry args={[radius, radius, height, 32]} />
+          <meshStandardMaterial
+            color={color}
+            transparent
+            opacity={0.4}
+            depthWrite={false}
+          />
+        </mesh>
+        <lineSegments>
+          <edgesGeometry
+            args={[new THREE.CylinderGeometry(radius, radius, height, 16)]}
+          />
+          <lineBasicMaterial color={color} linewidth={2} />
+        </lineSegments>
+      </group>
+    );
+  }
+
+  // Default box geometry for rack, obstacle, etc.
+  if (!position || !dimensions) return null;
+
+  const boxDims = {
+    width: dimensions.width ?? 2,
+    height: dimensions.height ?? 2,
+    depth: dimensions.depth ?? dimensions.length ?? 2,
+  };
+
   return (
     <group
       position={[
-        position.x + dimensions.width / 2,
-        position.y + dimensions.height / 2,
-        position.z + dimensions.depth / 2,
+        position.x + boxDims.width / 2,
+        position.y + boxDims.height / 2,
+        position.z + boxDims.depth / 2,
       ]}
     >
-      <GhostMesh dimensions={dimensions} color={color} />
+      <GhostMesh dimensions={boxDims} color={color} />
       {/* Wireframe outline for better visibility */}
       <lineSegments>
         <edgesGeometry
           args={[
-            new THREE.BoxGeometry(
-              dimensions.width,
-              dimensions.height,
-              dimensions.depth,
-            ),
+            new THREE.BoxGeometry(boxDims.width, boxDims.height, boxDims.depth),
           ]}
         />
         <lineBasicMaterial color={color} linewidth={2} />

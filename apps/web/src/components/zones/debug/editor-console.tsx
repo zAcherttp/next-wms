@@ -19,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Separator } from "@/components/ui/separator";
 import {
   type LogEntry,
   type LogLevel,
@@ -91,7 +90,7 @@ function LogEntryRow({ entry }: LogEntryRowProps) {
 
   return (
     <div
-      className={`flex items-start gap-2 border-b border-gray-800/50 px-2 py-1.5 font-mono text-xs ${config.bgColor} hover:bg-gray-800/50`}
+      className={`flex items-start gap-2 border-gray-800/50 border-b px-2 py-1.5 font-mono text-xs ${config.bgColor} hover:bg-gray-800/50`}
     >
       {/* Timestamp */}
       <span className="shrink-0 text-gray-500">{timestamp}</span>
@@ -102,7 +101,7 @@ function LogEntryRow({ entry }: LogEntryRowProps) {
       {/* Category badge */}
       {entry.category && (
         <span
-          className={`shrink-0 rounded px-1 py-0.5 text-[10px] font-medium uppercase ${categoryColor} bg-gray-800/50`}
+          className={`shrink-0 rounded px-1 py-0.5 font-medium text-[10px] uppercase ${categoryColor} bg-gray-800/50`}
         >
           {entry.category}
         </span>
@@ -168,12 +167,12 @@ export function EditorConsole() {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [filteredLogs.length]);
+  }, []);
 
   return (
     <div className="flex h-full flex-col bg-gray-950 text-gray-200">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-gray-800 px-3 py-2">
+      <div className="flex items-center justify-between border-gray-800 border-b px-3 py-2">
         <div className="flex items-center gap-2">
           <h3 className="font-semibold text-sm">Console</h3>
           <span className="rounded bg-gray-800 px-1.5 py-0.5 text-[10px] text-gray-400">
@@ -207,8 +206,8 @@ export function EditorConsole() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-4 border-b border-gray-800 px-3 py-1.5">
-        <span className="text-[10px] font-medium uppercase text-gray-500">
+      <div className="flex items-center gap-4 border-gray-800 border-b px-3 py-1.5">
+        <span className="font-medium text-[10px] text-gray-500 uppercase">
           Filter:
         </span>
         {(Object.keys(filters) as LogLevel[]).map((level) => (
@@ -223,7 +222,7 @@ export function EditorConsole() {
 
       {/* Log entries */}
       {isExpanded && (
-        <ScrollArea className="flex-1" ref={scrollRef}>
+        <ScrollArea className="h-full" ref={scrollRef}>
           <div className="min-h-0">
             {filteredLogs.length === 0 ? (
               <div className="flex h-20 items-center justify-center text-gray-500 text-xs">

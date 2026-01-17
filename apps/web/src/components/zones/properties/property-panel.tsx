@@ -13,6 +13,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { AttributeField } from "@/components/zones/properties";
 import { useEntityMutation } from "@/hooks/use-entity-mutation";
@@ -77,7 +78,7 @@ export function SchemaPropertyPanel({
 
   // Store actions for draft entities
   const discardEntity = useLayoutStore((s) => s.discardEntity);
-  const setEntityPending = useLayoutStore((s) => s.setEntityPending);
+  const callCommitEntity = useLayoutStore((s) => s.callCommitEntity);
   const updateEntity = useLayoutStore((s) => s.updateEntity);
   const clearSelection = useLayoutStore((s) => s.clearSelection);
 
@@ -228,14 +229,17 @@ export function SchemaPropertyPanel({
     // Update entity attributes before commit
     updateEntity(entity.tempId, draftAttributes);
 
-    // Use the sync hook to commit
-    // Note: The commitEntity function should be passed from parent or context
-    // For now, we'll mark as pending and let the sync system handle it
-    setEntityPending(entity.tempId);
+    try {
+      // Call the commit function registered by the sync hook
+      await callCommitEntity(entity.tempId);
+      toast.success("Entity committed successfully");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Commit failed";
+      toast.error(message);
+    }
 
     setIsCommitting(false);
-    toast.success("Entity ready for commit. Save to sync with database.");
-  }, [entity, zodSchema, draftAttributes, updateEntity, setEntityPending]);
+  }, [entity, zodSchema, draftAttributes, updateEntity, callCommitEntity]);
 
   // Get validation error for a specific field
   const getFieldError = useCallback(
@@ -287,33 +291,35 @@ export function SchemaPropertyPanel({
       </div>
 
       {/* Scrollable Attribute Fields */}
-      <div className="flex-1 space-y-4 overflow-y-auto px-4">
-        {/* Validation Errors Summary */}
-        {validationErrors.length > 0 && (
-          <Alert variant="destructive" className="mb-4">
-            <AlertDescription>
-              <ul className="list-inside list-disc text-sm">
-                {validationErrors.map((e) => (
-                  <li key={e.path.join(".")}>
-                    <strong>{e.path.join(".")}</strong>: {e.message}
-                  </li>
-                ))}
-              </ul>
-            </AlertDescription>
-          </Alert>
-        )}
+      <ScrollArea className="min-h-0 flex-1 px-4">
+        <div className="space-y-4 py-4">
+          {/* Validation Errors Summary */}
+          {validationErrors.length > 0 && (
+            <Alert variant="destructive" className="mb-4">
+              <AlertDescription>
+                <ul className="list-inside list-disc text-sm">
+                  {validationErrors.map((e) => (
+                    <li key={e.path.join(".")}>
+                      <strong>{e.path.join(".")}</strong>: {e.message}
+                    </li>
+                  ))}
+                </ul>
+              </AlertDescription>
+            </Alert>
+          )}
 
-        {uiSchema.attributes.map((attrConfig) => (
-          <AttributeField
-            key={attrConfig.key}
-            config={attrConfig}
-            value={draftAttributes[attrConfig.key]}
-            onChange={(value) => handleChange(attrConfig.key, value)}
-            disabled={readOnly || isCommitting}
-            error={getFieldError(attrConfig.key)}
-          />
-        ))}
-      </div>
+          {uiSchema.attributes.map((attrConfig) => (
+            <AttributeField
+              key={attrConfig.key}
+              config={attrConfig}
+              value={draftAttributes[attrConfig.key]}
+              onChange={(value) => handleChange(attrConfig.key, value)}
+              disabled={readOnly || isCommitting}
+              error={getFieldError(attrConfig.key)}
+            />
+          ))}
+        </div>
+      </ScrollArea>
 
       {/* Footer with Save/Cancel buttons */}
       {/* Show Discard/Commit for draft entities */}

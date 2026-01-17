@@ -4,7 +4,6 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
-import { CheckCircle2, Layers, Percent, PlayCircle } from "lucide-react";
 import { ChartDataCard } from "@/components/chart-data-card";
 import { CycleCountSessionsTable } from "@/components/table/cycle-count-sessions-table";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -26,7 +25,7 @@ export default function Page() {
     (state) => state.updateFromPicker,
   );
 
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats } = useQuery({
     ...convexQuery(
       api.cycleCount.getStatsWithChartData,
       organizationId && currentBranch?._id

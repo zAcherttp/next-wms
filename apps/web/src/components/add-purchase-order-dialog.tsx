@@ -148,12 +148,12 @@ export function AddPurchaseOrderDialog({
 
   const handleCreatePurchaseOrder = () => {
     // TODO: Implement actual creation logic
-    console.log("Creating purchase order:", {
-      poCode,
-      receivingBranch,
-      supplier,
-      products,
-    });
+    // console.log("Creating purchase order:", {
+    //   poCode,
+    //   receivingBranch,
+    //   supplier,
+    //   products,
+    // });
     setOpen(false);
   };
 

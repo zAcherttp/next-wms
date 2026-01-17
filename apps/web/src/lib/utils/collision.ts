@@ -20,6 +20,7 @@ import type {
   Vector3,
   ZoneBounds,
 } from "@/lib/types/layout-editor";
+import { logCollisionCheckInfo } from "@/store/editor-console-store";
 import { useLayoutStore } from "@/store/layout-editor-store";
 import { getEntityDisplayName } from "./typeUtils";
 
@@ -415,8 +416,11 @@ function getParentBounds(
 
 /**
  * Build racks map from store entities for collision checking
+ * @param parentId - Only return racks that share this parent (same floor)
  */
-function getRacksFromStore(): Map<string, Rack> {
+function getRacksFromStore(
+  parentId?: Id<"storage_zones"> | string | null,
+): Map<string, Rack> {
   const store = useLayoutStore.getState();
   const racks = new Map<string, Rack>();
 
@@ -424,6 +428,9 @@ function getRacksFromStore(): Map<string, Rack> {
     if (entity.storageBlockType !== "rack") continue;
     if (entity.isDeleted) continue;
     if (entity.status === "ghost") continue; // Don't check against ghost entities
+
+    // Filter by parentId if provided - only check racks in same floor
+    if (parentId !== undefined && entity.parentId !== parentId) continue;
 
     const attrs = entity.zoneAttributes;
     // Cast to Rack type - name is stored in entity, not in Rack interface
@@ -440,8 +447,11 @@ function getRacksFromStore(): Map<string, Rack> {
 
 /**
  * Build obstacles map from store entities for collision checking
+ * @param parentId - Only return obstacles that share this parent (same floor)
  */
-function getObstaclesFromStore(): Map<string, Obstacle> {
+function getObstaclesFromStore(
+  parentId?: Id<"storage_zones"> | string | null,
+): Map<string, Obstacle> {
   const store = useLayoutStore.getState();
   const obstacles = new Map<string, Obstacle>();
 
@@ -449,6 +459,9 @@ function getObstaclesFromStore(): Map<string, Obstacle> {
     if (entity.storageBlockType !== "obstacle") continue;
     if (entity.isDeleted) continue;
     if (entity.status === "ghost") continue;
+
+    // Filter by parentId if provided - only check obstacles in same floor
+    if (parentId !== undefined && entity.parentId !== parentId) continue;
 
     const attrs = entity.zoneAttributes;
     // Cast to Obstacle type - label is the correct property, not name
@@ -484,30 +497,67 @@ export function validatePlacement(
   const dimensions = zoneAttributes.dimensions as Dimension | undefined;
   const rotation = zoneAttributes.rotation as Vector3 | undefined;
 
+  // Handle floor specially - floors don't require position (placed at origin)
+  if (storageBlockType === "floor") {
+    if (!dimensions) {
+      logCollisionCheckInfo(
+        parentId?.toString() || "null",
+        tempId,
+        storageBlockType,
+        false,
+        "Missing dimensions for floor",
+      );
+      return { valid: false, reason: "Missing dimensions for floor" };
+    }
+    // Use origin (0,0,0) if no position specified
+    const floorPosition = position ?? { x: 0, y: 0, z: 0 };
+    // Floor uses width/length, dimensions.depth is length
+    const overlapCheck = checkZoneOverlap(
+      floorPosition,
+      { width: dimensions.width, length: dimensions.depth },
+      tempId,
+    );
+    if (overlapCheck.hasOverlap) {
+      logCollisionCheckInfo(
+        parentId?.toString() || "null",
+        tempId,
+        storageBlockType,
+        false,
+        `Zone overlaps with "${overlapCheck.overlappingZoneName}"`,
+      );
+      return {
+        valid: false,
+        reason: `Zone overlaps with "${overlapCheck.overlappingZoneName}"`,
+      };
+    }
+    logCollisionCheckInfo(
+      parentId?.toString() || "null",
+      tempId,
+      storageBlockType,
+      true,
+    );
+    return { valid: true };
+  }
+
+  // For other types, require position and dimensions
   if (!position || !dimensions) {
+    logCollisionCheckInfo(
+      parentId?.toString() || "null",
+      tempId,
+      storageBlockType,
+      false,
+      "Missing position or dimensions",
+    );
     return { valid: false, reason: "Missing position or dimensions" };
   }
 
   switch (storageBlockType) {
-    case "floor": {
-      // Zones cannot overlap with each other
-      const overlapCheck = checkZoneOverlap(
-        position,
-        { width: dimensions.width, length: dimensions.depth },
-        tempId,
-      );
-      if (overlapCheck.hasOverlap) {
-        return {
-          valid: false,
-          reason: `Zone overlaps with "${overlapCheck.overlappingZoneName}"`,
-        };
-      }
-      return { valid: true };
-    }
-
     case "entrypoint": {
       // Entrypoints are collision-free, only check bounds
-      if (!parentId) return { valid: true };
+      if (!parentId) {
+        logCollisionCheckInfo("null", tempId, storageBlockType, true);
+        return { valid: true };
+      }
 
       const bounds = getParentBounds(parentId);
       const withinBounds = isWithinBounds(
@@ -518,8 +568,21 @@ export function validatePlacement(
       );
 
       if (!withinBounds) {
+        logCollisionCheckInfo(
+          parentId.toString(),
+          tempId,
+          storageBlockType,
+          false,
+          "Entrypoint is outside zone bounds",
+        );
         return { valid: false, reason: "Entrypoint is outside zone bounds" };
       }
+      logCollisionCheckInfo(
+        parentId.toString(),
+        tempId,
+        storageBlockType,
+        true,
+      );
       return { valid: true };
     }
 
@@ -540,10 +603,17 @@ export function validatePlacement(
       );
 
       if (!withinBounds) {
+        logCollisionCheckInfo(
+          parentId?.toString() || "null",
+          tempId,
+          storageBlockType,
+          false,
+          "Entity is outside zone bounds",
+        );
         return { valid: false, reason: "Entity is outside zone bounds" };
       }
 
-      // Check collisions
+      // Check collisions - only against entities in the same parent floor
       const collisionResult = checkCollisions(
         {
           position: worldPosition,
@@ -553,26 +623,51 @@ export function validatePlacement(
           excludeEntityId: tempId,
           enableDebug: false,
         },
-        getRacksFromStore(),
-        getObstaclesFromStore(),
+        getRacksFromStore(parentId),
+        getObstaclesFromStore(parentId),
       );
 
       if (collisionResult.hasCollision) {
+        logCollisionCheckInfo(
+          parentId?.toString() || "null",
+          tempId,
+          storageBlockType,
+          false,
+          collisionResult.reason ?? "Collision detected",
+        );
         return {
           valid: false,
           reason: collisionResult.reason ?? "Collision detected",
         };
       }
 
+      logCollisionCheckInfo(
+        parentId?.toString() || "null",
+        tempId,
+        storageBlockType,
+        true,
+      );
       return { valid: true };
     }
 
     case "shelf":
     case "bin":
       // No collision check needed - inherits parent bounds
+      logCollisionCheckInfo(
+        parentId?.toString() || "null",
+        tempId,
+        storageBlockType,
+        true,
+      );
       return { valid: true };
 
     default:
+      logCollisionCheckInfo(
+        parentId?.toString() || "null",
+        tempId,
+        storageBlockType,
+        true,
+      );
       return { valid: true };
   }
 }

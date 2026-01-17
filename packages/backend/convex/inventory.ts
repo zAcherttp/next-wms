@@ -181,8 +181,8 @@ export const checkInventoryExpiration = internalMutation({
       }
     }
 
-    console.log(
-      `Checked inventory expiration. Found ${expiringBatches.length} batches expiring soon.`,
-    );
+    // console.log(
+    //   `Checked inventory expiration. Found ${expiringBatches.length} batches expiring soon.`,
+    // );
   },
 });

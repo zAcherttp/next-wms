@@ -95,10 +95,10 @@ const authConfig = {
       organizationHooks: {
         afterCreateOrganization: async ({ organization, member, user }) => {
           // Sync organization to Convex
-          console.log(
-            "[Convex Sync] Syncing new organization to Convex:",
-            organization,
-          );
+          // console.log(
+          //   "[Convex Sync] Syncing new organization to Convex:",
+          //   organization,
+          // );
           if (convex) {
             try {
               await convex.mutation(api.authSync.syncOrganization, {
@@ -109,9 +109,9 @@ const authConfig = {
                 metadata: organization.metadata || undefined,
                 createdAt: new Date(organization.createdAt).getTime(),
               });
-              console.log(
-                `[Convex Sync] Organization created: ${organization.id}`,
-              );
+              // console.log(
+              //   `[Convex Sync] Organization created: ${organization.id}`,
+              // );
 
               // Create member for the organization creator
               // This handles the case where member sync was attempted before org sync
@@ -120,9 +120,9 @@ const authConfig = {
                   userAuthId: user.id,
                   organizationAuthId: organization.id,
                 });
-                console.log(
-                  `[Convex Sync] Creator member synced for org: ${organization.id}`,
-                );
+                // console.log(
+                //   `[Convex Sync] Creator member synced for org: ${organization.id}`,
+                // );
               }
             } catch (error) {
               console.error(
@@ -145,9 +145,9 @@ const authConfig = {
                   metadata: organization.metadata || undefined,
                   createdAt: new Date(organization.createdAt).getTime(),
                 });
-                console.log(
-                  `[Convex Sync] Organization updated: ${organization.id}`,
-                );
+                // console.log(
+                //   `[Convex Sync] Organization updated: ${organization.id}`,
+                // );
               }
             } catch (error) {
               console.error(
@@ -161,23 +161,23 @@ const authConfig = {
           if (convex) {
             try {
               // Delete all members of the organization
-              const memberCleanup = await convex.mutation(
+              await convex.mutation(
                 api.authSync.deleteAllMembersOfOrganization,
                 {
                   organizationAuthId: organization.id,
                 },
               );
-              console.log(
-                `[Convex Sync] Deleted ${memberCleanup.deletedCount} members from organization ${organization.id}`,
-              );
+              // console.log(
+              //   `[Convex Sync] Deleted ${memberCleanup.deletedCount} members from organization ${organization.id}`,
+              // );
 
               // Soft delete the organization
               await convex.mutation(api.authSync.deleteOrganization, {
                 authId: organization.id,
               });
-              console.log(
-                `[Convex Sync] Organization deleted: ${organization.id}`,
-              );
+              // console.log(
+              //   `[Convex Sync] Organization deleted: ${organization.id}`,
+              // );
             } catch (error) {
               console.error(
                 "[Convex Sync] Failed to sync organization deletion:",
@@ -190,16 +190,16 @@ const authConfig = {
         afterAddMember: async ({ user, organization }) => {
           if (convex) {
             try {
-              console.log(
-                `[Convex Sync] Syncing member addition: User ${user.id} to Organization ${organization.id}`,
-              );
+              // console.log(
+              //   `[Convex Sync] Syncing member addition: User ${user.id} to Organization ${organization.id}`,
+              // );
               await convex.mutation(api.authSync.syncMember, {
                 userAuthId: user.id,
                 organizationAuthId: organization.id,
               });
-              console.log(
-                `[Convex Sync] User ${user.id} added to organization ${organization.id}`,
-              );
+              // console.log(
+              //   `[Convex Sync] User ${user.id} added to organization ${organization.id}`,
+              // );
             } catch (error) {
               console.error(
                 "[Convex Sync] Failed to sync member addition:",
@@ -216,9 +216,9 @@ const authConfig = {
                 userAuthId: user.id,
                 organizationAuthId: organization.id,
               });
-              console.log(
-                `[Convex Sync] User ${user.id} removed from organization ${organization.id}`,
-              );
+              // console.log(
+              //   `[Convex Sync] User ${user.id} removed from organization ${organization.id}`,
+              // );
             } catch (error) {
               console.error(
                 "[Convex Sync] Failed to sync member removal:",
@@ -258,7 +258,7 @@ const authConfig = {
                 createdAt: new Date(user.createdAt).getTime(),
                 updatedAt: new Date(user.updatedAt).getTime(),
               });
-              console.log(`[Convex Sync] User created: ${user.id}`);
+              // console.log(`[Convex Sync] User created: ${user.id}`);
             } catch (error) {
               console.error(
                 "[Convex Sync] Failed to sync user creation:",
@@ -282,7 +282,7 @@ const authConfig = {
                 createdAt: new Date(user.createdAt).getTime(),
                 updatedAt: new Date(user.updatedAt).getTime(),
               });
-              console.log(`[Convex Sync] User updated: ${user.id}`);
+              // console.log(`[Convex Sync] User updated: ${user.id}`);
             } catch (error) {
               console.error("[Convex Sync] Failed to sync user update:", error);
             }

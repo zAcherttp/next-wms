@@ -3,9 +3,9 @@
  * Part of the SmartStore state management system
  */
 
-import { logEntitySelected } from "@/store/editor-console-store";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import type { StateCreator } from "zustand";
+import { logEntitySelected } from "@/store/editor-console-store";
 
 // ============================================================================
 // Types

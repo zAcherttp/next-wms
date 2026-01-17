@@ -38,11 +38,11 @@ export function EditorPage() {
       }
       const id = await createZone({
         branchId: currentBranchId,
-        parentId: entity.parentId as Id<"storage_zones"> | undefined,
         name: entity.name,
         path: entity.path,
         storageBlockType: entity.storageBlockType,
         zoneAttributes: entity.zoneAttributes,
+        ...(entity.parentId !== null && { parentId: entity.parentId }),
       });
       return id;
     },

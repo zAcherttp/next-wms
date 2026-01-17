@@ -9,7 +9,7 @@ import {
   GizmoViewport,
 } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { useControls } from "leva";
+import { Leva, useControls } from "leva";
 import type React from "react";
 import { createContext, useContext, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -341,7 +341,7 @@ export const Canvas3D: React.FC = () => {
 
   return (
     <div className="relative box-border h-full min-h-0 w-full overflow-hidden">
-      {/* <Leva /> */}
+      <Leva hidden />
       <Canvas
         shadows={enableShadows}
         dpr={pixelRatio}

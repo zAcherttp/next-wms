@@ -11,7 +11,7 @@
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { useCallback, useEffect, useRef } from "react";
 import type { StorageZone } from "@/lib/types";
-import { logEntityLoaded, useEditorConsole } from "@/store/editor-console-store";
+import { useEditorConsole } from "@/store/editor-console-store";
 import { useLayoutStore } from "@/store/layout-editor-store";
 import type { StorageEntity } from "@/store/slices/entitiesSlice";
 
@@ -107,6 +107,7 @@ export function useConvexLayoutSync(
 
   // Store actions
   const loadEntities = useLayoutStore((s) => s.loadEntities);
+  const mergeEntities = useLayoutStore((s) => s.mergeEntities);
   const getEntity = useLayoutStore((s) => s.getEntity);
   const setEntityPending = useLayoutStore((s) => s.setEntityPending);
   const setEntityCommitted = useLayoutStore((s) => s.setEntityCommitted);
@@ -118,6 +119,9 @@ export function useConvexLayoutSync(
   const addPendingMutation = useLayoutStore((s) => s.addPendingMutation);
   const removePendingMutation = useLayoutStore((s) => s.removePendingMutation);
   const addSyncError = useLayoutStore((s) => s.addSyncError);
+  const registerCommitCallback = useLayoutStore(
+    (s) => s.registerCommitCallback,
+  );
 
   // Track if initial load happened
   const hasLoadedRef = useRef(false);
@@ -138,33 +142,27 @@ export function useConvexLayoutSync(
   useEffect(() => {
     if (!convexData || !branchId) return;
 
-    // Transform and load entities
+    // Transform Convex data to entities
     const entities = convexData.map(convexToEntity);
-    loadEntities(entities);
-    markSynced();
-    hasLoadedRef.current = true;
 
-    // Log loaded entities to console
-    const log = useEditorConsole.getState();
-    log.info(`Loaded ${entities.length} entities from Convex`, "sync");
+    if (!hasLoadedRef.current) {
+      // Initial load - replace all
+      loadEntities(entities);
+      hasLoadedRef.current = true;
 
-    // Log each entity with parent context
-    for (const entity of entities) {
-      const parent = entity.parentId
-        ? entities.find((e) => e._id === entity.parentId)
-        : undefined;
-      if (parent) {
-        logEntityLoaded(
-          entity.name,
-          entity.storageBlockType,
-          parent.name,
-          parent.storageBlockType,
-        );
-      } else if (entity.storageBlockType !== "floor") {
-        logEntityLoaded(entity.name, entity.storageBlockType);
-      }
+      // Log loaded entities to console
+      const log = useEditorConsole.getState();
+      log.info(`Loaded ${entities.length} entities from Convex`, "sync");
+    } else {
+      // Subsequent update - merge to preserve local drafts
+      mergeEntities(entities);
+
+      const log = useEditorConsole.getState();
+      log.debug(`Merged ${entities.length} entities from Convex`, "sync");
     }
-  }, [convexData, branchId, loadEntities, markSynced]);
+
+    markSynced();
+  }, [convexData, branchId, loadEntities, mergeEntities, markSynced]);
 
   /**
    * Commit a draft entity to Convex
@@ -226,6 +224,11 @@ export function useConvexLayoutSync(
       addSyncError,
     ],
   );
+
+  // Register the commit callback so property panel can access it
+  useEffect(() => {
+    registerCommitCallback(commitEntity);
+  }, [commitEntity, registerCommitCallback]);
 
   /**
    * Sync an existing entity's changes to Convex

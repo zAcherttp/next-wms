@@ -59,6 +59,53 @@ function hasGeometryChange(updates: Record<string, unknown>): boolean {
 }
 
 /**
+ * Validate floor resize - check if children would be outside new bounds
+ */
+function validateFloorResize(
+  floorTempId: string,
+  newDimensions: { width: number; length?: number; depth?: number },
+): { valid: boolean; reason?: string } {
+  const store = useLayoutStore.getState();
+  const floor = store.getEntity(floorTempId);
+  if (!floor || floor.storageBlockType !== "floor") {
+    return { valid: true }; // Not a floor, skip check
+  }
+
+  // Get all children of this floor
+  const children = store.getChildren(floorTempId);
+  const newWidth = newDimensions.width;
+  const newLength = newDimensions.length ?? newDimensions.depth ?? 50;
+
+  for (const child of children) {
+    const pos = child.zoneAttributes.position as Vec3 | undefined;
+    const dims = child.zoneAttributes.dimensions as Dimensions | undefined;
+
+    if (!pos || !dims) continue;
+
+    // Check if child extends beyond new floor bounds
+    const childMaxX = pos.x + dims.width;
+    const childMaxZ = pos.z + dims.depth;
+
+    if (childMaxX > newWidth || childMaxZ > newLength) {
+      return {
+        valid: false,
+        reason: `Cannot resize: "${child.name}" would be outside floor bounds`,
+      };
+    }
+
+    // Also check minimum bounds (position < 0)
+    if (pos.x < 0 || pos.z < 0) {
+      return {
+        valid: false,
+        reason: `Cannot resize: "${child.name}" is at negative position`,
+      };
+    }
+  }
+
+  return { valid: true };
+}
+
+/**
  * Get world position for an entity by adding parent zone offset
  * Entities with a floor/zone parent have positions relative to that zone.
  */
@@ -224,7 +271,25 @@ export function useEntityMutation() {
         return { success: false, error };
       }
 
-      // 2. COLLISION CHECK - For geometry changes
+      // 2. FLOOR RESIZE CHECK - Ensure children stay in bounds
+      if (
+        entity.storageBlockType === "floor" &&
+        "dimensions" in updates &&
+        !skipCollision
+      ) {
+        const newDims = updates.dimensions as {
+          width: number;
+          length?: number;
+          depth?: number;
+        };
+        const floorCheck = validateFloorResize(id, newDims);
+        if (!floorCheck.valid) {
+          if (showToast) toast.error(floorCheck.reason ?? "Invalid resize");
+          return { success: false, error: floorCheck.reason };
+        }
+      }
+
+      // 3. COLLISION CHECK - For geometry changes
       if (hasGeometryChange(updates) && !skipCollision) {
         const collision = checkCollisionForUpdate(
           id,
@@ -251,10 +316,14 @@ export function useEntityMutation() {
       }
 
       try {
+        // Sync name from zoneAttributes to entity name if present
+        const entityName =
+          (mergedAttrs.name as string | undefined) ?? entity.name;
+
         await updateMutation({
           id: entity._id,
           zoneAttributes: mergedAttrs,
-          name: entity.name,
+          name: entityName,
         });
         return { success: true };
       } catch (err) {
@@ -315,14 +384,16 @@ export function useEntityMutation() {
           : null;
         const path = parent ? `${parent.path}.${blockType}` : blockType;
 
-        const newId = await createMutation({
+        const mutationArgs = {
           branchId,
-          parentId: parentId ?? undefined,
           name,
           path,
           storageBlockType: blockType,
           zoneAttributes: attributes,
-        });
+          ...(parentId !== null && { parentId }),
+        };
+
+        const newId = await createMutation(mutationArgs);
 
         // 4. Add to local store with real ID
         // Note: The store will get updated via Convex subscription

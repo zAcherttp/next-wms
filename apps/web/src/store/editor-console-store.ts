@@ -100,7 +100,26 @@ export const logDebug = (
 
 export const logEntitySelected = (entityId: string) => {
   const message = `Entity "${entityId}" selected`;
-  useEditorConsole.getState().info(message, "entity");
+  useEditorConsole.getState().debug(message, "entity");
+};
+
+export const logGhostEntitySet = (
+  entityType: string,
+  parentId: string | null,
+) => {
+  const message = `Ghost entity of type "${entityType}" set under parent "${parentId}"`;
+  useEditorConsole.getState().debug(message, "entity");
+};
+
+export const logCollisionCheckInfo = (
+  parentId: string,
+  tempId: string,
+  storageBlockType: string,
+  valid: boolean,
+  reason?: string,
+) => {
+  const message = `Collision check for storage block "${tempId}" of type "${storageBlockType}" under parent "${parentId}": ${valid ? "Valid" : "Invalid"}${reason ? ` - ${reason}` : ""}`;
+  useEditorConsole.getState().debug(message, "collision");
 };
 
 // Re-export types

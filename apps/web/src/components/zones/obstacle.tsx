@@ -2,7 +2,6 @@
 // Migrated to use new SmartStore with StorageEntity
 
 import { Box, Outlines, TransformControls } from "@react-three/drei";
-import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { Group } from "three";
@@ -91,7 +90,55 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
       if (isCommitting) return;
       setIsCommitting(true);
 
-      const result = await commitUpdate(obstacleId, updates, {
+      // TransformControls already provides position in LOCAL space (relative to parent zone)
+      // Only apply guardrails and bounds clamping
+      const localUpdates = { ...updates };
+      if (updates.position && entity) {
+        // Enforce y=0 for ground placement
+        localUpdates.position = {
+          x: updates.position.x,
+          y: 0, // Guardrail: always ground level
+          z: updates.position.z,
+        };
+
+        // Clamp to floor bounds
+        const store = useLayoutStore.getState();
+        let parent = entity.parentId
+          ? store.getEntityByRealId(entity.parentId)
+          : null;
+        if (!parent && entity.parentId) {
+          parent = store.getEntity(entity.parentId as string);
+        }
+        if (parent?.storageBlockType === "floor") {
+          const floorDims = parent.zoneAttributes.dimensions as {
+            width: number;
+            length?: number;
+            depth?: number;
+          };
+          const floorWidth = floorDims?.width ?? 50;
+          const floorLength = floorDims?.length ?? floorDims?.depth ?? 50;
+
+          localUpdates.position.x = Math.max(
+            0,
+            Math.min(localUpdates.position.x, floorWidth - dimensions.width),
+          );
+          localUpdates.position.z = Math.max(
+            0,
+            Math.min(localUpdates.position.z, floorLength - dimensions.depth),
+          );
+        }
+      }
+
+      // Enforce rotation guardrail: only y rotation allowed
+      if (updates.rotation) {
+        localUpdates.rotation = {
+          x: 0, // Guardrail: no x rotation
+          y: updates.rotation.y,
+          z: 0, // Guardrail: no z rotation
+        };
+      }
+
+      const result = await commitUpdate(obstacleId, localUpdates, {
         showToast: true,
       });
 
@@ -115,14 +162,14 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
 
       setIsCommitting(false);
     },
-    [obstacleId, commitUpdate, dimensions.height, isCommitting],
+    [obstacleId, commitUpdate, dimensions, isCommitting, entity],
   );
 
   // Store original position when transform starts
-  const handleTransformStart = useCallback(() => {
-    originalPositionRef.current = position;
-    originalRotationRef.current = rotation;
-  }, [position, rotation]);
+  // const handleTransformStart = useCallback(() => {
+  //   originalPositionRef.current = position;
+  //   originalRotationRef.current = rotation;
+  // }, [position, rotation]);
 
   if (!entity || entity.isDeleted) return null;
 
@@ -166,6 +213,7 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
         <TransformControls
           object={groupRef.current}
           mode="translate"
+          space="local"
           translationSnap={TRANSLATION_SNAP}
           showY={false}
           onMouseUp={() => {
@@ -182,6 +230,7 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
         <TransformControls
           object={groupRef.current}
           mode="rotate"
+          space="local"
           rotationSnap={ROTATION_SNAP}
           showX={false}
           showZ={false}

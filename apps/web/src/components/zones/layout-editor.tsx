@@ -290,7 +290,7 @@ export const WarehouseEditor = forwardRef<
         <ErrorBoundary onError={onError}>
           <ResizablePanelGroup direction="horizontal">
             {/* Left Sidebar: Console Log */}
-            <ResizablePanel defaultSize={20} minSize={10} maxSize={35}>
+            <ResizablePanel defaultSize={35} minSize={10} maxSize={35}>
               <EditorConsole />
             </ResizablePanel>
 
@@ -309,16 +309,22 @@ export const WarehouseEditor = forwardRef<
                 {/* Entity List */}
                 {showEntityBrowser && (
                   <ResizablePanel defaultSize={50} minSize={20}>
-                    <EntityBrowser />
+                    <div className="h-full overflow-hidden">
+                      <EntityBrowser />
+                    </div>
                   </ResizablePanel>
                 )}
 
-                <ResizableHandle withHandle />
+                {showEntityBrowser && showPropertiesPanel && (
+                  <ResizableHandle withHandle />
+                )}
 
                 {/* Properties Panel */}
                 {showPropertiesPanel && (
                   <ResizablePanel defaultSize={50} minSize={20}>
-                    <SchemaPropertyPanel readOnly={readOnly} />
+                    <div className="h-full overflow-hidden">
+                      <SchemaPropertyPanel readOnly={readOnly} />
+                    </div>
                   </ResizablePanel>
                 )}
               </ResizablePanelGroup>

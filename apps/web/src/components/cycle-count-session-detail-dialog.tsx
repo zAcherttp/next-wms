@@ -81,7 +81,7 @@ export function CycleCountSessionDetailDialog({
 
   const handleCompleteSession = () => {
     // TODO: Implement complete session logic
-    console.log("Complete session:", sessionId);
+    // console.log("Complete session:", sessionId);
     handleClose();
   };
 

@@ -3,6 +3,8 @@
  * Auto-generates correct input type based on schema definition
  */
 
+import Color, { type ColorLike } from "color";
+import { useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -12,6 +14,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  ColorPicker,
+  ColorPickerFormat,
+  ColorPickerHue,
+  ColorPickerSelection,
+} from "@/components/ui/shadcn-io/color-picker";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import type { AttributeUIConfig } from "@/lib/types/layout-editor/attribute-registry";
@@ -96,24 +104,24 @@ function RotationInput({
   return (
     <div className="grid grid-cols-1 gap-2">
       {(["y"] as const).map((axis) => (
-      <div key={axis} className="flex flex-col gap-1">
-        <Label className="text-muted-foreground text-xs uppercase">
-        {axis}°
-        </Label>
-        <Input
-        type="number"
-        step={15}
-        value={toDeg(value?.[axis] ?? 0)}
-        onChange={(e) =>
-          onChange({
-          ...value,
-          [axis]: toRad(Number.parseFloat(e.target.value) || 0),
-          })
-        }
-        disabled={disabled}
-        className="h-8"
-        />
-      </div>
+        <div key={axis} className="flex flex-col gap-1">
+          <Label className="text-muted-foreground text-xs uppercase">
+            {axis}°
+          </Label>
+          <Input
+            type="number"
+            step={15}
+            value={toDeg(value?.[axis] ?? 0)}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                [axis]: toRad(Number.parseFloat(e.target.value) || 0),
+              })
+            }
+            disabled={disabled}
+            className="h-8"
+          />
+        </div>
       ))}
     </div>
   );
@@ -201,30 +209,36 @@ function RangeInput({
 function ColorInput({
   value,
   onChange,
-  disabled,
 }: {
   value: string;
-  onChange: (v: string) => void;
-  disabled?: boolean;
+  onChange: (value: string) => void;
 }) {
+  const safeValue = value || "#000000";
+
+  const handleChange = useCallback(
+    (colorValue: ColorLike) => {
+      const hex = Color(colorValue).hex().toLowerCase();
+      onChange(hex);
+    },
+    [onChange],
+  );
+
   return (
-    <div className="flex items-center gap-2">
-      <Input
-        type="color"
-        value={value || "#888888"}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        className="h-8 w-10 cursor-pointer rounded border"
-      />
-      <Input
-        type="text"
-        value={value || ""}
-        onChange={(e) => onChange(e.target.value)}
-        disabled={disabled}
-        placeholder="#RRGGBB"
-        className="h-8 flex-1"
-      />
-    </div>
+    <ColorPicker
+      value={safeValue}
+      onChange={handleChange}
+      className="rounded-md border bg-background p-4 shadow-sm"
+    >
+      <ColorPickerSelection className="min-h-40" />
+      <div className="flex items-center gap-4">
+        <div className="grid w-full gap-1">
+          <ColorPickerHue />
+        </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <ColorPickerFormat />
+      </div>
+    </ColorPicker>
   );
 }
 
@@ -351,11 +365,7 @@ export function AttributeField({
       )}
 
       {type === "color" && (
-        <ColorInput
-          value={value as string}
-          onChange={onChange}
-          disabled={disabled}
-        />
+        <ColorInput value={value as string} onChange={onChange} />
       )}
 
       {description && (

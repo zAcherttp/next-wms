@@ -26,9 +26,9 @@ export default function Page() {
       return;
     }
 
-    console.log("Session:", session);
-    console.log("User Organizations:", userOrganizations);
-    console.log("Active Organization:", activeOrganization);
+    // console.log("Session:", session);
+    // console.log("User Organizations:", userOrganizations);
+    // console.log("Active Organization:", activeOrganization);
 
     // Check if user is authenticated
     if (!session) {

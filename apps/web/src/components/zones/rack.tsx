@@ -89,7 +89,57 @@ export const Rack: React.FC<{ rackId: string }> = ({ rackId }) => {
       if (isCommitting) return;
       setIsCommitting(true);
 
-      const result = await commitUpdate(rackId, updates, { showToast: true });
+      // TransformControls already provides position in LOCAL space (relative to parent zone)
+      // Only apply guardrails and bounds clamping
+      const localUpdates = { ...updates };
+      if (updates.position && entity) {
+        // Enforce y=0 for ground placement
+        localUpdates.position = {
+          x: updates.position.x,
+          y: 0, // Guardrail: always ground level
+          z: updates.position.z,
+        };
+
+        // Clamp to floor bounds
+        const store = useLayoutStore.getState();
+        let parent = entity.parentId
+          ? store.getEntityByRealId(entity.parentId)
+          : null;
+        if (!parent && entity.parentId) {
+          parent = store.getEntity(entity.parentId as string);
+        }
+        if (parent?.storageBlockType === "floor") {
+          const floorDims = parent.zoneAttributes.dimensions as {
+            width: number;
+            length?: number;
+            depth?: number;
+          };
+          const floorWidth = floorDims?.width ?? 50;
+          const floorLength = floorDims?.length ?? floorDims?.depth ?? 50;
+
+          localUpdates.position.x = Math.max(
+            0,
+            Math.min(localUpdates.position.x, floorWidth - dimensions.width),
+          );
+          localUpdates.position.z = Math.max(
+            0,
+            Math.min(localUpdates.position.z, floorLength - dimensions.depth),
+          );
+        }
+      }
+
+      // Enforce rotation guardrail: only y rotation allowed
+      if (updates.rotation) {
+        localUpdates.rotation = {
+          x: 0, // Guardrail: no x rotation
+          y: updates.rotation.y,
+          z: 0, // Guardrail: no z rotation
+        };
+      }
+
+      const result = await commitUpdate(rackId, localUpdates, {
+        showToast: true,
+      });
 
       if (!result.success && groupRef.current) {
         // Rollback visual position on failure
@@ -111,14 +161,14 @@ export const Rack: React.FC<{ rackId: string }> = ({ rackId }) => {
 
       setIsCommitting(false);
     },
-    [rackId, commitUpdate, dimensions.height, isCommitting],
+    [rackId, commitUpdate, dimensions, isCommitting, entity],
   );
 
   // Store original position when transform starts
-  const handleTransformStart = useCallback(() => {
-    originalPositionRef.current = position;
-    originalRotationRef.current = rotation;
-  }, [position, rotation]);
+  // const handleTransformStart = useCallback(() => {
+  //   originalPositionRef.current = position;
+  //   originalRotationRef.current = rotation;
+  // }, [position, rotation]);
 
   useCursor(hovered);
 
@@ -162,6 +212,15 @@ export const Rack: React.FC<{ rackId: string }> = ({ rackId }) => {
           showCrossBeams={!isSelected}
         />
 
+        {/* Shelf geometry with bins */}
+        {/* {rack.shelves.length > 0 && (
+          <ShelfGeometry
+            rackDimensions={dimensions}
+            shelves={rack.shelves}
+            frameColor={isSelected ? outlineColor : "#888888"}
+          />
+        )} */}
+
         {/* Invisible hit box for selection */}
         <mesh
           onClick={handleClick}
@@ -203,6 +262,7 @@ export const Rack: React.FC<{ rackId: string }> = ({ rackId }) => {
         <TransformControls
           object={groupRef.current}
           mode="translate"
+          space="world"
           translationSnap={TRANSLATION_SNAP}
           showY={false}
           onMouseUp={() => {
@@ -219,6 +279,7 @@ export const Rack: React.FC<{ rackId: string }> = ({ rackId }) => {
         <TransformControls
           object={groupRef.current}
           mode="rotate"
+          space="world"
           rotationSnap={ROTATION_SNAP}
           showX={false}
           showZ={false}

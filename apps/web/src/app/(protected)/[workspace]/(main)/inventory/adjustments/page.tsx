@@ -72,12 +72,12 @@ export default function Page() {
   };
 
   const handleApprove = (id: string) => {
-    console.log("Approve adjustment:", id);
+    // console.log("Approve adjustment:", id);
     // TODO: Implement approve logic
   };
 
   const handleReject = (id: string) => {
-    console.log("Reject adjustment:", id);
+    // console.log("Reject adjustment:", id);
     // TODO: Implement reject logic
   };
 

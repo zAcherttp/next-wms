@@ -142,8 +142,10 @@ export interface EntitiesActions {
   setDirty: (dirty: boolean) => void;
 
   // ============ State Management ============
-  /** Load entities from Convex (converts to internal format) */
+  /** Load entities from Convex (converts to internal format) - replaces all */
   loadEntities: (entities: StorageEntity[]) => void;
+  /** Merge entities from Convex - preserves local drafts/pending */
+  mergeEntities: (entities: StorageEntity[]) => void;
   clearEntities: () => void;
 }
 
@@ -195,6 +197,12 @@ export const createEntitiesSlice: StateCreator<
     const branchId = parent?.branchId as Id<"branches">;
 
     const defaultAttrs = getDefaultAttributes(blockType);
+
+    // Add random height for floor to avoid z-fighting with existing floors
+    if (blockType === "floor") {
+      (defaultAttrs as Record<string, unknown>).height =
+        0.1 + Math.random() * 0.3; // 0.1 to 0.4
+    }
 
     const ghost: StorageEntity = {
       tempId: crypto.randomUUID(),
@@ -384,6 +392,10 @@ export const createEntitiesSlice: StateCreator<
       const e = state.entities.get(tempId);
       if (e) {
         e.zoneAttributes = { ...e.zoneAttributes, ...updates };
+        // Sync name attribute to entity.name if present
+        if ("name" in updates && typeof updates.name === "string") {
+          e.name = updates.name;
+        }
         // Clear any previous validation error when user makes changes
         if (e.status === "error") {
           e.status = "draft";
@@ -727,6 +739,104 @@ export const createEntitiesSlice: StateCreator<
 
       state.isDirty = false;
       state.pendingChanges.clear();
+    });
+  },
+
+  mergeEntities: (entities) => {
+    set((state) => {
+      // Build a map of incoming entities by their real ID
+      const incomingByRealId = new Map<string, StorageEntity>();
+      for (const entity of entities) {
+        if (entity._id) {
+          incomingByRealId.set(entity._id, entity);
+        }
+      }
+
+      // Track which incoming entities we've processed
+      const processedRealIds = new Set<string>();
+
+      // Update existing committed entities that match incoming data
+      for (const [tempId, existing] of state.entities) {
+        // Skip drafts, pending, and error entities - preserve local state
+        if (
+          existing.status === "draft" ||
+          existing.status === "pending" ||
+          existing.status === "error"
+        ) {
+          continue;
+        }
+
+        // Skip entities without a real ID
+        if (!existing._id) continue;
+
+        const incoming = incomingByRealId.get(existing._id);
+        if (incoming) {
+          // Update the entity with Convex data (preserve tempId and status)
+          const updated: StorageEntity = {
+            ...incoming,
+            tempId: existing.tempId,
+            status: existing.status,
+          };
+          state.entities.set(tempId, updated);
+          processedRealIds.add(existing._id);
+        }
+      }
+
+      // Add new entities from Convex (not yet in local store)
+      for (const entity of entities) {
+        if (!entity._id) continue;
+        if (processedRealIds.has(entity._id)) continue;
+
+        // Check if we already have this by realId
+        const existingTempId = state.realIdToTempId.get(entity._id);
+        if (existingTempId) {
+          processedRealIds.add(entity._id);
+          continue;
+        }
+
+        // New entity from Convex - add it
+        const tempId = entity.tempId || crypto.randomUUID();
+        const newEntity: StorageEntity = {
+          ...entity,
+          tempId,
+          status: "committed",
+        };
+
+        state.entities.set(tempId, newEntity);
+
+        // Update ID mappings
+        state.tempIdToRealId.set(tempId, entity._id);
+        state.realIdToTempId.set(entity._id, tempId);
+
+        // Update type index
+        if (!state.entitiesByType.has(entity.storageBlockType)) {
+          state.entitiesByType.set(entity.storageBlockType, new Set());
+        }
+        state.entitiesByType.get(entity.storageBlockType)?.add(tempId);
+
+        // Update path index
+        if (!state.entitiesByPath.has(entity.path)) {
+          state.entitiesByPath.set(entity.path, new Set());
+        }
+        state.entitiesByPath.get(entity.path)?.add(tempId);
+      }
+
+      // PASS 2: Build parent index for newly added entities
+      for (const entity of entities) {
+        if (!entity._id) continue;
+        if (!entity.parentId) continue;
+
+        const tempId = state.realIdToTempId.get(entity._id);
+        if (!tempId) continue;
+
+        const parentTempId = state.realIdToTempId.get(entity.parentId);
+        if (!parentTempId) continue;
+
+        if (!state.entitiesByParent.has(parentTempId)) {
+          state.entitiesByParent.set(parentTempId, new Set());
+        }
+        state.entitiesByParent.get(parentTempId)?.add(tempId);
+      }
     });
   },
 

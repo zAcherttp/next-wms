@@ -24,6 +24,7 @@ export interface SyncState {
   lastSyncAt: number | null;
   pendingMutations: Map<string, PendingMutation>;
   syncErrors: string[];
+  commitEntityCallback: ((tempId: string) => Promise<void>) | null;
 }
 
 export interface SyncActions {
@@ -44,6 +45,10 @@ export interface SyncActions {
   // Errors
   addSyncError: (error: string) => void;
   clearSyncErrors: () => void;
+
+  // Commit callback (set by sync hook, called by property panel)
+  registerCommitCallback: (callback: (tempId: string) => Promise<void>) => void;
+  callCommitEntity: (tempId: string) => Promise<void>;
 }
 
 export type SyncSlice = SyncState & SyncActions;
@@ -58,13 +63,13 @@ export const createSyncSlice: StateCreator<
   [],
   SyncSlice
 > = (set, get) => ({
-  // Initial state
   branchId: null,
   isConnected: false,
   isSyncing: false,
   lastSyncAt: null,
   pendingMutations: new Map(),
   syncErrors: [],
+  commitEntityCallback: null,
 
   // Connection
   connect: (branchId) => {
@@ -129,5 +134,19 @@ export const createSyncSlice: StateCreator<
 
   clearSyncErrors: () => {
     set({ syncErrors: [] });
+  },
+
+  // Commit callback
+  registerCommitCallback: (callback) => {
+    set({ commitEntityCallback: callback });
+  },
+
+  callCommitEntity: async (tempId) => {
+    const callback = get().commitEntityCallback;
+    if (!callback) {
+      console.warn("No commit callback registered");
+      return;
+    }
+    await callback(tempId);
   },
 });

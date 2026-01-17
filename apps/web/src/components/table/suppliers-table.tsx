@@ -100,7 +100,7 @@ function CreateSupplierDialog() {
     )
       return;
 
-    console.log("Creating supplier with brandId:", formData.brandId);
+    // console.log("Creating supplier with brandId:", formData.brandId);
 
     mutate(
       {
@@ -634,16 +634,16 @@ export function SuppliersTable() {
 
   React.useEffect(() => {
     if (suppliers) {
-      console.log("=== SUPPLIERS DATA ===");
-      console.log("Total suppliers:", suppliers.length);
-      suppliers.forEach((s, idx) => {
-        console.log(`Supplier ${idx + 1}:`, {
-          name: s.name,
-          brandId: s.brandId,
-          brandName: s.brandName || "<<< MISSING >>>",
-          fullData: s,
-        });
-      });
+      // console.log("=== SUPPLIERS DATA ===");
+      // console.log("Total suppliers:", suppliers.length);
+      // suppliers.forEach((s, idx) => {
+      //   console.log(`Supplier ${idx + 1}:`, {
+      //     name: s.name,
+      //     brandId: s.brandId,
+      //     brandName: s.brandName || "<<< MISSING >>>",
+      //     fullData: s,
+      //   });
+      // });
     }
   }, [suppliers]);
 

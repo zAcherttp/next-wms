@@ -7,7 +7,13 @@ import {
   LayoutGrid,
   LogIn,
 } from "lucide-react";
-import React, { useCallback, useMemo, useState } from "react";
+import type React from "react";
+import { useCallback, useMemo, useState } from "react";
+import {
+  type TreeDataItem,
+  type TreeRenderItemParams,
+  TreeView,
+} from "@/components/tree-view";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -21,10 +27,12 @@ import {
   type BlockType,
 } from "@/lib/types/layout-editor/attribute-registry";
 import { cn } from "@/lib/utils";
+import {
+  logEntitySelected,
+  logGhostEntitySet,
+} from "@/store/editor-console-store";
 import type { StorageEntity } from "@/store/layout-editor-store";
 import { useLayoutStore } from "@/store/layout-editor-store";
-import { TreeView, type TreeDataItem } from '@/components/tree-view'
-import { logEntitySelected } from "@/store/editor-console-store";
 
 // ============================================================================
 // Icons Map
@@ -55,91 +63,164 @@ export function EntityBrowser() {
   const entities = useLayoutStore((s) => s.entities);
   const selectedEntityId = useLayoutStore((s) => s.selectedEntityId);
   const selectEntity = useLayoutStore((s) => s.selectEntity);
+  const setGhostEntity = useLayoutStore((s) => s.setGhostEntity);
 
-  // Build tree data from entities
-  const treeData = useMemo(() => {
-    const buildTree = (parentId: string | null): TreeDataItem[] => {
-      return Array.from(entities.values())
-        .filter((entity) => entity.parentId === parentId && !entity.isDeleted)
-        .map((entity) => {
-          const Icon = BLOCK_ICONS[entity.storageBlockType] ?? Box;
-          const schema = BLOCK_UI_SCHEMAS[entity.storageBlockType as BlockType];
-          const name =
-            (entity.zoneAttributes.name as string) ||
-            `${schema?.displayName || entity.storageBlockType}`;
+  // Build tree data from entities - one tree per floor
+  const { floorTrees } = useMemo(() => {
+    // Build a lookup: realId -> tempId for parent matching
+    const realIdMap = new Map<string, string>();
+    for (const entity of entities.values()) {
+      if (entity._id) {
+        realIdMap.set(entity._id, entity.tempId);
+      }
+    }
 
-          const children = buildTree(entity.tempId || null);
-          return {
-            id: entity.tempId,
-            name,
-            type: entity.storageBlockType,
-            icon: Icon,
-            children: children.length > 0 ? children : undefined,
-          };
-        });
+    // Group entities by their parent's tempId (or null for root)
+    const childrenByParentTempId = new Map<string | null, StorageEntity[]>();
+    for (const entity of entities.values()) {
+      if (entity.isDeleted) continue;
+
+      // Find parent's tempId from parentId (which is a real _id)
+      let parentTempId: string | null = null;
+      if (entity.parentId) {
+        parentTempId = realIdMap.get(entity.parentId) ?? null;
+      }
+
+      if (!childrenByParentTempId.has(parentTempId)) {
+        childrenByParentTempId.set(parentTempId, []);
+      }
+      const parentChildren = childrenByParentTempId.get(parentTempId);
+      if (parentChildren) {
+        parentChildren.push(entity);
+      }
+    }
+
+    // Build tree for a given parent
+    const buildTree = (parentTempId: string | null): TreeDataItem[] => {
+      const children = childrenByParentTempId.get(parentTempId) ?? [];
+      return children.map((entity) => {
+        const Icon = BLOCK_ICONS[entity.storageBlockType] ?? Box;
+        const schema = BLOCK_UI_SCHEMAS[entity.storageBlockType as BlockType];
+        const name =
+          (entity.zoneAttributes.name as string) ||
+          (entity.zoneAttributes.label as string) ||
+          `${schema?.displayName || entity.storageBlockType}`;
+
+        const childItems = buildTree(entity.tempId);
+        return {
+          id: entity.tempId,
+          name,
+          icon: Icon,
+          children: childItems.length > 0 ? childItems : undefined,
+        };
+      });
     };
-    return buildTree(null);
+
+    // Get all floors (root entities)
+    const floors = childrenByParentTempId.get(null) ?? [];
+
+    // Build a separate tree for each floor
+    const trees = floors.map((floor) => {
+      const Icon = BLOCK_ICONS[floor.storageBlockType] ?? Box;
+      const schema = BLOCK_UI_SCHEMAS[floor.storageBlockType as BlockType];
+      const name =
+        (floor.zoneAttributes.name as string) ||
+        `${schema?.displayName || floor.storageBlockType}`;
+
+      const children = buildTree(floor.tempId);
+      return {
+        id: floor.tempId,
+        name,
+        icon: Icon,
+        children: children.length > 0 ? children : undefined,
+      } as TreeDataItem;
+    });
+
+    return { floorTrees: trees, realIdToTempId: realIdMap };
   }, [entities]);
 
   // Handle tree selection
-  const handleTreeSelect = useCallback((item: TreeDataItem | undefined) => {
-    if (item) {
-      selectEntity(item.id);
-    }
-  }, [selectEntity]);
+  const handleTreeSelect = useCallback(
+    (item: TreeDataItem | undefined) => {
+      if (item) {
+        selectEntity(item.id);
+        logEntitySelected(item.id);
+      }
+    },
+    [selectEntity],
+  );
 
   // Get allowed child types based on entity type
-  const getAllowedChildTypes = useCallback((entity: StorageEntity | null): BlockType[] => {
-    if (!entity) {
-      // Root level - can only create floor/zone
-      return ["floor"];
-    }
-    const parentType = entity.storageBlockType;
-    switch (parentType) {
-      case "floor":
-        return ["rack", "obstacle", "entrypoint"];
-      case "rack":
-        return ["shelf"];
-      case "shelf":
-        return ["bin"];
-      default:
-        return [];
-    }
-  }, []);
+  const getAllowedChildTypes = useCallback(
+    (entity: StorageEntity | null): BlockType[] => {
+      if (!entity) {
+        // Root level - can only create floor/zone
+        return ["floor"];
+      }
+      const parentType = entity.storageBlockType;
+      switch (parentType) {
+        case "floor":
+          return ["rack", "obstacle", "entrypoint"];
+        case "rack":
+          return ["shelf"];
+        case "shelf":
+          return ["bin"];
+        default:
+          return [];
+      }
+    },
+    [],
+  );
 
-  // Create new entity handler
-  const setGhostEntity = useLayoutStore((s) => s.setGhostEntity);
+  // Determine the effective context entity for context menu
+  // Priority: right-clicked item > selected item > null (root)
+  const contextEntity = useMemo(() => {
+    if (contextItem) return contextItem;
+    if (selectedEntityId) return entities.get(selectedEntityId) ?? null;
+    return null;
+  }, [contextItem, selectedEntityId, entities]);
 
+  // Create new entity handler - use contextEntity for parent
   const handleCreateEntity = useCallback(
     (blockType: BlockType) => {
-      const parentId = contextItem?._id || null;
+      // For setGhostEntity, use the real _id for parentId (Convex relationship)
+      // If entity is a draft (no _id), it can't be a valid parent yet
+      const parentId = contextEntity?._id ?? null;
       setGhostEntity(blockType, parentId);
+      logGhostEntitySet(blockType, parentId);
+      // Reset context item after action
+      setContextItem(null);
     },
-    [setGhostEntity, contextItem],
+    [setGhostEntity, contextEntity],
   );
 
   // Custom render item for TreeView with context menu
-  const renderTreeItem = useCallback((params: any) => {
-    const { item, isSelected } = params;
-    const entity = entities.get(item.id);
+  const renderTreeItem = useCallback(
+    (params: TreeRenderItemParams) => {
+      const { item, isSelected } = params;
+      const entity = entities.get(item.id);
 
-    return (
-      <div
-        className={cn(
-          "flex items-center gap-2 px-2 py-1 cursor-pointer rounded",
-          isSelected && "bg-accent"
-        )}
-        onContextMenu={() => {
-          if (entity) {
-            setContextItem(entity);
-          }
-        }}
-      >
-        {item.icon && <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />}
-        <span className="text-sm truncate">{item.name}</span>
-      </div>
-    );
-  }, [entities]);
+      return (
+        <div
+          className={cn(
+            "flex cursor-pointer items-center gap-2 rounded px-2 py-1",
+            isSelected && "bg-accent",
+          )}
+          onContextMenu={() => {
+            if (entity) {
+              setContextItem(entity);
+            }
+          }}
+        >
+          {item.icon && (
+            <item.icon className="h-4 w-4 shrink-0 text-muted-foreground" />
+          )}
+          <span className="truncate text-sm">{item.name}</span>
+        </div>
+      );
+    },
+    [entities],
+  );
 
   return (
     <div className="flex h-full flex-col">
@@ -154,10 +235,10 @@ export function EntityBrowser() {
       <ContextMenu>
         <ContextMenuTrigger asChild>
           <ScrollArea
-            className="flex-1"
+            className="h-full"
             onContextMenu={() => setContextItem(null)}
           >
-            {treeData.length === 0 ? (
+            {floorTrees.length === 0 ? (
               <div className="flex flex-col items-center gap-3 p-6 text-center">
                 <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10">
                   <AlertTriangle className="h-6 w-6 text-amber-500" />
@@ -175,7 +256,7 @@ export function EntityBrowser() {
               </div>
             ) : (
               <TreeView
-                data={treeData}
+                data={floorTrees}
                 initialSelectedItemId={selectedEntityId || undefined}
                 onSelectChange={handleTreeSelect}
                 renderItem={renderTreeItem}
@@ -185,8 +266,8 @@ export function EntityBrowser() {
           </ScrollArea>
         </ContextMenuTrigger>
         <ContextMenuContent className="w-48">
-          {getAllowedChildTypes(contextItem).length > 0 ? (
-            getAllowedChildTypes(contextItem).map((blockType) => {
+          {getAllowedChildTypes(contextEntity).length > 0 ? (
+            getAllowedChildTypes(contextEntity).map((blockType) => {
               const Icon = BLOCK_ICONS[blockType] ?? Box;
               const label =
                 blockType.charAt(0).toUpperCase() + blockType.slice(1);

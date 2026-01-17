@@ -402,7 +402,7 @@ export const getActive = query({
     const brands = await Promise.all(
       brandIds.map(async (brandId) => {
         const brand = await ctx.db.get(brandId);
-        console.log(`Raw brand from DB for ID ${brandId}:`, JSON.stringify(brand, null, 2));
+        // console.log(`Raw brand from DB for ID ${brandId}:`, JSON.stringify(brand, null, 2));
         return { id: brandId, brand };
       })
     );
@@ -411,7 +411,7 @@ export const getActive = query({
     const enrichedSuppliers = suppliers.map((supplier) => {
       const brand = brandMap.get(supplier.brandId);
       const brandName = brand?.name || "";
-      console.log(`Supplier: ${supplier.name}, BrandId: ${supplier.brandId}, Brand Name: "${brandName}", Brand Object:`, JSON.stringify(brand, null, 2));
+      // console.log(`Supplier: ${supplier.name}, BrandId: ${supplier.brandId}, Brand Name: "${brandName}", Brand Object:`, JSON.stringify(brand, null, 2));
       return {
         ...supplier,
         brandName,
