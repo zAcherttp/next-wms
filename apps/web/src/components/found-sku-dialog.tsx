@@ -50,7 +50,10 @@ interface FoundSkuDialogProps {
   item: FoundSkuDialogItem;
   onClose: () => void;
   onConfirm: (amount: number, note: string) => void | Promise<void>;
-  onReturn: (returnTypeId: Id<"system_lookups">, note?: string) => void | Promise<void>;
+  onReturn: (
+    returnTypeId: Id<"system_lookups">,
+    note?: string,
+  ) => void | Promise<void>;
 }
 
 export function FoundSkuDialog({
@@ -77,7 +80,7 @@ export function FoundSkuDialog({
 
   // Get the selected return reason display name
   const selectedReasonName = returnReasons?.find(
-    (r) => r._id === returnReasonId
+    (r) => r._id === returnReasonId,
   )?.lookupValue;
 
   // Reset form when item changes
@@ -131,8 +134,11 @@ export function FoundSkuDialog({
 
           <div className="space-y-4 py-4">
             {/* Progress Info */}
-            <div className="text-sm text-muted-foreground">
-              <p>Expected: {item.expectedQty} | Recorded: {item.recordedQty} | Remaining: {remainingQty}</p>
+            <div className="text-muted-foreground text-sm">
+              <p>
+                Expected: {item.expectedQty} | Recorded: {item.recordedQty} |
+                Remaining: {remainingQty}
+              </p>
             </div>
 
             {/* Amount */}
@@ -151,7 +157,10 @@ export function FoundSkuDialog({
             {/* Return Reason */}
             <div className="space-y-2">
               <Label htmlFor="return-reason">
-                Return Reason <span className="text-muted-foreground text-xs">(required for return)</span>
+                Return Reason{" "}
+                <span className="text-muted-foreground text-xs">
+                  (required for return)
+                </span>
               </Label>
               <Select
                 value={returnReasonId}
@@ -164,7 +173,11 @@ export function FoundSkuDialog({
                 disabled={isSubmitting || isLoadingReasons}
               >
                 <SelectTrigger id="return-reason">
-                  <SelectValue placeholder={isLoadingReasons ? "Loading..." : "Select return reason"} />
+                  <SelectValue
+                    placeholder={
+                      isLoadingReasons ? "Loading..." : "Select return reason"
+                    }
+                  />
                 </SelectTrigger>
                 <SelectContent>
                   {isLoadingReasons ? (
@@ -188,7 +201,10 @@ export function FoundSkuDialog({
             {/* Additional Notes */}
             <div className="space-y-2">
               <Label htmlFor="note">
-                Additional Notes <span className="text-muted-foreground text-xs">(optional)</span>
+                Additional Notes{" "}
+                <span className="text-muted-foreground text-xs">
+                  (optional)
+                </span>
               </Label>
               <Input
                 id="note"
@@ -210,15 +226,26 @@ export function FoundSkuDialog({
 
           <DialogFooter className="flex flex-row justify-between gap-2 sm:justify-between">
             <DialogClose asChild>
-              <Button variant="outline" onClick={onClose} disabled={isSubmitting}>
+              <Button
+                variant="outline"
+                onClick={onClose}
+                disabled={isSubmitting}
+              >
                 Close
               </Button>
             </DialogClose>
             <div className="flex gap-2">
-              <Button variant="outline" onClick={handleReturnClick} disabled={isSubmitting}>
+              <Button
+                variant="outline"
+                onClick={handleReturnClick}
+                disabled={isSubmitting}
+              >
                 Return
               </Button>
-              <Button onClick={handleConfirm} disabled={isSubmitting || amount <= 0}>
+              <Button
+                onClick={handleConfirm}
+                disabled={isSubmitting || amount <= 0}
+              >
                 {isSubmitting ? "Processing..." : "Confirm"}
               </Button>
             </div>
@@ -232,8 +259,10 @@ export function FoundSkuDialog({
           <AlertDialogHeader>
             <AlertDialogTitle>Confirm Return Request</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to mark <strong>{item.skuCode}</strong> as return requested?
-              <br /><br />
+              Are you sure you want to mark <strong>{item.skuCode}</strong> as
+              return requested?
+              <br />
+              <br />
               <strong>Reason:</strong> {selectedReasonName}
               {note && (
                 <>
@@ -244,8 +273,13 @@ export function FoundSkuDialog({
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel disabled={isSubmitting}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleReturnConfirm} disabled={isSubmitting}>
+            <AlertDialogCancel disabled={isSubmitting}>
+              Cancel
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleReturnConfirm}
+              disabled={isSubmitting}
+            >
               {isSubmitting ? "Processing..." : "Confirm Return"}
             </AlertDialogAction>
           </AlertDialogFooter>

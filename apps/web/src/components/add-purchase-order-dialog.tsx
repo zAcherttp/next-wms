@@ -187,7 +187,7 @@ export function AddPurchaseOrderDialog({
           items: products.map((p) => ({
             variantId: p.variantId,
             quantity: p.quantity,
-            zoneId: p.zoneId!,
+            zoneId: p.zoneId as Id<"storage_zones">,
           })),
         });
       },

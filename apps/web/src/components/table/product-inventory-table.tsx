@@ -1,6 +1,7 @@
 "use client";
 
 import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -13,7 +14,6 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
@@ -31,6 +31,7 @@ import {
   Package,
   PackageX,
 } from "lucide-react";
+import type { Route } from "next";
 import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
 import { FilterPopover } from "@/components/table/filter-popover";
@@ -122,20 +123,20 @@ export function ProductInventoryTable({
   const router = useRouter();
   const params = useParams();
   const workspace = params.workspace as string;
-  
+
   const { organizationId } = useCurrentUser();
   const { currentBranch } = useBranches({ organizationId });
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
   const [rowSelection, setRowSelection] = React.useState({});
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [stockStatusFilter, setStockStatusFilter] = React.useState<string[]>(
-    []
+    [],
   );
 
   // Fetch product inventory data
@@ -155,53 +156,53 @@ export function ProductInventoryTable({
                 : "all",
             searchTerm: globalFilter || undefined,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!organizationId,
   });
 
   // Fetch categories for filter
-  const { data: categories } = useQuery({
-    ...convexQuery(
-      api.categories.getTree,
-      organizationId
-        ? {
-            organizationId: organizationId as Id<"organizations">,
-          }
-        : "skip"
-    ),
-    enabled: !!organizationId,
-  });
+  // const { data: categories } = useQuery({
+  //   ...convexQuery(
+  //     api.categories.getTree,
+  //     organizationId
+  //       ? {
+  //           organizationId: organizationId as Id<"organizations">,
+  //         }
+  //       : "skip",
+  //   ),
+  //   enabled: !!organizationId,
+  // });
 
   // Fetch brands for filter
-  const { data: brands } = useQuery({
-    ...convexQuery(
-      api.brands.listAll,
-      organizationId
-        ? {
-            organizationId: organizationId as string,
-          }
-        : "skip"
-    ),
-    enabled: !!organizationId,
-  });
+  // const { data: brands } = useQuery({
+  //   ...convexQuery(
+  //     api.brands.listAll,
+  //     organizationId
+  //       ? {
+  //           organizationId: organizationId as string,
+  //         }
+  //       : "skip",
+  //   ),
+  //   enabled: !!organizationId,
+  // });
 
-  const categoryFilterOptions = React.useMemo(() => {
-    if (!categories) return [];
-    return categories.map((c) => ({ label: c.name, value: c._id }));
-  }, [categories]);
+  // const categoryFilterOptions = React.useMemo(() => {
+  //   if (!categories) return [];
+  //   return categories.map((c) => ({ label: c.name, value: c._id }));
+  // }, [categories]);
 
-  const brandFilterOptions = React.useMemo(() => {
-    if (!brands) return [];
-    return brands.map((b) => ({ label: b.name, value: b._id }));
-  }, [brands]);
+  // const brandFilterOptions = React.useMemo(() => {
+  //   if (!brands) return [];
+  //   return brands.map((b) => ({ label: b.name, value: b._id }));
+  // }, [brands]);
 
   const handleViewDetails = React.useCallback(
     (productId: Id<"products">) => {
-      router.push(`/${workspace}/inventory/products/${productId}`);
+      router.push(`/${workspace}/inventory/products/${productId}` as Route);
       onViewDetails?.(productId);
     },
-    [router, workspace, onViewDetails]
+    [router, workspace, onViewDetails],
   );
 
   const getStockStatusBadge = (status: string) => {
@@ -210,7 +211,7 @@ export function ProductInventoryTable({
         return (
           <Badge
             variant="outline"
-            className="bg-green-500/10 text-green-600 border-green-500/60"
+            className="border-green-500/60 bg-green-500/10 text-green-600"
           >
             <Package className="mr-1 h-3 w-3" />
             In Stock
@@ -220,7 +221,7 @@ export function ProductInventoryTable({
         return (
           <Badge
             variant="outline"
-            className="bg-yellow-500/10 text-yellow-600 border-yellow-500/60"
+            className="border-yellow-500/60 bg-yellow-500/10 text-yellow-600"
           >
             <AlertTriangle className="mr-1 h-3 w-3" />
             Low Stock
@@ -230,7 +231,7 @@ export function ProductInventoryTable({
         return (
           <Badge
             variant="outline"
-            className="bg-red-500/10 text-red-600 border-red-500/60"
+            className="border-red-500/60 bg-red-500/10 text-red-600"
           >
             <PackageX className="mr-1 h-3 w-3" />
             Out of Stock
@@ -306,7 +307,7 @@ export function ProductInventoryTable({
                 ? "text-red-600"
                 : qty <= reorderPoint
                   ? "text-yellow-600"
-                  : "text-foreground"
+                  : "text-foreground",
             )}
           >
             {qty.toLocaleString()}
@@ -332,7 +333,7 @@ export function ProductInventoryTable({
         return (
           <Tooltip>
             <TooltipTrigger asChild>
-              <div className="flex items-center gap-1 cursor-help">
+              <div className="flex cursor-help items-center gap-1">
                 <MapPin className="h-3 w-3 text-muted-foreground" />
                 <span className="text-sm">
                   {locations.length} zone{locations.length > 1 ? "s" : ""}
@@ -407,7 +408,7 @@ export function ProductInventoryTable({
     if (!products) return [];
     if (stockStatusFilter.length === 0) return products;
     return products.filter((item) =>
-      stockStatusFilter.includes(item.stockStatus)
+      stockStatusFilter.includes(item.stockStatus),
     );
   }, [products, stockStatusFilter]);
 
@@ -504,7 +505,7 @@ export function ProductInventoryTable({
                       ? null
                       : flexRender(
                           header.column.columnDef.header,
-                          header.getContext()
+                          header.getContext(),
                         )}
                   </TableHead>
                 ))}
@@ -536,7 +537,7 @@ export function ProductInventoryTable({
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}
@@ -559,7 +560,7 @@ export function ProductInventoryTable({
       {/* Pagination */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Label htmlFor="rows-per-page" className="text-sm font-medium">
+          <Label htmlFor="rows-per-page" className="font-medium text-sm">
             Showing
           </Label>
           <Select
@@ -579,10 +580,10 @@ export function ProductInventoryTable({
               ))}
             </SelectContent>
           </Select>
-          <Label className="text-sm font-medium">per page</Label>
+          <Label className="font-medium text-sm">per page</Label>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-sm text-muted-foreground">
+          <span className="text-muted-foreground text-sm">
             {table.getFilteredRowModel().rows.length} product(s) total
           </span>
           <div className="flex items-center space-x-2">

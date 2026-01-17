@@ -78,7 +78,7 @@ export function ReceiveSessionsTable() {
         ? {
             branchId: currentBranch._id,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!userId && !!currentBranch,
   });
@@ -104,7 +104,7 @@ export function ReceiveSessionsTable() {
         header: ({ column }) => {
           const suppliers = receiveSessions
             ? Array.from(
-                new Set(receiveSessions.map((session) => session.supplierName))
+                new Set(receiveSessions.map((session) => session.supplierName)),
               ).map((name) => ({
                 label: name,
                 value: name,
@@ -280,7 +280,7 @@ export function ReceiveSessionsTable() {
             <Badge
               className={cn(
                 "w-24 justify-center rounded-sm text-center text-xs",
-                getBadgeStyleByStatus(row.getValue("status"))
+                getBadgeStyleByStatus(row.getValue("status")),
               )}
               variant={"outline"}
             >
@@ -339,12 +339,12 @@ export function ReceiveSessionsTable() {
         },
       },
     ],
-    [receiveSessions]
+    [receiveSessions],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -374,8 +374,7 @@ export function ReceiveSessionsTable() {
 
   React.useEffect(() => {
     table.getColumn("receiveSessionCode")?.setFilterValue(debouncedFilterValue);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedFilterValue]);
+  }, [debouncedFilterValue, table.getColumn]);
 
   const activeFiltersCount =
     sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);
@@ -445,7 +444,7 @@ export function ReceiveSessionsTable() {
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext()
+                            header.getContext(),
                           )}
                     </TableHead>
                   );
@@ -464,7 +463,7 @@ export function ReceiveSessionsTable() {
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext()
+                        cell.getContext(),
                       )}
                     </TableCell>
                   ))}

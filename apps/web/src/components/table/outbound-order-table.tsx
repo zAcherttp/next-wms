@@ -199,7 +199,9 @@ export function OutboundOrdersTable() {
         accessorFn: (row) => row.createdByUser?.fullName,
         header: "Created By",
         cell: ({ row }) => (
-          <div className="">{row.getValue("createdByUser.fullName") ?? "-"}</div>
+          <div className="">
+            {row.getValue("createdByUser.fullName") ?? "-"}
+          </div>
         ),
       },
       {
@@ -296,11 +298,7 @@ export function OutboundOrdersTable() {
         header: "Tracking",
         cell: ({ row }) => {
           const tracking = row.getValue("trackingNumber") as string | null;
-          return (
-            <div className="text-muted-foreground">
-              {tracking || "-"}
-            </div>
-          );
+          return <div className="text-muted-foreground">{tracking || "-"}</div>;
         },
       },
       {
@@ -334,9 +332,7 @@ export function OutboundOrdersTable() {
           return rowValue?.toLowerCase() === value?.toLowerCase();
         },
         cell: ({ row }) => {
-          const status = row.getValue(
-            "outboundStatus.lookupValue",
-          ) as string;
+          const status = row.getValue("outboundStatus.lookupValue") as string;
           return (
             <div className="text-center">
               <Badge
@@ -358,12 +354,12 @@ export function OutboundOrdersTable() {
         header: () => <div className="text-center">Vehicle</div>,
         cell: ({ row }) => {
           const vehicleArrived = !!row.original.vehicleArrivedAt;
-          
+
           if (vehicleArrived) {
             return (
               <div className="text-center">
                 <Badge
-                  className="bg-green-500/10 text-green-600 border-green-500/60 text-xs"
+                  className="border-green-500/60 bg-green-500/10 text-green-600 text-xs"
                   variant={"outline"}
                 >
                   ✅ Arrived
@@ -371,13 +367,13 @@ export function OutboundOrdersTable() {
               </div>
             );
           }
-          
+
           return (
             <div className="text-center">
               <Button
                 variant="outline"
                 size="sm"
-                className="h-6 text-xs text-yellow-600 border-yellow-500/60 hover:bg-yellow-500/10"
+                className="h-6 border-yellow-500/60 text-xs text-yellow-600 hover:bg-yellow-500/10"
                 onClick={() => handleVehicleArrived(row.original._id)}
               >
                 🚚 Chờ xe
@@ -447,7 +443,10 @@ export function OutboundOrdersTable() {
                 {waitingForVehicle && (
                   <>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem disabled className="text-muted-foreground">
+                    <DropdownMenuItem
+                      disabled
+                      className="text-muted-foreground"
+                    >
                       ⏳ Chờ xe tới để chất hàng
                     </DropdownMenuItem>
                   </>

@@ -59,9 +59,9 @@ export function AddReceiveSessionDialog({
   const {
     data: pendingPOs,
     isLoading: isLoadingPOs,
-    error: queryError,
-    isError,
-    status,
+    // error: queryError,
+    // isError,
+    // status,
   } = useQuery({
     ...convexQuery(
       api.receiveSessions.getPendingPurchaseOrdersByBranch,
@@ -73,26 +73,26 @@ export function AddReceiveSessionDialog({
   });
 
   // Debug log
-  React.useEffect(() => {
-    if (open) {
-      // console.log("Query Status:", status);
-      // console.log("Is Loading:", isLoadingPOs);
-      // console.log("Is Error:", isError);
-      // console.log("Error:", queryError);
-      // console.log("Branch ID:", currentBranch?._id);
-      // console.log("Pending POs data:", pendingPOs);
-      // console.log("Is array:", Array.isArray(pendingPOs));
-      // console.log("Length:", pendingPOs?.length);
-    }
-  }, [
-    open,
-    isLoadingPOs,
-    pendingPOs,
-    status,
-    isError,
-    queryError,
-    currentBranch?._id,
-  ]);
+  // React.useEffect(() => {
+  //   if (open) {
+  // console.log("Query Status:", status);
+  // console.log("Is Loading:", isLoadingPOs);
+  // console.log("Is Error:", isError);
+  // console.log("Error:", queryError);
+  // console.log("Branch ID:", currentBranch?._id);
+  // console.log("Pending POs data:", pendingPOs);
+  // console.log("Is array:", Array.isArray(pendingPOs));
+  // console.log("Length:", pendingPOs?.length);
+  //   }
+  // }, [
+  //   open,
+  //   isLoadingPOs,
+  //   pendingPOs,
+  //   status,
+  //   isError,
+  //   queryError,
+  //   currentBranch?._id,
+  // ]);
 
   // Mutation for creating receive session
   const createReceiveSession = useConvexMutation(

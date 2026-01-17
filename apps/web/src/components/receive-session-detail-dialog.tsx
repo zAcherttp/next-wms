@@ -85,7 +85,7 @@ export function ReceiveSessionDetailDialog({
         ? {
             receiveSessionId: sessionId,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!userId && open && !!sessionId,
   });
@@ -116,7 +116,7 @@ export function ReceiveSessionDetailDialog({
           </span>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-4xl w-full">
+      <DialogContent className="w-full sm:max-w-4xl">
         <DialogTitle className="sr-only">Receive Session Details</DialogTitle>
         {isPending || !sessionDetail ? (
           <div className="space-y-4">
@@ -152,7 +152,7 @@ export function ReceiveSessionDetailDialog({
                           variant="outline"
                           className={cn(
                             "font-medium",
-                            getBadgeStyleByStatus(sessionDetail.status ?? "")
+                            getBadgeStyleByStatus(sessionDetail.status ?? ""),
                           )}
                         >
                           {sessionDetail.status ?? "Unknown"}
@@ -232,7 +232,7 @@ export function ReceiveSessionDetailDialog({
                               variant="outline"
                               className={cn(
                                 "font-medium",
-                                getItemStatusBadgeStyle(item.statusCode)
+                                getItemStatusBadgeStyle(item.statusCode),
                               )}
                             >
                               {item.status}

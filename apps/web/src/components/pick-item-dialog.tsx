@@ -66,7 +66,7 @@ export function PickItemDialog({
               <span>Already Picked:</span>
               <span className="font-medium">{item.pickedQty}</span>
             </div>
-            <div className="flex justify-between text-sm font-medium text-primary">
+            <div className="flex justify-between font-medium text-primary text-sm">
               <span>Remaining:</span>
               <span>{remainingQty}</span>
             </div>

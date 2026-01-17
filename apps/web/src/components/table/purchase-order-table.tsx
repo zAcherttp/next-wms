@@ -348,7 +348,7 @@ export function PurchaseOrdersTable() {
   React.useEffect(() => {
     table.getColumn("code")?.setFilterValue(debouncedFilterValue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedFilterValue]);
+  }, [debouncedFilterValue, table.getColumn]);
 
   const activeFiltersCount =
     sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);

@@ -202,12 +202,8 @@ export function OutboundOrderDetailDialog({
                       <TableHead className="w-20 text-center">
                         Requested
                       </TableHead>
-                      <TableHead className="w-20 text-center">
-                        Picked
-                      </TableHead>
-                      <TableHead className="w-20 text-center">
-                        Packed
-                      </TableHead>
+                      <TableHead className="w-20 text-center">Picked</TableHead>
+                      <TableHead className="w-20 text-center">Packed</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>

@@ -1,6 +1,7 @@
 "use client";
 
 import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -13,7 +14,6 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
@@ -106,7 +106,7 @@ export const columns: ColumnDef<PickingSession>[] = [
           <span className="font-medium">
             {picked}/{required}
           </span>
-          <span className="text-muted-foreground ml-1">({percent}%)</span>
+          <span className="ml-1 text-muted-foreground">({percent}%)</span>
         </div>
       );
     },

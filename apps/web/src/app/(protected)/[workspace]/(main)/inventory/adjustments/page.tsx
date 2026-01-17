@@ -71,15 +71,15 @@ export default function Page() {
     }
   };
 
-  const handleApprove = (id: string) => {
-    // console.log("Approve adjustment:", id);
-    // TODO: Implement approve logic
-  };
+  // const handleApprove = (id: string) => {
+  // console.log("Approve adjustment:", id);
+  // TODO: Implement approve logic
+  // };
 
-  const handleReject = (id: string) => {
-    // console.log("Reject adjustment:", id);
-    // TODO: Implement reject logic
-  };
+  // const handleReject = (id: string) => {
+  // console.log("Reject adjustment:", id);
+  // TODO: Implement reject logic
+  // };
 
   return (
     <div className="flex flex-col gap-6 p-4">

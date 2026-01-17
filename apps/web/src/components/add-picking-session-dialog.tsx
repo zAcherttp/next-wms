@@ -27,6 +27,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import {
   Popover,
   PopoverContent,
@@ -119,7 +120,7 @@ export function AddPickingSessionDialog() {
         <div className="space-y-4 py-4">
           {/* Order Selection */}
           <div className="space-y-2">
-            <label className="text-sm font-medium">Outbound Order</label>
+            <Label className="font-medium text-sm">Outbound Order</Label>
             <Popover open={orderPopoverOpen} onOpenChange={setOrderPopoverOpen}>
               <PopoverTrigger asChild>
                 <Button

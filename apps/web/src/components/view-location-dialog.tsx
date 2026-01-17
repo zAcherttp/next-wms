@@ -1,7 +1,6 @@
 "use client";
 
 import { MapPin } from "lucide-react";
-import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -85,7 +84,7 @@ export function ViewLocationDialog({
             <div className="space-y-3">
               <h4 className="font-medium">Go to this location:</h4>
 
-              <div className="rounded-lg border p-4 space-y-3">
+              <div className="space-y-3 rounded-lg border p-4">
                 {/* Zone Name */}
                 <div className="flex items-center justify-between">
                   <span className="text-muted-foreground text-sm">Zone:</span>
@@ -110,10 +109,8 @@ export function ViewLocationDialog({
                 {/* Zone Path */}
                 {location.zonePath && (
                   <div className="space-y-1">
-                    <span className="text-muted-foreground text-sm">
-                      Path:
-                    </span>
-                    <p className="text-sm font-medium bg-muted/50 rounded px-2 py-1">
+                    <span className="text-muted-foreground text-sm">Path:</span>
+                    <p className="rounded bg-muted/50 px-2 py-1 font-medium text-sm">
                       {location.zonePath}
                     </p>
                   </div>
@@ -122,7 +119,7 @@ export function ViewLocationDialog({
             </div>
           ) : (
             <div className="rounded-lg border border-dashed p-4 text-center text-muted-foreground">
-              <MapPin className="mx-auto h-8 w-8 mb-2 opacity-50" />
+              <MapPin className="mx-auto mb-2 h-8 w-8 opacity-50" />
               <p>Location information not available</p>
               <p className="text-sm">
                 This item may not have an assigned storage location

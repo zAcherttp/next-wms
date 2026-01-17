@@ -4,7 +4,7 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
-import { CalendarIcon, Check, Plus, Trash2 } from "lucide-react";
+import { CalendarIcon, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -154,9 +154,7 @@ export function AddOutboundOrderDialog({
         {/* Form Fields */}
         <div className="flex max-w-150 flex-row gap-4">
           <div className="space-y-2">
-            <Label>
-              Requested Ship Date
-            </Label>
+            <Label>Requested Ship Date</Label>
             <Popover open={datePopoverOpen} onOpenChange={setDatePopoverOpen}>
               <PopoverTrigger asChild>
                 <Button

@@ -4,15 +4,20 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
-import { ArrowLeft, ArrowRight, Check, Eye, Loader2, ScanLine } from "lucide-react";
+import {
+  ArrowLeft,
+  ArrowRight,
+  Check,
+  Eye,
+  Loader2,
+  ScanLine,
+} from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
-import { ViewLocationDialog } from "@/components/view-location-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogClose,
@@ -21,14 +26,16 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useCurrentUser } from "@/hooks/use-current-user";
+import { ViewLocationDialog } from "@/components/view-location-dialog";
+// import { useCurrentUser } from "@/hooks/use-current-user";
 
 export default function PickingVerifyingPage() {
   const params = useParams();
   const router = useRouter();
   const sessionId = params.id as Id<"picking_sessions">;
-  const { userId } = useCurrentUser();
+  // const { userId } = useCurrentUser();
 
   const [skuInput, setSkuInput] = React.useState("");
   const [isPickDialogOpen, setIsPickDialogOpen] = React.useState(false);
@@ -38,7 +45,11 @@ export default function PickingVerifyingPage() {
   const [pickNote, setPickNote] = React.useState("");
 
   // Fetch session details from API
-  const { data: sessionData, isPending, refetch } = useQuery({
+  const {
+    data: sessionData,
+    isPending,
+    refetch,
+  } = useQuery({
     ...convexQuery(
       api.pickingSessions.getPickingSessionDetailed,
       sessionId ? { pickingSessionId: sessionId } : "skip",
@@ -72,7 +83,12 @@ export default function PickingVerifyingPage() {
       );
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [sessionData?.status?.lookupValue]);
+  }, [
+    sessionData?.status?.lookupValue,
+    startSessionMutation.mutate,
+    refetch,
+    sessionId,
+  ]);
 
   const handleSubmitSku = () => {
     if (!skuInput.trim() || !sessionData) return;
@@ -146,7 +162,7 @@ export default function PickingVerifyingPage() {
         toast.warning("Session completed with partially picked items");
       }
 
-      router.push("../");
+      router.back();
     } catch (error) {
       console.error("Failed to complete session:", error);
       toast.error("Failed to complete picking session");
@@ -155,7 +171,7 @@ export default function PickingVerifyingPage() {
 
   if (isPending) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
+      <div className="flex min-h-[400px] items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -163,7 +179,7 @@ export default function PickingVerifyingPage() {
 
   if (!sessionData) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[400px] gap-4">
+      <div className="flex min-h-[400px] flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">Picking session not found</p>
         <Button variant="outline" onClick={() => router.back()}>
           <ArrowLeft className="mr-2 h-4 w-4" />
@@ -186,7 +202,7 @@ export default function PickingVerifyingPage() {
             Total Progress: {totalPicked} / {totalExpected}
           </p>
           {allComplete && (
-            <p className="text-green-600 text-sm mt-1">✓ All items picked!</p>
+            <p className="mt-1 text-green-600 text-sm">✓ All items picked!</p>
           )}
         </CardContent>
       </Card>
@@ -351,10 +367,11 @@ export default function PickingVerifyingPage() {
                     {selectedItem.quantityPicked}
                   </span>
                 </div>
-                <div className="flex justify-between text-sm font-medium text-primary">
+                <div className="flex justify-between font-medium text-primary text-sm">
                   <span>Remaining:</span>
                   <span>
-                    {selectedItem.quantityRequired - selectedItem.quantityPicked}
+                    {selectedItem.quantityRequired -
+                      selectedItem.quantityPicked}
                   </span>
                 </div>
               </div>

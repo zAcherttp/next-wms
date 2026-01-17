@@ -9,7 +9,6 @@ import {
   Barcode,
   Box,
   Calendar,
-  Info,
   Layers,
   MapPin,
   Package,
@@ -17,11 +16,9 @@ import {
   Scale,
   Tag,
   Thermometer,
-  Warehouse,
 } from "lucide-react";
-import * as React from "react";
 import { Badge } from "@/components/ui/badge";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -58,14 +55,17 @@ function InfoItem({ icon, label, value, subValue }: InfoItemProps) {
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-1">
+        <p className="mb-1 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
           {label}
         </p>
-        <p className="font-semibold text-base leading-tight truncate" title={String(value)}>
+        <p
+          className="truncate font-semibold text-base leading-tight"
+          title={String(value)}
+        >
           {value ?? "-"}
         </p>
         {subValue && (
-          <p className="text-muted-foreground text-xs mt-1">{subValue}</p>
+          <p className="mt-1 text-muted-foreground text-xs">{subValue}</p>
         )}
       </div>
     </div>
@@ -83,10 +83,10 @@ function StatCard({ label, value, className, valueClassName }: StatCardProps) {
   return (
     <Card className={cn("overflow-hidden", className)}>
       <CardContent className="p-6">
-        <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-2">
+        <p className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
           {label}
         </p>
-        <p className={cn("text-3xl font-bold tracking-tight", valueClassName)}>
+        <p className={cn("font-bold text-3xl tracking-tight", valueClassName)}>
           {value}
         </p>
       </CardContent>
@@ -123,7 +123,7 @@ export function ProductInventoryDetailDialog({
       return (
         <Badge
           variant="outline"
-          className="bg-red-500/10 text-red-600 border-red-200 h-7 px-3 gap-1.5"
+          className="h-7 gap-1.5 border-red-200 bg-red-500/10 px-3 text-red-600"
         >
           <PackageX className="h-3.5 w-3.5" />
           Out of Stock
@@ -134,7 +134,7 @@ export function ProductInventoryDetailDialog({
       return (
         <Badge
           variant="outline"
-          className="bg-yellow-500/10 text-yellow-600 border-yellow-200 h-7 px-3 gap-1.5"
+          className="h-7 gap-1.5 border-yellow-200 bg-yellow-500/10 px-3 text-yellow-600"
         >
           <AlertTriangle className="h-3.5 w-3.5" />
           Low Stock
@@ -144,7 +144,7 @@ export function ProductInventoryDetailDialog({
     return (
       <Badge
         variant="outline"
-        className="bg-green-500/10 text-green-600 border-green-200 h-7 px-3 gap-1.5"
+        className="h-7 gap-1.5 border-green-200 bg-green-500/10 px-3 text-green-600"
       >
         <Package className="h-3.5 w-3.5" />
         In Stock
@@ -171,8 +171,8 @@ export function ProductInventoryDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="w-[95vw] max-w-6xl p-0 gap-0 max-h-[90vh] flex flex-col overflow-hidden">
-        <DialogHeader className="px-8 py-5 border-b shrink-0 bg-background z-10">
+      <DialogContent className="flex max-h-[90vh] w-[95vw] max-w-6xl flex-col gap-0 overflow-hidden p-0">
+        <DialogHeader className="z-10 shrink-0 border-b bg-background px-8 py-5">
           <div className="flex items-center justify-between">
             <DialogTitle className="flex items-center gap-2 text-xl">
               <Package className="h-5 w-5 text-muted-foreground" />
@@ -181,21 +181,27 @@ export function ProductInventoryDetailDialog({
             {/* Header Status Badges (Always visible) */}
             {productDetail && (
               <div className="flex items-center gap-3">
-                 <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground mr-2">
-                    <span className="bg-primary/10 px-2 py-0.5 rounded text-primary font-mono text-xs">
-                         ID: {productDetail.product._id.slice(-6)}
-                    </span>
-                 </div>
+                <div className="mr-2 hidden items-center gap-2 text-muted-foreground text-sm sm:flex">
+                  <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-primary text-xs">
+                    ID: {productDetail.product._id.slice(-6)}
+                  </span>
+                </div>
                 {getStockStatusBadge(
                   productDetail.summary.totalQuantity,
-                  productDetail.product.reorderPoint ?? 10
+                  productDetail.product.reorderPoint ?? 10,
                 )}
                 {productDetail.product.isActive ? (
-                  <Badge variant="secondary" className="bg-green-100 text-green-700 h-7 px-3">
+                  <Badge
+                    variant="secondary"
+                    className="h-7 bg-green-100 px-3 text-green-700"
+                  >
                     Active
                   </Badge>
                 ) : (
-                  <Badge variant="secondary" className="bg-gray-100 text-gray-700 h-7 px-3">
+                  <Badge
+                    variant="secondary"
+                    className="h-7 bg-gray-100 px-3 text-gray-700"
+                  >
                     Inactive
                   </Badge>
                 )}
@@ -207,36 +213,39 @@ export function ProductInventoryDetailDialog({
         {isLoading ? (
           <div className="flex h-64 items-center justify-center">
             <div className="flex flex-col items-center gap-2">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                <p className="text-muted-foreground animate-pulse">Loading product details...</p>
+              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+              <p className="animate-pulse text-muted-foreground">
+                Loading product details...
+              </p>
             </div>
           </div>
         ) : !productDetail ? (
           <div className="flex h-64 items-center justify-center">
-            <p className="text-muted-foreground text-lg">Product not found.</p>
+            <p className="text-lg text-muted-foreground">Product not found.</p>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto bg-muted/5">
-            <div className="p-8 space-y-8">
-              
+            <div className="space-y-8 p-8">
               {/* SECTION 1: Header Info & Attributes */}
               <div className="space-y-6">
-                <div className="flex flex-col md:flex-row justify-between items-start gap-6">
-                    <div className="space-y-2 max-w-3xl">
-                        <h2 className="text-3xl font-bold tracking-tight text-foreground">
-                            {productDetail.product.name}
-                        </h2>
-                        {productDetail.product.description ? (
-                            <p className="text-muted-foreground text-base leading-relaxed">
-                                {productDetail.product.description}
-                            </p>
-                        ) : (
-                            <p className="text-muted-foreground italic">No description available.</p>
-                        )}
-                    </div>
+                <div className="flex flex-col items-start justify-between gap-6 md:flex-row">
+                  <div className="max-w-3xl space-y-2">
+                    <h2 className="font-bold text-3xl text-foreground tracking-tight">
+                      {productDetail.product.name}
+                    </h2>
+                    {productDetail.product.description ? (
+                      <p className="text-base text-muted-foreground leading-relaxed">
+                        {productDetail.product.description}
+                      </p>
+                    ) : (
+                      <p className="text-muted-foreground italic">
+                        No description available.
+                      </p>
+                    )}
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
                   <InfoItem
                     icon={<Tag className="h-5 w-5" />}
                     label="Category"
@@ -260,7 +269,11 @@ export function ProductInventoryDetailDialog({
                     icon={<AlertTriangle className="h-5 w-5" />}
                     label="Reorder Point"
                     value={productDetail.product.reorderPoint ?? "Not Set"}
-                    subValue={productDetail.product.reorderPoint ? "Min quantity alert" : undefined}
+                    subValue={
+                      productDetail.product.reorderPoint
+                        ? "Min quantity alert"
+                        : undefined
+                    }
                   />
                 </div>
               </div>
@@ -268,33 +281,33 @@ export function ProductInventoryDetailDialog({
               <Separator />
 
               {/* SECTION 2: Summary Statistics */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <StatCard 
-                    label="Total Quantity" 
-                    value={productDetail.summary.totalQuantity.toLocaleString()}
-                    className="bg-blue-50/50 border-blue-100"
-                    valueClassName="text-blue-700"
+              <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                <StatCard
+                  label="Total Quantity"
+                  value={productDetail.summary.totalQuantity.toLocaleString()}
+                  className="border-blue-100 bg-blue-50/50"
+                  valueClassName="text-blue-700"
                 />
-                <StatCard 
-                    label="Active Variants" 
-                    value={productDetail.summary.totalVariants}
+                <StatCard
+                  label="Active Variants"
+                  value={productDetail.summary.totalVariants}
                 />
-                <StatCard 
-                    label="Total Batches" 
-                    value={productDetail.summary.totalBatches}
+                <StatCard
+                  label="Total Batches"
+                  value={productDetail.summary.totalBatches}
                 />
-                <StatCard 
-                    label="Total Value" 
-                    value={formatCurrency(productDetail.summary.totalValue)}
-                    className="bg-green-50/50 border-green-100"
-                    valueClassName="text-green-700"
+                <StatCard
+                  label="Total Value"
+                  value={formatCurrency(productDetail.summary.totalValue)}
+                  className="border-green-100 bg-green-50/50"
+                  valueClassName="text-green-700"
                 />
               </div>
 
               {/* SECTION 3: Detailed Tables (Tabs) */}
-              <div className="bg-background rounded-xl border shadow-sm">
+              <div className="rounded-xl border bg-background shadow-sm">
                 <Tabs defaultValue="variants" className="w-full">
-                  <div className="px-6 py-4 border-b flex items-center justify-between bg-muted/20">
+                  <div className="flex items-center justify-between border-b bg-muted/20 px-6 py-4">
                     <TabsList className="h-9">
                       <TabsTrigger value="variants" className="px-4">
                         Variants ({productDetail.variants.length})
@@ -321,31 +334,41 @@ export function ProductInventoryDetailDialog({
                       <TableBody>
                         {productDetail.variants.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                            <TableCell
+                              colSpan={7}
+                              className="h-32 text-center text-muted-foreground"
+                            >
                               No variants found.
                             </TableCell>
                           </TableRow>
                         ) : (
                           productDetail.variants.map((variant) => (
-                            <TableRow key={variant._id} className="hover:bg-muted/5">
+                            <TableRow
+                              key={variant._id}
+                              className="hover:bg-muted/5"
+                            >
                               <TableCell className="pl-6 font-medium font-mono text-primary">
                                 {variant.skuCode}
                               </TableCell>
-                              <TableCell className="max-w-[240px]">
-                                <p className="truncate" title={variant.description}>
-                                    {variant.description}
+                              <TableCell className="max-w-60">
+                                <p
+                                  className="truncate"
+                                  title={variant.description}
+                                >
+                                  {variant.description}
                                 </p>
                               </TableCell>
                               <TableCell className="text-right">
                                 <span
                                   className={cn(
-                                    "font-bold inline-block min-w-[30px]",
+                                    "inline-block min-w-7.5 font-bold",
                                     variant.totalQuantity === 0
                                       ? "text-red-600"
                                       : variant.totalQuantity <=
-                                        (productDetail.product.reorderPoint ?? 10)
-                                      ? "text-yellow-600"
-                                      : "text-foreground"
+                                          (productDetail.product.reorderPoint ??
+                                            10)
+                                        ? "text-yellow-600"
+                                        : "text-foreground",
                                   )}
                                 >
                                   {variant.totalQuantity.toLocaleString()}
@@ -360,19 +383,28 @@ export function ProductInventoryDetailDialog({
                               <TableCell>
                                 <div className="flex flex-wrap gap-1.5">
                                   {variant.weightKg && (
-                                    <Badge variant="outline" className="text-[10px] h-5 gap-1">
+                                    <Badge
+                                      variant="outline"
+                                      className="h-5 gap-1 text-[10px]"
+                                    >
                                       <Scale className="h-3 w-3" />
                                       {variant.weightKg}kg
                                     </Badge>
                                   )}
                                   {variant.temperatureSensitive && (
-                                    <Badge variant="secondary" className="text-[10px] h-5 gap-1 bg-blue-50 text-blue-700 border-blue-100">
+                                    <Badge
+                                      variant="secondary"
+                                      className="h-5 gap-1 border-blue-100 bg-blue-50 text-[10px] text-blue-700"
+                                    >
                                       <Thermometer className="h-3 w-3" />
                                       Cold
                                     </Badge>
                                   )}
                                   {variant.stackingLimit && (
-                                    <Badge variant="outline" className="text-[10px] h-5 gap-1">
+                                    <Badge
+                                      variant="outline"
+                                      className="h-5 gap-1 text-[10px]"
+                                    >
                                       <Layers className="h-3 w-3" />
                                       Max: {variant.stackingLimit}
                                     </Badge>
@@ -382,20 +414,31 @@ export function ProductInventoryDetailDialog({
                               <TableCell className="pr-6">
                                 {variant.barcodes.length > 0 ? (
                                   <div className="flex flex-wrap gap-1">
-                                    {variant.barcodes.slice(0, 2).map((barcode, idx) => (
-                                      <Badge key={idx} variant="secondary" className="text-[10px] font-mono h-5">
-                                        <Barcode className="mr-1 h-3 w-3" />
-                                        {barcode}
-                                      </Badge>
-                                    ))}
+                                    {variant.barcodes
+                                      .slice(0, 2)
+                                      .map((barcode) => (
+                                        <Badge
+                                          key={barcode}
+                                          variant="secondary"
+                                          className="h-5 font-mono text-[10px]"
+                                        >
+                                          <Barcode className="mr-1 h-3 w-3" />
+                                          {barcode}
+                                        </Badge>
+                                      ))}
                                     {variant.barcodes.length > 2 && (
-                                      <Badge variant="secondary" className="text-[10px] h-5">
+                                      <Badge
+                                        variant="secondary"
+                                        className="h-5 text-[10px]"
+                                      >
                                         +{variant.barcodes.length - 2}
                                       </Badge>
                                     )}
                                   </div>
                                 ) : (
-                                  <span className="text-muted-foreground text-sm">-</span>
+                                  <span className="text-muted-foreground text-sm">
+                                    -
+                                  </span>
                                 )}
                               </TableCell>
                             </TableRow>
@@ -419,7 +462,10 @@ export function ProductInventoryDetailDialog({
                       <TableBody>
                         {productDetail.batches.length === 0 ? (
                           <TableRow>
-                            <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                            <TableCell
+                              colSpan={5}
+                              className="h-32 text-center text-muted-foreground"
+                            >
                               No active batches found in inventory.
                             </TableCell>
                           </TableRow>
@@ -427,49 +473,86 @@ export function ProductInventoryDetailDialog({
                           productDetail.batches.map((batch) => {
                             const isExpiringSoon =
                               batch.expiresAt &&
-                              batch.expiresAt < Date.now() + 30 * 24 * 60 * 60 * 1000;
+                              batch.expiresAt <
+                                Date.now() + 30 * 24 * 60 * 60 * 1000;
                             const isExpired =
                               batch.expiresAt && batch.expiresAt < Date.now();
 
                             return (
-                              <TableRow key={batch._id} className="hover:bg-muted/5">
+                              <TableRow
+                                key={batch._id}
+                                className="hover:bg-muted/5"
+                              >
                                 <TableCell className="pl-6">
                                   <div className="flex flex-col">
-                                    <span className="font-medium font-mono text-primary">{batch.skuCode}</span>
-                                    <span className="text-xs text-muted-foreground font-mono mt-0.5">
-                                      #{batch.supplierBatchNumber || batch.internalBatchNumber || "N/A"}
+                                    <span className="font-medium font-mono text-primary">
+                                      {batch.skuCode}
+                                    </span>
+                                    <span className="mt-0.5 font-mono text-muted-foreground text-xs">
+                                      #
+                                      {batch.supplierBatchNumber ||
+                                        batch.internalBatchNumber ||
+                                        "N/A"}
                                     </span>
                                   </div>
                                 </TableCell>
                                 <TableCell>
                                   <div className="flex flex-col">
-                                      <span className="text-sm font-medium">{batch.branchName}</span>
-                                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                                        <MapPin className="h-3 w-3" />
-                                        {batch.zoneName}
-                                      </div>
+                                    <span className="font-medium text-sm">
+                                      {batch.branchName}
+                                    </span>
+                                    <div className="mt-0.5 flex items-center gap-1 text-muted-foreground text-xs">
+                                      <MapPin className="h-3 w-3" />
+                                      {batch.zoneName}
+                                    </div>
                                   </div>
                                 </TableCell>
                                 <TableCell className="text-right">
-                                  <span className="font-bold">{batch.quantity.toLocaleString()}</span>
+                                  <span className="font-bold">
+                                    {batch.quantity.toLocaleString()}
+                                  </span>
                                 </TableCell>
                                 <TableCell>
-                                    <span className="text-sm">{formatDate(batch.receivedAt)}</span>
+                                  <span className="text-sm">
+                                    {formatDate(batch.receivedAt)}
+                                  </span>
                                 </TableCell>
                                 <TableCell className="pr-6">
                                   {batch.expiresAt ? (
                                     <div className="flex items-center gap-2">
-                                        <span className={cn(
-                                            "text-sm",
-                                            isExpired ? "text-red-600 font-medium" : isExpiringSoon ? "text-yellow-600 font-medium" : ""
-                                        )}>
-                                            {formatDate(batch.expiresAt)}
-                                        </span>
-                                        {isExpired && <Badge variant="destructive" className="h-5 text-[10px]">Expired</Badge>}
-                                        {isExpiringSoon && !isExpired && <Badge variant="outline" className="h-5 text-[10px] border-yellow-500 text-yellow-600 bg-yellow-50">Expiring</Badge>}
+                                      <span
+                                        className={cn(
+                                          "text-sm",
+                                          isExpired
+                                            ? "font-medium text-red-600"
+                                            : isExpiringSoon
+                                              ? "font-medium text-yellow-600"
+                                              : "",
+                                        )}
+                                      >
+                                        {formatDate(batch.expiresAt)}
+                                      </span>
+                                      {isExpired && (
+                                        <Badge
+                                          variant="destructive"
+                                          className="h-5 text-[10px]"
+                                        >
+                                          Expired
+                                        </Badge>
+                                      )}
+                                      {isExpiringSoon && !isExpired && (
+                                        <Badge
+                                          variant="outline"
+                                          className="h-5 border-yellow-500 bg-yellow-50 text-[10px] text-yellow-600"
+                                        >
+                                          Expiring
+                                        </Badge>
+                                      )}
                                     </div>
                                   ) : (
-                                    <span className="text-muted-foreground text-sm italic">No Expiry</span>
+                                    <span className="text-muted-foreground text-sm italic">
+                                      No Expiry
+                                    </span>
                                   )}
                                 </TableCell>
                               </TableRow>
@@ -481,7 +564,6 @@ export function ProductInventoryDetailDialog({
                   </TabsContent>
                 </Tabs>
               </div>
-
             </div>
           </div>
         )}

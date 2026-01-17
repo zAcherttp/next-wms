@@ -18,7 +18,7 @@ import {
   MoreHorizontal,
   Trash2,
 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { CreateProductDialog } from "@/components/products/create-product-dialog";
 import { DeleteProductDialog } from "@/components/products/delete-product-dialog";
 import { EditProductDialog } from "@/components/products/edit-product-dialog";
@@ -287,17 +287,20 @@ export function ProductsTable() {
   );
 
   // Handle edit
-  const handleEdit = (productId: Id<"products">) => {
+  const handleEdit = useCallback((productId: Id<"products">) => {
     setSelectedProductId(productId);
     setEditDialogOpen(true);
-  };
+  }, []);
 
   // Handle delete
-  const handleDelete = (productId: Id<"products">, name: string) => {
-    setSelectedProductId(productId);
-    setSelectedProductName(name);
-    setDeleteDialogOpen(true);
-  };
+  const handleDelete = useCallback(
+    (productId: Id<"products">, name: string) => {
+      setSelectedProductId(productId);
+      setSelectedProductName(name);
+      setDeleteDialogOpen(true);
+    },
+    [],
+  );
 
   // Dynamic columns with callbacks
   const tableColumns = useMemo(() => {
@@ -316,7 +319,7 @@ export function ProductsTable() {
       }
       return col;
     });
-  }, []);
+  }, [handleDelete, handleEdit]);
 
   const table = useReactTable({
     data: products ?? [],

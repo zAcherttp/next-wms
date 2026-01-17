@@ -48,23 +48,23 @@ type LineItem = {
 };
 
 // Type for zone from the API
-type Zone = {
-  assignmentId: string;
-  zoneId: string;
-  zoneName: string;
-  assignedUser: { _id: string; fullName: string } | null;
-  status: string;
-  statusCode: string;
-  startedAt?: number;
-  completedAt?: number;
-  lineItems: LineItem[];
-  progress: {
-    totalItems: number;
-    scannedItems: number;
-    matchedItems: number;
-    progressPercent: number;
-  };
-};
+// type Zone = {
+//   assignmentId: string;
+//   zoneId: string;
+//   zoneName: string;
+//   assignedUser: { _id: string; fullName: string } | null;
+//   status: string;
+//   statusCode: string;
+//   startedAt?: number;
+//   completedAt?: number;
+//   lineItems: LineItem[];
+//   progress: {
+//     totalItems: number;
+//     scannedItems: number;
+//     matchedItems: number;
+//     progressPercent: number;
+//   };
+// };
 
 export default function CycleCountProceedPage() {
   const params = useParams();
@@ -351,42 +351,40 @@ export default function CycleCountProceedPage() {
               {/* Scan Section (only if zone is in progress) */}
               {(zone.statusCode?.toLowerCase() === "in_progress" ||
                 zone.statusCode?.toLowerCase() === "in progress") && (
-                <>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <ScanLine className="h-5 w-5" />
-                      <span className="font-medium">Scan Item or SKU</span>
-                    </div>
-
-                    {/* Scanner Placeholder */}
-                    <Card>
-                      <CardContent className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-                        <div className="text-center">
-                          <p>No camera detected</p>
-                        </div>
-                      </CardContent>
-                    </Card>
-
-                    {/* SKU Input */}
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Enter SKU code..."
-                        value={skuInput}
-                        onChange={(e) => setSkuInput(e.target.value)}
-                        onKeyDown={handleKeyDown}
-                        className="flex-1"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={handleSubmitSku}
-                        disabled={!skuInput.trim()}
-                      >
-                        <ArrowRight className="h-5 w-5" />
-                      </Button>
-                    </div>
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <ScanLine className="h-5 w-5" />
+                    <span className="font-medium">Scan Item or SKU</span>
                   </div>
-                </>
+
+                  {/* Scanner Placeholder */}
+                  <Card>
+                    <CardContent className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                      <div className="text-center">
+                        <p>No camera detected</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* SKU Input */}
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Enter SKU code..."
+                      value={skuInput}
+                      onChange={(e) => setSkuInput(e.target.value)}
+                      onKeyDown={handleKeyDown}
+                      className="flex-1"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={handleSubmitSku}
+                      disabled={!skuInput.trim()}
+                    >
+                      <ArrowRight className="h-5 w-5" />
+                    </Button>
+                  </div>
+                </div>
               )}
 
               {/* Expected Items Card */}

@@ -67,7 +67,7 @@ export default function ProductsInventoryPage() {
             organizationId: organizationId as Id<"organizations">,
             branchId: currentBranch?._id as Id<"branches"> | undefined,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!organizationId,
   });
@@ -92,7 +92,7 @@ export default function ProductsInventoryPage() {
       {/* Page Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">
+          <h1 className="font-bold text-2xl tracking-tight">
             Product Inventory
           </h1>
           <p className="text-muted-foreground text-sm">
