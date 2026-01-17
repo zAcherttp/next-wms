@@ -81,11 +81,6 @@ export default function Page() {
     // TODO: Implement reject logic
   };
 
-  const handleView = (id: string) => {
-    console.log("View adjustment:", id);
-    // TODO: Implement view logic
-  };
-
   return (
     <div className="flex flex-col gap-6 p-4">
       {/* Dialogs - Rendered conditionally to avoid unnecessary data fetching */}
@@ -157,7 +152,6 @@ export default function Page() {
           <QuantityAdjustmentsTable
             onApprove={handleApprove}
             onReject={handleReject}
-            onView={handleView}
           />
         </TabsContent>
 
@@ -174,7 +168,6 @@ export default function Page() {
           <LocationAdjustmentsTable
             onApprove={handleApprove}
             onReject={handleReject}
-            onView={handleView}
           />
         </TabsContent>
       </Tabs>

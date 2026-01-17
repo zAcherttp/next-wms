@@ -24,7 +24,7 @@ export default function VerifyingPage() {
   useEffect(() => {
     const enableVideoStream = async () => {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({
+        const _stream = await navigator.mediaDevices.getUserMedia({
           video: true,
         });
         //  setMediaStream(stream);

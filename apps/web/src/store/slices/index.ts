@@ -10,6 +10,7 @@ export type {
   EntitiesActions,
   EntitiesSlice,
   EntitiesState,
+  EntityStatus,
   StorageEntity,
 } from "./entitiesSlice";
 export { createEntitiesSlice } from "./entitiesSlice";

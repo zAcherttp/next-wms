@@ -6,6 +6,7 @@ import {
   ResizablePanelGroup,
 } from "@/components/ui/resizable";
 import { Canvas3D } from "@/components/zones/canvas-3d";
+import { EditorConsole } from "@/components/zones/debug/editor-console";
 import { EntityBrowser } from "@/components/zones/entity-browser";
 import { ErrorBoundary } from "@/components/zones/error-boundary";
 import { SchemaPropertyPanel } from "@/components/zones/properties";
@@ -185,7 +186,7 @@ export const WarehouseEditor = forwardRef<
         position: object;
         dimensions: object;
         rotation?: object;
-      }): Id<"storage_zones"> | undefined => {
+      }): string | undefined => {
         const id = addEntity("rack", null, "New Rack", {
           position: rackData.position,
           dimensions: rackData.dimensions,
@@ -199,7 +200,7 @@ export const WarehouseEditor = forwardRef<
     );
 
     const removeRackById = useCallback(
-      (rackId: Id<"storage_zones">): boolean => {
+      (rackId: string): boolean => {
         try {
           removeEntity(rackId);
           return true;
@@ -288,13 +289,15 @@ export const WarehouseEditor = forwardRef<
       >
         <ErrorBoundary onError={onError}>
           <ResizablePanelGroup direction="horizontal">
+            {/* Left Sidebar: Console Log */}
+            <ResizablePanel defaultSize={20} minSize={10} maxSize={35}>
+              <EditorConsole />
+            </ResizablePanel>
+
+            <ResizableHandle withHandle />
+
             {/* Main 3D Canvas */}
-            <ResizablePanel defaultSize={75} minSize={50}>
-              {/* <div className="p-4">
-                <pre className="whitespace-pre-wrap break-all rounded-md bg-muted p-2 text-xs">
-                  {JSON.stringify(zones, null, 2)}
-                </pre>
-              </div> */}
+            <ResizablePanel defaultSize={55} minSize={40}>
               <Canvas3D />
             </ResizablePanel>
 

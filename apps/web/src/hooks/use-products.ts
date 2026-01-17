@@ -69,7 +69,7 @@ export type ProductVariant = {
   volumeM3?: number;
   temperatureSensitive: boolean;
   stackingLimit?: number;
-  customFields?: any;
+  customFields?: unknown;
   isActive: boolean;
   isDeleted: boolean;
   deletedAt?: number;
@@ -259,7 +259,7 @@ export type CreateProductWithVariantsInput = {
     volumeM3?: number;
     temperatureSensitive?: boolean;
     stackingLimit?: number;
-    customFields?: any;
+    customFields?: unknown;
     isActive?: boolean;
     // Barcodes for this variant
     barcodes?: {

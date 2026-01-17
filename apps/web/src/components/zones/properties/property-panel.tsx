@@ -2,20 +2,27 @@
  * SchemaPropertyPanel - Auto-generated property panel from attribute schema
  * Renders form fields based on BLOCK_UI_SCHEMAS registry
  * Uses local draft state with Save/Cancel buttons and Zod validation
+ *
+ * Handles two flows:
+ * 1. Draft entities (status='draft'): Validate placement → Commit to Convex
+ * 2. Committed entities: Update attributes in place
  */
 
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { AttributeField } from "@/components/zones/properties";
 import { useEntityMutation } from "@/hooks/use-entity-mutation";
+
 import {
   BLOCK_SCHEMAS,
   BLOCK_UI_SCHEMAS,
   type BlockType,
 } from "@/lib/types/layout-editor/attribute-registry";
+import { validatePlacement } from "@/lib/utils/collision";
 import type { StorageEntity } from "@/store/layout-editor-store";
 import { useLayoutStore } from "@/store/layout-editor-store";
 
@@ -66,6 +73,13 @@ export function SchemaPropertyPanel({
     [],
   );
   const [isCommitting, setIsCommitting] = useState(false);
+  const [placementError, setPlacementError] = useState<string | null>(null);
+
+  // Store actions for draft entities
+  const discardEntity = useLayoutStore((s) => s.discardEntity);
+  const setEntityPending = useLayoutStore((s) => s.setEntityPending);
+  const updateEntity = useLayoutStore((s) => s.updateEntity);
+  const clearSelection = useLayoutStore((s) => s.clearSelection);
 
   // Reset draft when entity changes
   useEffect(() => {
@@ -118,7 +132,7 @@ export function SchemaPropertyPanel({
 
   // Handle Save - validate and commit
   const handleSave = useCallback(async () => {
-    if (!entity?._id || !zodSchema) return;
+    if (!entity?.tempId || !zodSchema) return;
 
     // Validate with Zod
     const result = zodSchema.safeParse(draftAttributes);
@@ -148,8 +162,8 @@ export function SchemaPropertyPanel({
       }
     }
 
-    // Commit through the mutation hook
-    const commitResult = await commitUpdate(entity._id, changedAttrs, {
+    // Commit through the mutation hook (uses tempId)
+    const commitResult = await commitUpdate(entity.tempId, changedAttrs, {
       showToast: true,
     });
 
@@ -165,8 +179,63 @@ export function SchemaPropertyPanel({
     if (entity?.zoneAttributes) {
       setDraftAttributes({ ...entity.zoneAttributes });
       setValidationErrors([]);
+      setPlacementError(null);
     }
   }, [entity?.zoneAttributes]);
+
+  // Handle Discard - remove draft entity completely
+  const handleDiscard = useCallback(() => {
+    if (!entity?.tempId) return;
+    discardEntity(entity.tempId);
+    clearSelection();
+    toast.info("Entity discarded");
+  }, [entity?.tempId, discardEntity, clearSelection]);
+
+  // Handle Commit Draft - validate placement and commit to Convex
+  const handleCommitDraft = useCallback(async () => {
+    if (!entity?.tempId || !zodSchema) return;
+
+    // First validate Zod schema
+    const result = zodSchema.safeParse(draftAttributes);
+    if (!result.success) {
+      const errors: ValidationError[] = result.error.issues.map((e) => ({
+        path: e.path.map(String),
+        message: e.message,
+      }));
+      setValidationErrors(errors);
+      toast.error("Validation failed. Please fix the errors.");
+      return;
+    }
+
+    // Then validate placement (collision, bounds, zone overlap)
+    const placementValidation = validatePlacement(
+      entity.tempId,
+      entity.storageBlockType,
+      draftAttributes,
+      entity.parentId,
+    );
+
+    if (!placementValidation.valid) {
+      setPlacementError(placementValidation.reason ?? "Placement invalid");
+      toast.error(placementValidation.reason ?? "Cannot place entity here");
+      return;
+    }
+
+    setValidationErrors([]);
+    setPlacementError(null);
+    setIsCommitting(true);
+
+    // Update entity attributes before commit
+    updateEntity(entity.tempId, draftAttributes);
+
+    // Use the sync hook to commit
+    // Note: The commitEntity function should be passed from parent or context
+    // For now, we'll mark as pending and let the sync system handle it
+    setEntityPending(entity.tempId);
+
+    setIsCommitting(false);
+    toast.success("Entity ready for commit. Save to sync with database.");
+  }, [entity, zodSchema, draftAttributes, updateEntity, setEntityPending]);
 
   // Get validation error for a specific field
   const getFieldError = useCallback(
@@ -247,7 +316,46 @@ export function SchemaPropertyPanel({
       </div>
 
       {/* Footer with Save/Cancel buttons */}
-      {hasChanges && !readOnly && (
+      {/* Show Discard/Commit for draft entities */}
+      {entity.status === "draft" && !readOnly && (
+        <div className="border-t p-4">
+          {placementError && (
+            <Alert variant="destructive" className="mb-3">
+              <AlertTriangle className="h-4 w-4" />
+              <AlertTitle>Placement Error</AlertTitle>
+              <AlertDescription>{placementError}</AlertDescription>
+            </Alert>
+          )}
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={handleDiscard}
+              disabled={isCommitting}
+            >
+              Discard
+            </Button>
+            <Button
+              size="sm"
+              className="flex-1"
+              onClick={handleCommitDraft}
+              disabled={isCommitting}
+            >
+              {isCommitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />{" "}
+                  Validating...
+                </>
+              ) : (
+                "Confirm Placement"
+              )}
+            </Button>
+          </div>
+        </div>
+      )}
+      {/* Show regular Save/Cancel for attribute changes on committed entities */}
+      {entity.status === "committed" && hasChanges && !readOnly && (
         <div className="flex gap-2 border-t p-4">
           <Button
             variant="outline"
@@ -266,6 +374,36 @@ export function SchemaPropertyPanel({
           >
             {isCommitting ? "Saving..." : "Save"}
           </Button>
+        </div>
+      )}
+      {/* Show pending status */}
+      {entity.status === "pending" && (
+        <div className="flex items-center justify-center gap-2 border-t p-4 text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          <span>Committing to database...</span>
+        </div>
+      )}
+      {/* Show error status */}
+      {entity.status === "error" && (
+        <div className="border-t p-4">
+          <Alert variant="destructive" className="mb-3">
+            <AlertTriangle className="h-4 w-4" />
+            <AlertTitle>Commit Failed</AlertTitle>
+            <AlertDescription>{entity.validationError}</AlertDescription>
+          </Alert>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              className="flex-1"
+              onClick={handleDiscard}
+            >
+              Discard
+            </Button>
+            <Button size="sm" className="flex-1" onClick={handleCommitDraft}>
+              Retry
+            </Button>
+          </div>
         </div>
       )}
     </div>

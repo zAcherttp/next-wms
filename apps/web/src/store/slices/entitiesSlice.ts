@@ -1,6 +1,14 @@
 /**
  * Entities Slice - Normalized entity maps with CRUD operations
  * Part of the SmartStore state management system
+ *
+ * Dual ID System:
+ * - tempId: Always present, created locally via crypto.randomUUID()
+ * - _id: Only present after Convex commit
+ *
+ * Entity Status Lifecycle:
+ * ghost → draft → pending → committed
+ *                 └→ error
  */
 
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
@@ -16,8 +24,24 @@ import { getCollisionDetector } from "@/lib/utils/collision";
 // Types
 // ============================================================================
 
+/** Entity status in the lifecycle */
+export type EntityStatus =
+  | "ghost"
+  | "draft"
+  | "pending"
+  | "committed"
+  | "error";
+
 export interface StorageEntity {
+  /** Local temp ID - always present, used as map key until committed */
+  tempId: string;
+  /** Convex ID - only present after successful commit */
   _id?: Id<"storage_zones">;
+  /** Current lifecycle status */
+  status: EntityStatus;
+  /** Error message when status is 'error' */
+  validationError?: string;
+
   name: string;
   parentId: Id<"storage_zones"> | null;
   branchId: Id<"branches">;
@@ -29,53 +53,96 @@ export interface StorageEntity {
 }
 
 export interface EntitiesState {
-  // Normalized entity map - single source of truth
-  entities: Map<Id<"storage_zones">, StorageEntity>;
+  /** Normalized entity map - keyed by tempId */
+  entities: Map<string, StorageEntity>;
+  /** Mapping from tempId to real Convex ID after commit */
+  tempIdToRealId: Map<string, Id<"storage_zones">>;
+  /** Mapping from real Convex ID to tempId for reverse lookups */
+  realIdToTempId: Map<Id<"storage_zones">, string>;
+
+  /** Current ghost entity for placement preview (not in entities map) */
+  ghostEntity: StorageEntity | null;
 
   // Indices for fast lookups
-  entitiesByType: Map<BlockType, Set<Id<"storage_zones">>>;
-  entitiesByParent: Map<Id<"storage_zones">, Set<Id<"storage_zones">>>;
-  entitiesByPath: Map<string, Set<Id<"storage_zones">>>;
+  entitiesByType: Map<BlockType, Set<string>>;
+  entitiesByParent: Map<string, Set<string>>;
+  entitiesByPath: Map<string, Set<string>>;
 
   // Dirty tracking for sync
   isDirty: boolean;
-  pendingChanges: Set<Id<"storage_zones">>;
+  pendingChanges: Set<string>;
 }
 
 export interface EntitiesActions {
-  // CRUD operations
+  // ============ Ghost Preview ============
+  /** Create a ghost entity for placement preview */
+  setGhostEntity: (
+    blockType: BlockType,
+    parentId: Id<"storage_zones"> | null,
+  ) => void;
+  /** Update ghost entity position */
+  updateGhostPosition: (position: { x: number; y: number; z: number }) => void;
+  /** Update ghost entity attributes */
+  updateGhostAttributes: (attrs: Partial<Record<string, unknown>>) => void;
+  /** Confirm ghost placement - converts ghost to draft entity */
+  confirmGhost: () => string | undefined;
+  /** Cancel ghost - removes ghost entity */
+  cancelGhost: () => void;
+
+  // ============ CRUD Operations ============
+  /** Add a new entity (creates with status='draft') */
   addEntity: (
     blockType: BlockType,
     parentId: Id<"storage_zones"> | null,
     name: string,
     attributes?: Partial<Record<string, unknown>>,
-  ) => Id<"storage_zones"> | undefined;
+  ) => string | undefined;
+  /** Update entity attributes */
   updateEntity: (
-    _id: Id<"storage_zones">,
+    tempId: string,
     updates: Partial<Record<string, unknown>>,
   ) => void;
-  removeEntity: (_id: Id<"storage_zones">, soft?: boolean) => void;
+  /** Remove/delete an entity */
+  removeEntity: (tempId: string, soft?: boolean) => void;
+  /** Discard a draft entity (hard delete, no sync) */
+  discardEntity: (tempId: string) => void;
 
-  // Batch operations
+  // ============ Commit Flow ============
+  /** Mark entity as pending commit */
+  setEntityPending: (tempId: string) => void;
+  /** Mark entity as committed with real Convex ID */
+  setEntityCommitted: (tempId: string, realId: Id<"storage_zones">) => void;
+  /** Mark entity with error status */
+  setEntityError: (tempId: string, error: string) => void;
+  /** Update entity's real ID after Convex returns it (legacy support) */
+  updateEntityId: (tempId: string, realId: Id<"storage_zones">) => void;
+
+  // ============ Batch Operations ============
   addEntityBatch: (
-    entities: Omit<StorageEntity, "id">[],
-  ) => Id<"storage_zones">[];
+    entities: Omit<StorageEntity, "tempId" | "status">[],
+  ) => string[];
 
-  // Queries
-  getEntity: (_id: Id<"storage_zones">) => StorageEntity | undefined;
+  // ============ Queries ============
+  getEntity: (tempId: string) => StorageEntity | undefined;
+  getEntityByRealId: (realId: Id<"storage_zones">) => StorageEntity | undefined;
   getEntitiesByType: (blockType: BlockType) => StorageEntity[];
-  getEntitiesByParent: (parentId: Id<"storage_zones">) => StorageEntity[];
+  getEntitiesByParent: (
+    parentId: Id<"storage_zones"> | string,
+  ) => StorageEntity[];
   getEntitiesByPath: (path: string) => StorageEntity[];
   getChildren: (
-    parentId: Id<"storage_zones">,
+    parentId: Id<"storage_zones"> | string,
     blockType?: BlockType,
   ) => StorageEntity[];
+  /** Get all entities with 'draft' status */
+  getDraftEntities: () => StorageEntity[];
 
-  // Sync helpers
+  // ============ Sync Helpers ============
   markClean: () => void;
   setDirty: (dirty: boolean) => void;
 
-  // State management
+  // ============ State Management ============
+  /** Load entities from Convex (converts to internal format) */
   loadEntities: (entities: StorageEntity[]) => void;
   clearEntities: () => void;
 }
@@ -94,11 +161,6 @@ function getPathForBlockType(
   return `${parentPath}.${blockType}`;
 }
 
-function getParentPath(path: string): string | null {
-  const lastDot = path.lastIndexOf(".");
-  return lastDot === -1 ? null : path.substring(0, lastDot);
-}
-
 // ============================================================================
 // Slice Creator
 // ============================================================================
@@ -111,6 +173,9 @@ export const createEntitiesSlice: StateCreator<
 > = (set, get) => ({
   // Initial state
   entities: new Map(),
+  tempIdToRealId: new Map(),
+  realIdToTempId: new Map(),
+  ghostEntity: null,
   entitiesByType: new Map(),
   entitiesByParent: new Map(),
   entitiesByPath: new Map(),
@@ -118,16 +183,111 @@ export const createEntitiesSlice: StateCreator<
   pendingChanges: new Set(),
 
   // ========================================================================
+  // Ghost Preview Operations
+  // ========================================================================
+
+  setGhostEntity: (blockType, parentId) => {
+    const parent = parentId
+      ? get().entities.get(get().realIdToTempId.get(parentId) ?? parentId)
+      : undefined;
+    const parentPath = parent?.path ?? null;
+    const path = getPathForBlockType(parentPath, blockType);
+    const branchId = parent?.branchId as Id<"branches">;
+
+    const defaultAttrs = getDefaultAttributes(blockType);
+
+    const ghost: StorageEntity = {
+      tempId: crypto.randomUUID(),
+      status: "ghost",
+      parentId,
+      branchId,
+      name: `New ${blockType}`,
+      path,
+      storageBlockType: blockType,
+      zoneAttributes: defaultAttrs,
+      isDeleted: false,
+    };
+
+    set({ ghostEntity: ghost });
+  },
+
+  updateGhostPosition: (position) => {
+    set((state) => {
+      if (state.ghostEntity) {
+        state.ghostEntity.zoneAttributes = {
+          ...state.ghostEntity.zoneAttributes,
+          position,
+        };
+      }
+    });
+  },
+
+  updateGhostAttributes: (attrs) => {
+    set((state) => {
+      if (state.ghostEntity) {
+        state.ghostEntity.zoneAttributes = {
+          ...state.ghostEntity.zoneAttributes,
+          ...attrs,
+        };
+      }
+    });
+  },
+
+  confirmGhost: () => {
+    const ghost = get().ghostEntity;
+    if (!ghost) return undefined;
+
+    const tempId = ghost.tempId;
+
+    set((state) => {
+      // Change status to draft and add to entities map
+      const draftEntity: StorageEntity = {
+        ...ghost,
+        status: "draft",
+      };
+
+      state.entities.set(tempId, draftEntity);
+
+      // Update indices
+      if (!state.entitiesByType.has(ghost.storageBlockType)) {
+        state.entitiesByType.set(ghost.storageBlockType, new Set());
+      }
+      state.entitiesByType.get(ghost.storageBlockType)?.add(tempId);
+
+      if (ghost.parentId) {
+        const parentKey =
+          state.realIdToTempId.get(ghost.parentId) ?? ghost.parentId;
+        if (!state.entitiesByParent.has(parentKey)) {
+          state.entitiesByParent.set(parentKey, new Set());
+        }
+        state.entitiesByParent.get(parentKey)?.add(tempId);
+      }
+
+      if (!state.entitiesByPath.has(ghost.path)) {
+        state.entitiesByPath.set(ghost.path, new Set());
+      }
+      state.entitiesByPath.get(ghost.path)?.add(tempId);
+
+      state.ghostEntity = null;
+      state.isDirty = true;
+      state.pendingChanges.add(tempId);
+    });
+
+    return tempId;
+  },
+
+  cancelGhost: () => {
+    set({ ghostEntity: null });
+  },
+
+  // ========================================================================
   // CRUD Operations
   // ========================================================================
 
-  addEntity: (
-    blockType,
-    parentId,
-    name,
-    attributes = { name: "new entity" },
-  ) => {
-    const parent = parentId ? get().entities.get(parentId) : undefined;
+  addEntity: (blockType, parentId, name, attributes = {}) => {
+    const parent = parentId
+      ? get().entities.get(get().realIdToTempId.get(parentId) ?? parentId)
+      : undefined;
     const parentPath = parent?.path ?? null;
     const path = getPathForBlockType(parentPath, blockType);
     const branchId = parent?.branchId as Id<"branches">;
@@ -141,7 +301,11 @@ export const createEntitiesSlice: StateCreator<
       console.error(`Invalid attributes for ${blockType}:`, validation.error);
     }
 
+    const tempId = crypto.randomUUID();
+
     const entity: StorageEntity = {
+      tempId,
+      status: "draft",
       parentId,
       branchId,
       name,
@@ -152,44 +316,41 @@ export const createEntitiesSlice: StateCreator<
     };
 
     set((state) => {
-      console.log("Adding entity:", entity);
-      if (!entity?._id) return;
-      console.log("Assigned ID:", entity._id);
-      // Add to main map
-      state.entities.set(entity._id, entity);
+      // Add to main map using tempId as key
+      state.entities.set(tempId, entity);
 
       // Update type index
       if (!state.entitiesByType.has(blockType)) {
         state.entitiesByType.set(blockType, new Set());
       }
-      state.entitiesByType.get(blockType)?.add(entity._id);
+      state.entitiesByType.get(blockType)?.add(tempId);
 
       // Update parent index
       if (parentId) {
-        if (!state.entitiesByParent.has(parentId)) {
-          state.entitiesByParent.set(parentId, new Set());
+        const parentKey = state.realIdToTempId.get(parentId) ?? parentId;
+        if (!state.entitiesByParent.has(parentKey)) {
+          state.entitiesByParent.set(parentKey, new Set());
         }
-        state.entitiesByParent.get(parentId)?.add(entity._id);
+        state.entitiesByParent.get(parentKey)?.add(tempId);
       }
 
       // Update path index
       if (!state.entitiesByPath.has(path)) {
         state.entitiesByPath.set(path, new Set());
       }
-      state.entitiesByPath.get(path)?.add(entity._id);
+      state.entitiesByPath.get(path)?.add(tempId);
 
       state.isDirty = true;
-      state.pendingChanges.add(entity._id);
+      state.pendingChanges.add(tempId);
     });
 
     // Update collision detection for collidable entities
     if (blockType === "rack" || blockType === "obstacle") {
       const detector = getCollisionDetector();
-      if (!entity._id) return;
-      const newEntity = get().entities.get(entity._id);
+      const newEntity = get().entities.get(tempId);
       if (detector && newEntity) {
         const collidable = {
-          _id: entity._id,
+          _id: tempId,
           position: mergedAttrs.position as { x: number; y: number; z: number },
           rotation: mergedAttrs.rotation as { x: number; y: number; z: number },
           dimensions: mergedAttrs.dimensions as {
@@ -202,11 +363,11 @@ export const createEntitiesSlice: StateCreator<
       }
     }
 
-    return entity._id;
+    return tempId;
   },
 
-  updateEntity: (_id, updates) => {
-    const entity = get().entities.get(_id);
+  updateEntity: (tempId, updates) => {
+    const entity = get().entities.get(tempId);
     if (!entity) return;
 
     // Validate merged attributes
@@ -220,11 +381,16 @@ export const createEntitiesSlice: StateCreator<
     }
 
     set((state) => {
-      const e = state.entities.get(_id);
+      const e = state.entities.get(tempId);
       if (e) {
         e.zoneAttributes = { ...e.zoneAttributes, ...updates };
+        // Clear any previous validation error when user makes changes
+        if (e.status === "error") {
+          e.status = "draft";
+          e.validationError = undefined;
+        }
         state.isDirty = true;
-        state.pendingChanges.add(_id);
+        state.pendingChanges.add(tempId);
       }
     });
 
@@ -239,11 +405,11 @@ export const createEntitiesSlice: StateCreator<
         "rotation" in updates;
       if (posOrDimChanged) {
         const detector = getCollisionDetector();
-        const updated = get().entities.get(_id);
+        const updated = get().entities.get(tempId);
         if (detector && updated) {
           const attrs = updated.zoneAttributes;
           const collidable = {
-            _id,
+            _id: tempId,
             position: attrs.position as { x: number; y: number; z: number },
             rotation: attrs.rotation as { x: number; y: number; z: number },
             dimensions: attrs.dimensions as {
@@ -261,8 +427,8 @@ export const createEntitiesSlice: StateCreator<
     }
   },
 
-  removeEntity: (_id, soft = true) => {
-    const entity = get().entities.get(_id);
+  removeEntity: (tempId, soft = true) => {
+    const entity = get().entities.get(tempId);
     if (!entity) return;
 
     // Remove from collision detection
@@ -271,49 +437,142 @@ export const createEntitiesSlice: StateCreator<
       entity.storageBlockType === "obstacle"
     ) {
       const detector = getCollisionDetector();
-      detector?.removeEntity(_id);
+      detector?.removeEntity(tempId);
     }
 
     set((state) => {
       if (soft) {
-        const e = state.entities.get(_id);
+        const e = state.entities.get(tempId);
         if (e) {
           e.isDeleted = true;
           e.deletedAt = Date.now();
         }
       } else {
-        state.entities.delete(_id);
+        state.entities.delete(tempId);
+
+        // Remove from ID mappings
+        const realId = state.tempIdToRealId.get(tempId);
+        if (realId) {
+          state.tempIdToRealId.delete(tempId);
+          state.realIdToTempId.delete(realId);
+        }
 
         // Remove from indices
-        state.entitiesByType.get(entity.storageBlockType)?.delete(_id);
+        state.entitiesByType.get(entity.storageBlockType)?.delete(tempId);
         if (entity.parentId) {
-          state.entitiesByParent.get(entity.parentId)?.delete(_id);
+          const parentKey =
+            state.realIdToTempId.get(entity.parentId) ?? entity.parentId;
+          state.entitiesByParent.get(parentKey)?.delete(tempId);
         }
-        state.entitiesByPath.get(entity.path)?.delete(_id);
+        state.entitiesByPath.get(entity.path)?.delete(tempId);
       }
 
       state.isDirty = true;
-      state.pendingChanges.add(_id);
+      state.pendingChanges.add(tempId);
     });
 
     // Recursively soft-delete children
-    const children = get().getEntitiesByParent(_id);
+    const children = get().getEntitiesByParent(tempId);
     children.forEach((child) => {
-      if (child?._id) get().removeEntity(child._id, soft);
+      get().removeEntity(child.tempId, soft);
     });
   },
 
+  discardEntity: (tempId) => {
+    const entity = get().entities.get(tempId);
+    if (!entity) return;
+
+    // Only allow discarding draft/error entities
+    if (entity.status !== "draft" && entity.status !== "error") {
+      console.warn(`Cannot discard entity with status: ${entity.status}`);
+      return;
+    }
+
+    // Remove from collision detection
+    if (
+      entity.storageBlockType === "rack" ||
+      entity.storageBlockType === "obstacle"
+    ) {
+      const detector = getCollisionDetector();
+      detector?.removeEntity(tempId);
+    }
+
+    set((state) => {
+      state.entities.delete(tempId);
+
+      // Remove from indices
+      state.entitiesByType.get(entity.storageBlockType)?.delete(tempId);
+      if (entity.parentId) {
+        const parentKey =
+          state.realIdToTempId.get(entity.parentId) ?? entity.parentId;
+        state.entitiesByParent.get(parentKey)?.delete(tempId);
+      }
+      state.entitiesByPath.get(entity.path)?.delete(tempId);
+
+      // Remove from pending changes since it was never committed
+      state.pendingChanges.delete(tempId);
+    });
+  },
+
+  // ========================================================================
+  // Commit Flow
+  // ========================================================================
+
+  setEntityPending: (tempId) => {
+    set((state) => {
+      const e = state.entities.get(tempId);
+      if (e && e.status === "draft") {
+        e.status = "pending";
+        e.validationError = undefined;
+      }
+    });
+  },
+
+  setEntityCommitted: (tempId, realId) => {
+    set((state) => {
+      const e = state.entities.get(tempId);
+      if (e) {
+        e.status = "committed";
+        e._id = realId;
+        e.validationError = undefined;
+
+        // Update ID mappings
+        state.tempIdToRealId.set(tempId, realId);
+        state.realIdToTempId.set(realId, tempId);
+      }
+    });
+  },
+
+  setEntityError: (tempId, error) => {
+    set((state) => {
+      const e = state.entities.get(tempId);
+      if (e) {
+        e.status = "error";
+        e.validationError = error;
+      }
+    });
+  },
+
+  updateEntityId: (tempId, realId) => {
+    // Alias for setEntityCommitted for backward compatibility
+    get().setEntityCommitted(tempId, realId);
+  },
+
+  // ========================================================================
+  // Batch Operations
+  // ========================================================================
+
   addEntityBatch: (entities) => {
-    const ids: Id<"storage_zones">[] = [];
+    const ids: string[] = [];
     entities.forEach((e) => {
-      const _id = get().addEntity(
+      const tempId = get().addEntity(
         e.storageBlockType,
         e.parentId,
         e.name,
         e.zoneAttributes,
       );
-      if (_id) {
-        ids.push(_id);
+      if (tempId) {
+        ids.push(tempId);
       }
     });
     return ids;
@@ -323,21 +582,41 @@ export const createEntitiesSlice: StateCreator<
   // Queries
   // ========================================================================
 
-  getEntity: (_id) => get().entities.get(_id),
+  getEntity: (tempId) => get().entities.get(tempId),
+
+  getEntityByRealId: (realId) => {
+    const tempId = get().realIdToTempId.get(realId);
+    if (tempId) {
+      return get().entities.get(tempId);
+    }
+    // Fallback: search by _id field
+    for (const entity of get().entities.values()) {
+      if (entity._id === realId) {
+        return entity;
+      }
+    }
+    return undefined;
+  },
 
   getEntitiesByType: (blockType) => {
     const ids = get().entitiesByType.get(blockType);
     if (!ids) return [];
     return Array.from(ids)
-      .map((_id) => get().entities.get(_id))
+      .map((tempId) => get().entities.get(tempId))
       .filter((e): e is StorageEntity => e !== undefined && !e.isDeleted);
   },
 
   getEntitiesByParent: (parentId) => {
-    const ids = get().entitiesByParent.get(parentId);
+    // Try finding by tempId first, then by realId
+    const parentTempId =
+      typeof parentId === "string" && get().entities.has(parentId)
+        ? parentId
+        : get().realIdToTempId.get(parentId as Id<"storage_zones">);
+
+    const ids = get().entitiesByParent.get(parentTempId ?? parentId);
     if (!ids) return [];
     return Array.from(ids)
-      .map((_id) => get().entities.get(_id))
+      .map((tempId) => get().entities.get(tempId))
       .filter((e): e is StorageEntity => e !== undefined && !e.isDeleted);
   },
 
@@ -345,7 +624,7 @@ export const createEntitiesSlice: StateCreator<
     const ids = get().entitiesByPath.get(path);
     if (!ids) return [];
     return Array.from(ids)
-      .map((_id) => get().entities.get(_id))
+      .map((tempId) => get().entities.get(tempId))
       .filter((e): e is StorageEntity => e !== undefined && !e.isDeleted);
   },
 
@@ -353,6 +632,12 @@ export const createEntitiesSlice: StateCreator<
     const children = get().getEntitiesByParent(parentId);
     if (!blockType) return children;
     return children.filter((c) => c.storageBlockType === blockType);
+  },
+
+  getDraftEntities: () => {
+    return Array.from(get().entities.values()).filter(
+      (e) => e.status === "draft" && !e.isDeleted,
+    );
   },
 
   // ========================================================================
@@ -380,34 +665,64 @@ export const createEntitiesSlice: StateCreator<
     set((state) => {
       // Clear existing
       state.entities.clear();
+      state.tempIdToRealId.clear();
+      state.realIdToTempId.clear();
       state.entitiesByType.clear();
       state.entitiesByParent.clear();
       state.entitiesByPath.clear();
 
-      // Load new entities
+      // PASS 1: Load all entities and build ID mappings first
+      // This ensures parent tempId is available when building parent index
+      const loadedTempIds: string[] = [];
       entities.forEach((entity) => {
-        if (!entity._id) return;
-        state.entities.set(entity._id, entity);
+        // If entity comes from Convex, it has _id but may not have tempId
+        const tempId = entity.tempId || crypto.randomUUID();
+        const fullEntity: StorageEntity = {
+          ...entity,
+          tempId,
+          status: entity._id ? "committed" : (entity.status ?? "draft"),
+        };
+
+        state.entities.set(tempId, fullEntity);
+        loadedTempIds.push(tempId);
+
+        // Update ID mappings if this entity has a real ID
+        if (entity._id) {
+          state.tempIdToRealId.set(tempId, entity._id);
+          state.realIdToTempId.set(entity._id, tempId);
+        }
 
         // Type index
         if (!state.entitiesByType.has(entity.storageBlockType)) {
           state.entitiesByType.set(entity.storageBlockType, new Set());
         }
-        state.entitiesByType.get(entity.storageBlockType)?.add(entity._id);
-
-        // Parent index
-        if (entity.parentId) {
-          if (!state.entitiesByParent.has(entity.parentId)) {
-            state.entitiesByParent.set(entity.parentId, new Set());
-          }
-          state.entitiesByParent.get(entity.parentId)?.add(entity._id);
-        }
+        state.entitiesByType.get(entity.storageBlockType)?.add(tempId);
 
         // Path index
         if (!state.entitiesByPath.has(entity.path)) {
           state.entitiesByPath.set(entity.path, new Set());
         }
-        state.entitiesByPath.get(entity.path)?.add(entity._id);
+        state.entitiesByPath.get(entity.path)?.add(tempId);
+      });
+
+      // PASS 2: Build parent index (now all ID mappings are complete)
+      loadedTempIds.forEach((tempId) => {
+        const entity = state.entities.get(tempId);
+        if (!entity?.parentId) return;
+
+        // Convert parent's real ID to tempId
+        const parentTempId = state.realIdToTempId.get(entity.parentId);
+        if (!parentTempId) {
+          console.warn(
+            `[loadEntities] Parent not found for ${entity.name}: parentId=${entity.parentId}`,
+          );
+          return;
+        }
+
+        if (!state.entitiesByParent.has(parentTempId)) {
+          state.entitiesByParent.set(parentTempId, new Set());
+        }
+        state.entitiesByParent.get(parentTempId)?.add(tempId);
       });
 
       state.isDirty = false;
@@ -418,6 +733,9 @@ export const createEntitiesSlice: StateCreator<
   clearEntities: () => {
     set((state) => {
       state.entities.clear();
+      state.tempIdToRealId.clear();
+      state.realIdToTempId.clear();
+      state.ghostEntity = null;
       state.entitiesByType.clear();
       state.entitiesByParent.clear();
       state.entitiesByPath.clear();

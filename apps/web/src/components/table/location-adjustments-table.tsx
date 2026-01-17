@@ -18,7 +18,6 @@ import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   CheckCircle,
-  ChevronDown,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -38,7 +37,6 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,

@@ -519,7 +519,7 @@ export function CategoriesTable() {
 
     // Second pass: build tree
     items.forEach((item) => {
-      const categoryItem = itemMap.get(item.path)!;
+      const categoryItem = itemMap.get(item.path) as CategoryItem;
       const pathParts = item.path.split(".");
 
       if (pathParts.length === 1) {

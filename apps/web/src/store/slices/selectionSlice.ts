@@ -3,6 +3,7 @@
  * Part of the SmartStore state management system
  */
 
+import { logEntitySelected } from "@/store/editor-console-store";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import type { StateCreator } from "zustand";
 
@@ -13,13 +14,13 @@ import type { StateCreator } from "zustand";
 export type TransformMode = "translate" | "rotate" | null;
 
 export interface SelectionState {
-  selectedEntityId: Id<"storage_zones"> | null;
+  selectedEntityId: Id<"storage_zones"> | string | null;
   transformMode: TransformMode;
   isTransformActive: boolean;
 }
 
 export interface SelectionActions {
-  selectEntity: (entityId: Id<"storage_zones"> | null) => void;
+  selectEntity: (entityId: Id<"storage_zones"> | string | null) => void;
   setTransformMode: (mode: TransformMode) => void;
   setTransformActive: (active: boolean) => void;
   clearSelection: () => void;
@@ -49,6 +50,9 @@ export const createSelectionSlice: StateCreator<
     if (entityId !== currentId) {
       set({ selectedEntityId: entityId, transformMode: null });
     }
+
+    //Logging
+    entityId && logEntitySelected(entityId as string);
   },
 
   setTransformMode: (mode) => {

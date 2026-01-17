@@ -1,7 +1,7 @@
 "use client";
 
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
-import { Loader2, Plus, Plus as PlusIcon, Settings2, X } from "lucide-react";
+import { Loader2, Plus, Settings2, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -121,7 +121,7 @@ function UnitAttributeDialog({
     generateVariants(attributes.filter((a) => a.id !== id));
   };
 
-  const updateAttributeValues = (id: string, valuesStr: string) => {
+  const _updateAttributeValues = (id: string, valuesStr: string) => {
     const values = valuesStr
       .split(",")
       .map((v) => v.trim())
@@ -363,17 +363,18 @@ function UnitAttributeDialog({
                         Các giá trị:
                       </span>
                       <div className="flex flex-wrap gap-2">
-                        {attr.values.map((value, valueIdx) => (
+                        {attr.values.map((value) => (
                           <span
-                            key={valueIdx}
+                            key={value}
                             className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-3 py-1 text-amber-800 text-sm"
                           >
                             {value}
-                            <button
-                              type="button"
+                            <Button
+                              variant="ghost"
+                              size="icon-sm"
                               onClick={() => {
                                 const newValues = attr.values.filter(
-                                  (_, i) => i !== valueIdx,
+                                  (v) => v !== value,
                                 );
                                 const newAttributes = attributes.map((a) =>
                                   a.id === attr.id
@@ -383,10 +384,10 @@ function UnitAttributeDialog({
                                 setAttributes(newAttributes);
                                 generateVariants(newAttributes);
                               }}
-                              className="ml-1 rounded-full hover:bg-amber-200"
+                              className="ml-1 rounded-full"
                             >
                               <X className="h-3 w-3" />
-                            </button>
+                            </Button>
                           </span>
                         ))}
                         <Input

@@ -9,7 +9,7 @@ import {
   GizmoViewport,
 } from "@react-three/drei";
 import { Canvas } from "@react-three/fiber";
-import { Leva, useControls } from "leva";
+import { useControls } from "leva";
 import type React from "react";
 import { createContext, useContext, useEffect, useMemo, useRef } from "react";
 import * as THREE from "three";
@@ -30,6 +30,7 @@ export const useDebugContext = () => useContext(DebugContext);
 
 import { CollisionDebugOverlay } from "@/components/zones/debug/collision-overlay";
 import { CameraTargetHelper } from "@/components/zones/debug/helper";
+import { GhostPreview } from "@/components/zones/ghost-preview";
 import { ShortcutPreview } from "@/components/zones/shortcut-preview";
 import { useLayoutStore } from "@/store/layout-editor-store";
 import { Zone } from "./zone";
@@ -75,12 +76,9 @@ function SceneContent() {
     return { width: 50, length: 50 };
   }, [floorEntities]);
 
-  // Get floor entity IDs for rendering
+  // Get floor entity IDs for rendering (use tempId since entities are keyed by tempId)
   const floorIds = useMemo(
-    () =>
-      floorEntities
-        .map((e) => e._id)
-        .filter((id): id is NonNullable<typeof id> => !!id),
+    () => floorEntities.map((e) => e.tempId),
     [floorEntities],
   );
 
@@ -313,6 +311,9 @@ function SceneContent() {
         <CameraTargetHelper cameraControlsRef={cameraControlsRef} />
       )}
 
+      {/* Ghost preview for entity placement */}
+      <GhostPreview />
+
       {/* Collision debug visualization - shows fading boxes on collision */}
       <CollisionDebugOverlay enabled={showCollisionBounds} />
     </DebugContext.Provider>
@@ -339,7 +340,7 @@ export const Canvas3D: React.FC = () => {
     Math.min(window.devicePixelRatio, 2);
 
   return (
-    <div className="relative h-full w-full overflow-hidden box-border min-h-0">
+    <div className="relative box-border h-full min-h-0 w-full overflow-hidden">
       {/* <Leva /> */}
       <Canvas
         shadows={enableShadows}

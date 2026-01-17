@@ -35,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useBranches, useBranches } from "@/hooks/use-branches";
+import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 
 interface AddReceiveSessionDialogProps {
@@ -84,7 +84,15 @@ export function AddReceiveSessionDialog({
       console.log("Is array:", Array.isArray(pendingPOs));
       console.log("Length:", pendingPOs?.length);
     }
-  }, [open, isLoadingPOs, pendingPOs, status, isError, queryError, currentBranch?._id]);
+  }, [
+    open,
+    isLoadingPOs,
+    pendingPOs,
+    status,
+    isError,
+    queryError,
+    currentBranch?._id,
+  ]);
 
   // Mutation for creating receive session
   const createReceiveSession = useConvexMutation(

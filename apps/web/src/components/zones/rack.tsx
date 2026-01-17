@@ -2,7 +2,6 @@
 // Migrated to use new SmartStore with StorageEntity
 
 import { TransformControls, useCursor } from "@react-three/drei";
-import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import type React from "react";
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { Group } from "three";
@@ -36,10 +35,8 @@ interface Dimensions {
 // ============================================================================
 
 export const Rack: React.FC<{ rackId: string }> = ({ rackId }) => {
-  // Get entity from new store
-  const entity = useLayoutStore((s) =>
-    s.entities.get(rackId as Id<"storage_zones">),
-  );
+  // Get entity from new store (rackId is now tempId)
+  const entity = useLayoutStore((s) => s.entities.get(rackId));
   const selectedEntityId = useLayoutStore((s) => s.selectedEntityId);
   const transformMode = useLayoutStore((s) => s.transformMode);
   const selectEntity = useLayoutStore((s) => s.selectEntity);
@@ -92,11 +89,7 @@ export const Rack: React.FC<{ rackId: string }> = ({ rackId }) => {
       if (isCommitting) return;
       setIsCommitting(true);
 
-      const result = await commitUpdate(
-        rackId as Id<"storage_zones">,
-        updates,
-        { showToast: true },
-      );
+      const result = await commitUpdate(rackId, updates, { showToast: true });
 
       if (!result.success && groupRef.current) {
         // Rollback visual position on failure
@@ -150,7 +143,7 @@ export const Rack: React.FC<{ rackId: string }> = ({ rackId }) => {
     e: React.MouseEvent | { stopPropagation: () => void },
   ) => {
     e.stopPropagation();
-    selectEntity(rackId as Id<"storage_zones">);
+    selectEntity(rackId);
   };
 
   const outlineColor = brightenHex(color, 0.3);

@@ -2,7 +2,6 @@
 // Migrated to use new SmartStore with StorageEntity
 
 import { Plane, Text, Wireframe } from "@react-three/drei";
-import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { useTheme } from "next-themes";
 import type React from "react";
 import { useMemo } from "react";
@@ -34,19 +33,17 @@ interface Dimensions {
 export const Zone: React.FC<{ zoneId: string }> = ({ zoneId }) => {
   const { resolvedTheme } = useTheme();
 
-  // Get entity from new store
-  const entity = useLayoutStore((s) =>
-    s.entities.get(zoneId as Id<"storage_zones">),
-  );
+  // Get entity from new store (zoneId is now tempId)
+  const entity = useLayoutStore((s) => s.entities.get(zoneId));
   const getChildren = useLayoutStore((s) => s.getChildren);
 
-  // Get child entities (racks and obstacles)
+  // Get child entities (racks and obstacles) - use tempId
   const childRacks = useMemo(() => {
-    return getChildren(zoneId as Id<"storage_zones">, "rack");
+    return getChildren(zoneId, "rack");
   }, [getChildren, zoneId]);
 
   const childObstacles = useMemo(() => {
-    return getChildren(zoneId as Id<"storage_zones">, "obstacle");
+    return getChildren(zoneId, "obstacle");
   }, [getChildren, zoneId]);
 
   // Extract attributes from entity
@@ -101,17 +98,14 @@ export const Zone: React.FC<{ zoneId: string }> = ({ zoneId }) => {
       </Text>
 
       {/* Racks - child entities (positions are zone-relative) */}
-      {childRacks.map(
-        (rack) => rack._id && <Rack key={rack._id} rackId={rack._id} />,
-      )}
+      {childRacks.map((rack) => (
+        <Rack key={rack.tempId} rackId={rack.tempId} />
+      ))}
 
       {/* Obstacles - child entities (positions are zone-relative) */}
-      {childObstacles.map(
-        (obstacle) =>
-          obstacle._id && (
-            <Obstacle key={obstacle._id} obstacleId={obstacle._id} />
-          ),
-      )}
+      {childObstacles.map((obstacle) => (
+        <Obstacle key={obstacle.tempId} obstacleId={obstacle.tempId} />
+      ))}
     </group>
   );
 };

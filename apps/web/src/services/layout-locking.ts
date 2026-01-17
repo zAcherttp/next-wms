@@ -8,7 +8,7 @@
  * with the external WMS (Warehouse Management System).
  */
 
-import type { Bin, Rack, Shelf } from "@/lib/types/layout-editor";
+import type { Bin, Rack } from "@/lib/types/layout-editor";
 
 /**
  * Inventory data structure from external WMS

@@ -41,10 +41,8 @@ const OBSTACLE_COLORS: Record<string, string> = {
 // ============================================================================
 
 export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
-  // Get entity from new store
-  const entity = useLayoutStore((s) =>
-    s.entities.get(obstacleId as Id<"storage_zones">),
-  );
+  // Get entity from new store (obstacleId is now tempId)
+  const entity = useLayoutStore((s) => s.entities.get(obstacleId));
   const selectedEntityId = useLayoutStore((s) => s.selectedEntityId);
   const transformMode = useLayoutStore((s) => s.transformMode);
   const selectEntity = useLayoutStore((s) => s.selectEntity);
@@ -93,11 +91,9 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
       if (isCommitting) return;
       setIsCommitting(true);
 
-      const result = await commitUpdate(
-        obstacleId as Id<"storage_zones">,
-        updates,
-        { showToast: true },
-      );
+      const result = await commitUpdate(obstacleId, updates, {
+        showToast: true,
+      });
 
       if (!result.success && groupRef.current) {
         // Rollback visual position on failure
@@ -140,7 +136,7 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
     e: React.MouseEvent | { stopPropagation: () => void },
   ) => {
     e.stopPropagation();
-    selectEntity(obstacleId as Id<"storage_zones">);
+    selectEntity(obstacleId);
   };
 
   return (

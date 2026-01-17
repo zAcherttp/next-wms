@@ -56,8 +56,8 @@ function PositionInput({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
-      {(["x", "y", "z"] as const).map((axis) => (
+    <div className="grid grid-cols-2 gap-2">
+      {(["x", "z"] as const).map((axis) => (
         <div key={axis} className="flex flex-col gap-1">
           <Label className="text-muted-foreground text-xs uppercase">
             {axis}
@@ -94,26 +94,26 @@ function RotationInput({
   const toRad = (deg: number) => (deg * Math.PI) / 180;
 
   return (
-    <div className="grid grid-cols-3 gap-2">
-      {(["x", "y", "z"] as const).map((axis) => (
-        <div key={axis} className="flex flex-col gap-1">
-          <Label className="text-muted-foreground text-xs uppercase">
-            {axis}°
-          </Label>
-          <Input
-            type="number"
-            step={15}
-            value={toDeg(value?.[axis] ?? 0)}
-            onChange={(e) =>
-              onChange({
-                ...value,
-                [axis]: toRad(Number.parseFloat(e.target.value) || 0),
-              })
-            }
-            disabled={disabled}
-            className="h-8"
-          />
-        </div>
+    <div className="grid grid-cols-1 gap-2">
+      {(["y"] as const).map((axis) => (
+      <div key={axis} className="flex flex-col gap-1">
+        <Label className="text-muted-foreground text-xs uppercase">
+        {axis}°
+        </Label>
+        <Input
+        type="number"
+        step={15}
+        value={toDeg(value?.[axis] ?? 0)}
+        onChange={(e) =>
+          onChange({
+          ...value,
+          [axis]: toRad(Number.parseFloat(e.target.value) || 0),
+          })
+        }
+        disabled={disabled}
+        className="h-8"
+        />
+      </div>
       ))}
     </div>
   );
@@ -129,8 +129,8 @@ function DimensionsInput({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-3 gap-2">
-      {(["width", "height", "depth"] as const).map((dim) => (
+    <div className="grid grid-cols-2 gap-2">
+      {(["width", "depth"] as const).map((dim) => (
         <div key={dim} className="flex flex-col gap-1">
           <Label className="text-muted-foreground text-xs capitalize">
             {dim[0]}

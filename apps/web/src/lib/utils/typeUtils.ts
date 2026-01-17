@@ -57,7 +57,7 @@ export type Branded<T, B> = T & Brand<B>;
  * @returns Display name string
  */
 export function getEntityDisplayName(entity: Entity): string {
-  if ("type" in entity) {
+  if ("type" in entity && entity.type) {
     // Check if it's a Rack type or Obstacle type
     if (RackTypes.is(entity.type)) {
       return `Rack (${entity.type})`;

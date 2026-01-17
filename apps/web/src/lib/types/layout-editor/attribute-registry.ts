@@ -18,9 +18,7 @@ export const positionSchema = z.object({
 });
 
 export const rotationSchema = z.object({
-  x: z.number().min(-Math.PI).max(Math.PI),
   y: z.number().min(-Math.PI).max(Math.PI),
-  z: z.number().min(-Math.PI).max(Math.PI),
 });
 
 export const dimensionsSchema = z.object({
@@ -68,6 +66,7 @@ export const BLOCK_SCHEMAS = {
   }),
 
   rack: z.object({
+    name: z.string().min(1),
     position: positionSchema,
     rotation: rotationSchema,
     dimensions: dimensionsSchema,
@@ -97,11 +96,13 @@ export const BLOCK_SCHEMAS = {
   }),
 
   entrypoint: z.object({
+    name: z.string().min(1),
     position: positionSchema,
     label: z.string(),
   }),
 
   doorpoint: z.object({
+    name: z.string().min(1),
     position: positionSchema,
     label: z.string(),
     width: z.number().positive(),
@@ -172,6 +173,7 @@ export const BLOCK_UI_SCHEMAS: Record<BlockType, BlockUISchema> = {
     icon: "LayoutGrid",
     path: "floor.rack",
     attributes: [
+      { key: "name", label: "Name", type: "string", required: true },
       { key: "position", label: "Position", type: "position", required: true },
       { key: "rotation", label: "Rotation", type: "rotation" },
       { key: "dimensions", label: "Size", type: "dimensions", required: true },
@@ -275,6 +277,7 @@ export const BLOCK_UI_SCHEMAS: Record<BlockType, BlockUISchema> = {
     icon: "LogIn",
     path: "floor.entrypoint",
     attributes: [
+      { key: "name", label: "Name", type: "string", required: true },
       { key: "position", label: "Position", type: "position", required: true },
       { key: "label", label: "Label", type: "string", required: true },
     ],
@@ -286,6 +289,7 @@ export const BLOCK_UI_SCHEMAS: Record<BlockType, BlockUISchema> = {
     icon: "DoorOpen",
     path: "floor.doorpoint",
     attributes: [
+      { key: "name", label: "Name", type: "string", required: true },
       { key: "position", label: "Position", type: "position", required: true },
       { key: "label", label: "Label", type: "string", required: true },
       {

@@ -1,25 +1,26 @@
 /**
- * useConvexSync - Bridge Convex real-time queries to Zustand store
- * Handles initial load, live updates, and optimistic mutations
+ * useConvexLayoutSync - Bridge Convex real-time queries to Zustand store
+ * Handles initial load, live updates, and staged entity commits
+ *
+ * Key concepts:
+ * - Entities from Convex have _id, get assigned tempId locally
+ * - Draft entities have tempId only, get _id after commit
+ * - commitEntity validates placement before Convex insert
  */
 
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { useCallback, useEffect, useRef } from "react";
 import type { StorageZone } from "@/lib/types";
+import { logEntityLoaded, useEditorConsole } from "@/store/editor-console-store";
 import { useLayoutStore } from "@/store/layout-editor-store";
-import type { StorageEntity } from "../store/slices/entitiesSlice";
+import type { StorageEntity } from "@/store/slices/entitiesSlice";
 
 // ============================================================================
 // Types
 // ============================================================================
 
-/**
- * Convex entity document (as returned from queries)
- * This matches the storage_zones table structure
- */
-
 interface UseConvexLayoutSyncOptions {
-  /** Called when an entity is created locally */
+  /** Called when an entity is created locally (commit) */
   onMutateCreate?: (entity: StorageEntity) => Promise<Id<"storage_zones">>;
   /** Called when an entity is updated locally */
   onMutateUpdate?: (
@@ -35,8 +36,10 @@ interface UseConvexLayoutSyncReturn {
   isLoading: boolean;
   /** Whether connected to Convex */
   isConnected: boolean;
-  /** Sync an entity to Convex (optimistic) */
-  syncEntity: (id: Id<"storage_zones">) => Promise<void>;
+  /** Commit a draft entity to Convex */
+  commitEntity: (tempId: string) => Promise<void>;
+  /** Sync an existing entity's changes to Convex */
+  syncEntity: (tempId: string) => Promise<void>;
   /** Force reload from Convex */
   reload: () => void;
 }
@@ -47,10 +50,13 @@ interface UseConvexLayoutSyncReturn {
 
 /**
  * Transform Convex document to StorageEntity
+ * Assigns a tempId for local tracking
  */
 function convexToEntity(doc: StorageZone): StorageEntity {
   return {
+    tempId: crypto.randomUUID(), // Will be overwritten if already exists
     _id: doc._id,
+    status: "committed",
     parentId: doc.parentId ?? null,
     branchId: doc.branchId,
     name: doc.name,
@@ -64,6 +70,7 @@ function convexToEntity(doc: StorageZone): StorageEntity {
 
 /**
  * Transform StorageEntity to Convex mutation args
+ * Strips local-only fields (tempId, status)
  */
 function entityToConvex(
   entity: StorageEntity,
@@ -90,19 +97,6 @@ function entityToConvex(
  * @param branchId - The branch to load entities for
  * @param convexData - Data from Convex useQuery (externally managed)
  * @param options - Mutation callbacks
- *
- * @example
- * ```tsx
- * function EditorWithConvex({ branchId }) {
- *   const data = useQuery(api.storage.getByBranch, { branchId });
- *   const { isLoading, syncEntity } = useConvexLayoutSync(branchId, data, {
- *     onMutateCreate: (entity) => createZone({ ...entityToConvex(entity) }),
- *     onMutateUpdate: (id, updates) => updateZone({ id, updates }),
- *     onMutateDelete: (id) => deleteZone({ id }),
- *   });
- *   // ...
- * }
- * ```
  */
 export function useConvexLayoutSync(
   branchId: string | null,
@@ -114,6 +108,9 @@ export function useConvexLayoutSync(
   // Store actions
   const loadEntities = useLayoutStore((s) => s.loadEntities);
   const getEntity = useLayoutStore((s) => s.getEntity);
+  const setEntityPending = useLayoutStore((s) => s.setEntityPending);
+  const setEntityCommitted = useLayoutStore((s) => s.setEntityCommitted);
+  const setEntityError = useLayoutStore((s) => s.setEntityError);
   const connect = useLayoutStore((s) => s.connect);
   const disconnect = useLayoutStore((s) => s.disconnect);
   const markSynced = useLayoutStore((s) => s.markSynced);
@@ -146,24 +143,116 @@ export function useConvexLayoutSync(
     loadEntities(entities);
     markSynced();
     hasLoadedRef.current = true;
+
+    // Log loaded entities to console
+    const log = useEditorConsole.getState();
+    log.info(`Loaded ${entities.length} entities from Convex`, "sync");
+
+    // Log each entity with parent context
+    for (const entity of entities) {
+      const parent = entity.parentId
+        ? entities.find((e) => e._id === entity.parentId)
+        : undefined;
+      if (parent) {
+        logEntityLoaded(
+          entity.name,
+          entity.storageBlockType,
+          parent.name,
+          parent.storageBlockType,
+        );
+      } else if (entity.storageBlockType !== "floor") {
+        logEntityLoaded(entity.name, entity.storageBlockType);
+      }
+    }
   }, [convexData, branchId, loadEntities, markSynced]);
 
-  // Sync a single entity to Convex
-  const syncEntity = useCallback(
-    async (id: Id<"storage_zones">) => {
-      const entity = getEntity(id);
+  /**
+   * Commit a draft entity to Convex
+   * Validates placement, then creates in Convex
+   */
+  const commitEntity = useCallback(
+    async (tempId: string) => {
+      const entity = getEntity(tempId);
       if (!entity) {
-        console.warn(`syncEntity: entity ${id} not found`);
+        console.warn(`commitEntity: entity ${tempId} not found`);
+        return;
+      }
+
+      if (entity.status !== "draft" && entity.status !== "error") {
+        console.warn(
+          `commitEntity: entity ${tempId} is not a draft (status: ${entity.status})`,
+        );
+        return;
+      }
+
+      // Mark as pending
+      setEntityPending(tempId);
+
+      const mutationId = crypto.randomUUID();
+
+      try {
+        addPendingMutation({
+          id: mutationId,
+          entityId: tempId,
+          type: "create",
+          previousValue: entity.zoneAttributes,
+        });
+
+        if (onMutateCreate) {
+          // Create in Convex
+          const realId = await onMutateCreate(entity);
+          // Update local entity with real ID
+          setEntityCommitted(tempId, realId);
+        }
+
+        removePendingMutation(mutationId);
+      } catch (error) {
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+        setEntityError(tempId, errorMessage);
+        addSyncError(`Failed to commit entity: ${errorMessage}`);
+        removePendingMutation(mutationId);
+        throw error;
+      }
+    },
+    [
+      getEntity,
+      setEntityPending,
+      setEntityCommitted,
+      setEntityError,
+      onMutateCreate,
+      addPendingMutation,
+      removePendingMutation,
+      addSyncError,
+    ],
+  );
+
+  /**
+   * Sync an existing entity's changes to Convex
+   * For committed entities that have been modified
+   */
+  const syncEntity = useCallback(
+    async (tempId: string) => {
+      const entity = getEntity(tempId);
+      if (!entity) {
+        console.warn(`syncEntity: entity ${tempId} not found`);
+        return;
+      }
+
+      // Must have a real ID to sync
+      if (!entity._id) {
+        console.warn(
+          `syncEntity: entity ${tempId} has no Convex ID, use commitEntity instead`,
+        );
         return;
       }
 
       const mutationId = crypto.randomUUID();
 
       try {
-        // Add pending mutation for UI feedback
         addPendingMutation({
           id: mutationId,
-          entityId: id,
+          entityId: tempId,
           type: entity.isDeleted ? "delete" : "update",
           previousValue: entity.zoneAttributes,
         });
@@ -171,32 +260,24 @@ export function useConvexLayoutSync(
         if (entity.isDeleted) {
           // Delete mutation
           if (onMutateDelete) {
-            await onMutateDelete(id);
-          }
-        } else if (!hasLoadedRef.current) {
-          // Create mutation (new entity)
-          if (onMutateCreate) {
-            const realId = await onMutateCreate(entity);
-            // Update the entity with the real ID from Convex
-            useLayoutStore.getState().updateEntityId(entity._id, realId);
+            await onMutateDelete(entity._id);
           }
         } else {
           // Update mutation
           if (onMutateUpdate) {
-            await onMutateUpdate(id, entity.zoneAttributes);
+            await onMutateUpdate(entity._id, entity.zoneAttributes);
           }
         }
 
         removePendingMutation(mutationId);
       } catch (error) {
-        addSyncError(`Failed to sync entity ${id}: ${String(error)}`);
+        addSyncError(`Failed to sync entity ${tempId}: ${String(error)}`);
         removePendingMutation(mutationId);
         throw error;
       }
     },
     [
       getEntity,
-      onMutateCreate,
       onMutateUpdate,
       onMutateDelete,
       addPendingMutation,
@@ -208,12 +289,12 @@ export function useConvexLayoutSync(
   // Force reload
   const reload = useCallback(() => {
     hasLoadedRef.current = false;
-    // The Convex query will refetch automatically
   }, []);
 
   return {
     isLoading,
     isConnected,
+    commitEntity,
     syncEntity,
     reload,
   };

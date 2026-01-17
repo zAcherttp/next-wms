@@ -14,6 +14,7 @@ import type {
   CameraSlice,
   ConfigSlice,
   EntitiesSlice,
+  EntityStatus,
   SelectionSlice,
   StorageEntity,
   SyncSlice,
@@ -118,4 +119,4 @@ export const canRedo = () => {
 // Re-export Types
 // ============================================================================
 
-export type { StorageEntity, BlockType };
+export type { StorageEntity, EntityStatus, BlockType };

@@ -30,16 +30,24 @@ import { getEntityDisplayName } from "./typeUtils";
 /**
  * Get world position by adding parent zone offset
  * Entities with a floor/zone parent have positions relative to that zone.
+ * Updated to work with new dual ID system (entities keyed by tempId)
  */
 function getWorldPosition(
   localPosition: Vector3,
-  parentId: Id<"storage_zones"> | null | undefined,
+  parentId: Id<"storage_zones"> | string | null | undefined,
 ): Vector3 {
   if (!parentId) {
     return localPosition; // Root-level entity, position is already world
   }
 
-  const parent = useLayoutStore.getState().entities.get(parentId);
+  // Try to find parent using the new lookup methods
+  const store = useLayoutStore.getState();
+  let parent = store.getEntityByRealId(parentId as Id<"storage_zones">);
+  if (!parent) {
+    // Try direct lookup by tempId
+    parent = store.getEntity(parentId as string);
+  }
+
   if (!parent?.zoneAttributes) {
     return localPosition;
   }
@@ -308,6 +316,265 @@ export function isWithinBounds(
   }
 
   return true;
+}
+
+// ============================================================================
+// Zone Overlap Detection
+// ============================================================================
+
+export interface ZoneOverlapResult {
+  hasOverlap: boolean;
+  overlappingZoneName?: string;
+  overlappingZoneTempId?: string;
+}
+
+/**
+ * Check if a zone overlaps with any existing zones
+ * Uses AABB for simplicity since zones typically aren't rotated
+ */
+export function checkZoneOverlap(
+  position: Vector3,
+  dimensions: { width: number; length: number },
+  excludeTempId?: string,
+): ZoneOverlapResult {
+  const store = useLayoutStore.getState();
+
+  for (const [tempId, entity] of store.entities) {
+    if (entity.storageBlockType !== "floor") continue;
+    if (entity.isDeleted) continue;
+    if (excludeTempId && tempId === excludeTempId) continue;
+
+    const zonePos = entity.zoneAttributes.position as Vector3 | undefined;
+    const zoneDims = entity.zoneAttributes.dimensions as
+      | { width: number; length: number }
+      | undefined;
+
+    if (!zonePos || !zoneDims) continue;
+
+    // AABB overlap check
+    const aOverlapsB =
+      position.x < zonePos.x + zoneDims.width &&
+      position.x + dimensions.width > zonePos.x &&
+      position.z < zonePos.z + zoneDims.length &&
+      position.z + dimensions.length > zonePos.z;
+
+    if (aOverlapsB) {
+      return {
+        hasOverlap: true,
+        overlappingZoneName: entity.name || "Unnamed Zone",
+        overlappingZoneTempId: tempId,
+      };
+    }
+  }
+
+  return { hasOverlap: false };
+}
+
+// ============================================================================
+// Unified Placement Validation
+// ============================================================================
+
+export interface PlacementValidationResult {
+  valid: boolean;
+  reason?: string;
+}
+
+/**
+ * Get bounds of a parent zone for child entity validation
+ */
+function getParentBounds(
+  parentId: Id<"storage_zones"> | string | null,
+): ZoneBounds {
+  if (!parentId) {
+    // Return huge bounds if no parent
+    return { x: -1000, z: -1000, width: 2000, length: 2000 };
+  }
+
+  const store = useLayoutStore.getState();
+  let parent = store.getEntityByRealId(parentId as Id<"storage_zones">);
+  if (!parent) {
+    parent = store.getEntity(parentId as string);
+  }
+
+  if (!parent?.zoneAttributes) {
+    return { x: 0, z: 0, width: 100, length: 100 };
+  }
+
+  const pos = parent.zoneAttributes.position as Vector3 | undefined;
+  const dims = parent.zoneAttributes.dimensions as
+    | { width: number; length: number }
+    | undefined;
+
+  return {
+    x: pos?.x ?? 0,
+    z: pos?.z ?? 0,
+    width: dims?.width ?? 100,
+    length: dims?.length ?? 100,
+  };
+}
+
+/**
+ * Build racks map from store entities for collision checking
+ */
+function getRacksFromStore(): Map<string, Rack> {
+  const store = useLayoutStore.getState();
+  const racks = new Map<string, Rack>();
+
+  for (const [tempId, entity] of store.entities) {
+    if (entity.storageBlockType !== "rack") continue;
+    if (entity.isDeleted) continue;
+    if (entity.status === "ghost") continue; // Don't check against ghost entities
+
+    const attrs = entity.zoneAttributes;
+    // Cast to Rack type - name is stored in entity, not in Rack interface
+    racks.set(tempId, {
+      _id: tempId,
+      position: attrs.position as Vector3,
+      dimensions: attrs.dimensions as Dimension,
+      rotation: attrs.rotation as Vector3,
+    } as Rack);
+  }
+
+  return racks;
+}
+
+/**
+ * Build obstacles map from store entities for collision checking
+ */
+function getObstaclesFromStore(): Map<string, Obstacle> {
+  const store = useLayoutStore.getState();
+  const obstacles = new Map<string, Obstacle>();
+
+  for (const [tempId, entity] of store.entities) {
+    if (entity.storageBlockType !== "obstacle") continue;
+    if (entity.isDeleted) continue;
+    if (entity.status === "ghost") continue;
+
+    const attrs = entity.zoneAttributes;
+    // Cast to Obstacle type - label is the correct property, not name
+    obstacles.set(tempId, {
+      _id: tempId,
+      position: attrs.position as Vector3,
+      dimensions: attrs.dimensions as Dimension,
+      rotation: attrs.rotation as Vector3,
+      label: entity.name,
+    } as Obstacle);
+  }
+
+  return obstacles;
+}
+
+/**
+ * Unified validation for entity placement
+ * Routes to appropriate check based on entity type
+ *
+ * Rules:
+ * - floor (zone): Cannot overlap with other zones
+ * - rack/obstacle: Cannot collide with each other, must be inside parent zone
+ * - entrypoint: Collision-free, only bounds check
+ * - shelf/bin: No collision check (inherits parent bounds)
+ */
+export function validatePlacement(
+  tempId: string,
+  storageBlockType: string,
+  zoneAttributes: Record<string, unknown>,
+  parentId: Id<"storage_zones"> | null,
+): PlacementValidationResult {
+  const position = zoneAttributes.position as Vector3 | undefined;
+  const dimensions = zoneAttributes.dimensions as Dimension | undefined;
+  const rotation = zoneAttributes.rotation as Vector3 | undefined;
+
+  if (!position || !dimensions) {
+    return { valid: false, reason: "Missing position or dimensions" };
+  }
+
+  switch (storageBlockType) {
+    case "floor": {
+      // Zones cannot overlap with each other
+      const overlapCheck = checkZoneOverlap(
+        position,
+        { width: dimensions.width, length: dimensions.depth },
+        tempId,
+      );
+      if (overlapCheck.hasOverlap) {
+        return {
+          valid: false,
+          reason: `Zone overlaps with "${overlapCheck.overlappingZoneName}"`,
+        };
+      }
+      return { valid: true };
+    }
+
+    case "entrypoint": {
+      // Entrypoints are collision-free, only check bounds
+      if (!parentId) return { valid: true };
+
+      const bounds = getParentBounds(parentId);
+      const withinBounds = isWithinBounds(
+        position,
+        dimensions,
+        bounds,
+        rotation?.y ?? 0,
+      );
+
+      if (!withinBounds) {
+        return { valid: false, reason: "Entrypoint is outside zone bounds" };
+      }
+      return { valid: true };
+    }
+
+    case "rack":
+    case "obstacle": {
+      // Full collision check + bounds check
+      const bounds = getParentBounds(parentId);
+
+      // Convert local position to world position for collision check
+      const worldPosition = getWorldPosition(position, parentId);
+
+      // Check bounds first (faster)
+      const withinBounds = isWithinBounds(
+        worldPosition,
+        dimensions,
+        bounds,
+        rotation?.y ?? 0,
+      );
+
+      if (!withinBounds) {
+        return { valid: false, reason: "Entity is outside zone bounds" };
+      }
+
+      // Check collisions
+      const collisionResult = checkCollisions(
+        {
+          position: worldPosition,
+          dimensions,
+          rotationY: rotation?.y ?? 0,
+          bounds,
+          excludeEntityId: tempId,
+          enableDebug: false,
+        },
+        getRacksFromStore(),
+        getObstaclesFromStore(),
+      );
+
+      if (collisionResult.hasCollision) {
+        return {
+          valid: false,
+          reason: collisionResult.reason ?? "Collision detected",
+        };
+      }
+
+      return { valid: true };
+    }
+
+    case "shelf":
+    case "bin":
+      // No collision check needed - inherits parent bounds
+      return { valid: true };
+
+    default:
+      return { valid: true };
+  }
 }
 
 /**

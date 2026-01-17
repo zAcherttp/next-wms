@@ -64,13 +64,19 @@ function hasGeometryChange(updates: Record<string, unknown>): boolean {
  */
 function getWorldPosition(
   localPosition: Vec3,
-  parentId: Id<"storage_zones"> | null,
+  parentId: Id<"storage_zones"> | string | null,
 ): Vec3 {
   if (!parentId) {
     return localPosition; // Root-level entity, position is already world
   }
 
-  const parent = useLayoutStore.getState().entities.get(parentId);
+  const store = useLayoutStore.getState();
+  // Try to get parent by realId first, then by tempId
+  let parent = store.getEntityByRealId(parentId as Id<"storage_zones">);
+  if (!parent) {
+    parent = store.getEntity(parentId as string);
+  }
+
   if (!parent?.zoneAttributes) {
     return localPosition;
   }
@@ -93,11 +99,11 @@ function getWorldPosition(
  * Check collision for proposed position/rotation/dimensions
  */
 function checkCollisionForUpdate(
-  entityId: Id<"storage_zones">,
+  entityId: string, // Now accepts tempId
   currentAttrs: Record<string, unknown>,
   updates: Record<string, unknown>,
   blockType: BlockType,
-  parentId?: Id<"storage_zones"> | null,
+  parentId?: Id<"storage_zones"> | string | null,
 ): { hasCollision: boolean; reason?: string } {
   // Only check collision for racks and obstacles
   if (blockType !== "rack" && blockType !== "obstacle") {
@@ -136,9 +142,10 @@ function checkCollisionForUpdate(
   // Get all entities and check against them
   const entities = useLayoutStore.getState().entities;
 
-  for (const [id, entity] of entities) {
+  for (const [tempId, entity] of entities) {
     // Skip self and deleted entities
-    if (id === entityId || entity.isDeleted) continue;
+    // Compare by tempId since entityId is now tempId
+    if (tempId === entityId || entity.isDeleted) continue;
 
     // Only check collidable entity types
     if (
@@ -184,7 +191,6 @@ export function useEntityMutation() {
 
   // Store actions
   const updateEntity = useLayoutStore((s) => s.updateEntity);
-  const addEntity = useLayoutStore((s) => s.addEntity);
   const removeEntity = useLayoutStore((s) => s.removeEntity);
   const getEntity = useLayoutStore((s) => s.getEntity);
 
@@ -193,7 +199,7 @@ export function useEntityMutation() {
    */
   const commitUpdate = useCallback(
     async (
-      id: Id<"storage_zones">,
+      id: string, // Now accepts tempId
       updates: Record<string, unknown>,
       options: CommitOptions = {},
     ): Promise<CommitResult> => {
@@ -238,10 +244,15 @@ export function useEntityMutation() {
       // 3. OPTIMISTIC UPDATE - Update local state immediately
       updateEntity(id, updates);
 
-      // 4. COMMIT - Sync to Convex
+      // 4. COMMIT - Sync to Convex (only if entity has a real _id)
+      if (!entity._id) {
+        // Entity is a draft, no Convex ID yet - just update locally
+        return { success: true };
+      }
+
       try {
         await updateMutation({
-          id,
+          id: entity._id,
           zoneAttributes: mergedAttrs,
           name: entity.name,
         });
@@ -333,7 +344,7 @@ export function useEntityMutation() {
    */
   const commitDelete = useCallback(
     async (
-      id: Id<"storage_zones">,
+      id: string, // Now accepts tempId
       options: CommitOptions = {},
     ): Promise<CommitResult> => {
       const { showToast = true } = options;
@@ -346,9 +357,14 @@ export function useEntityMutation() {
       // 1. OPTIMISTIC DELETE - Mark as deleted locally
       removeEntity(id, true); // soft delete
 
-      // 2. COMMIT to Convex
+      // 2. COMMIT to Convex (only if entity has a real _id)
+      if (!entity._id) {
+        // Entity is a draft, just remove locally
+        return { success: true };
+      }
+
       try {
-        await deleteMutation({ id });
+        await deleteMutation({ id: entity._id });
         return { success: true };
       } catch (err) {
         // Rollback - restore entity

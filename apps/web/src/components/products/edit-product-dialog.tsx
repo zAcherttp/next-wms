@@ -35,7 +35,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { useBrands } from "@/hooks/use-brands";
-import { type Category, useCategoryTree } from "@/hooks/use-categories";
+import { useCategoryTree } from "@/hooks/use-categories";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useProductDetails, useUpdateProduct } from "@/hooks/use-products";
 import {

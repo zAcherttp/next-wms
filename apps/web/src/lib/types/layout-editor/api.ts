@@ -1,7 +1,6 @@
 // API Types for Warehouse Layout Editor
 // Component ref handle and external data interfaces
 
-import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import type { EditorState } from "./editor";
 import type { ValidationResult } from "./validation";
 
@@ -13,16 +12,17 @@ export interface WarehouseEditorHandle {
   // Core camera/view operations
   validateLayout: () => ValidationResult;
   resetCamera: () => void;
-  zoomToRack: (rackId: Id<"storage_zones">) => void;
-  zoomToZone: (zoneId: Id<"storage_zones">) => void;
+  zoomToRack: (rackId: string) => void;
+  zoomToZone: (zoneId: string) => void;
 
   // Entity operations (now via storage_zone table)
+  // Note: Returns tempId (string) until entity is committed to Convex
   addRack: (rackData: {
     position: object;
     dimensions: object;
     rotation?: object;
-  }) => Id<"storage_zones"> | undefined;
-  removeRack: (rackId: Id<"storage_zones">) => boolean;
+  }) => string | undefined;
+  removeRack: (rackId: string) => boolean;
   getState: () => EditorState;
   captureScreenshot: () => Promise<Blob>;
 

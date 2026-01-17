@@ -1,10 +1,13 @@
 /**
  * useSyncOnUndoRedo - Syncs temporal store (undo/redo) changes to Convex
  * Subscribes to zundo temporal store and triggers Convex mutations on state changes
+ *
+ * Updated to work with dual ID system:
+ * - Entities are keyed by tempId (string)
+ * - Only sync entities that have a real _id (committed to Convex)
  */
 
 import { api } from "@wms/backend/convex/_generated/api";
-import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { useMutation } from "convex/react";
 import { useEffect, useRef } from "react";
 import type { StorageEntity } from "@/store/layout-editor-store";
@@ -14,29 +17,30 @@ import { useLayoutStore } from "@/store/layout-editor-store";
 // Types
 // ============================================================================
 
-type EntitiesMap = Map<Id<"storage_zones">, StorageEntity>;
-
-// interface TemporalState {
-//   entities: EntitiesMap;
-// }
+type EntitiesMap = Map<string, StorageEntity>;
 
 // ============================================================================
 // Helper Functions
 // ============================================================================
 
 /**
- * Diff two entity maps and return IDs of changed entities
+ * Diff two entity maps and return tempIds of changed entities
+ * Only returns entities that have a real _id (can be synced to Convex)
  */
 function diffEntities(
   prevEntities: EntitiesMap,
   currEntities: EntitiesMap,
-): Id<"storage_zones">[] {
-  const changedIds: Id<"storage_zones">[] = [];
+): string[] {
+  const changedIds: string[] = [];
   const allIds = new Set([...prevEntities.keys(), ...currEntities.keys()]);
 
   for (const id of allIds) {
     const prev = prevEntities.get(id);
     const curr = currEntities.get(id);
+
+    // Skip if current entity doesn't have a real _id (draft/uncommitted)
+    if (curr && !curr._id) continue;
+    if (prev && !prev._id && !curr) continue;
 
     // Entity added or removed
     if (!prev || !curr) {
@@ -98,23 +102,27 @@ export function useSyncOnUndoRedo() {
         isSyncingRef.current = true;
 
         // Sync each changed entity to Convex
-        const syncPromises = changedIds.map(async (id) => {
-          const entity = currentEntities.get(id);
+        const syncPromises = changedIds.map(async (tempId) => {
+          const entity = currentEntities.get(tempId);
           if (!entity) return;
+
+          // Only sync if entity has a real Convex ID
+          const realId = entity._id;
+          if (!realId) return;
 
           try {
             if (entity.isDeleted) {
-              await deleteMutation({ id });
+              await deleteMutation({ id: realId });
             } else {
               await updateMutation({
-                id,
+                id: realId,
                 zoneAttributes: entity.zoneAttributes,
                 name: entity.name,
               });
             }
           } catch (err) {
             console.error(
-              `[useSyncOnUndoRedo] Failed to sync entity ${id}:`,
+              `[useSyncOnUndoRedo] Failed to sync entity ${tempId}:`,
               err,
             );
           }
@@ -170,15 +178,19 @@ export function useSyncOnTemporalChange() {
         // A more efficient approach would track which entities changed
         const pendingChanges = useLayoutStore.getState().pendingChanges;
 
-        for (const id of pendingChanges) {
-          const entity = currentEntities.get(id);
+        for (const tempId of pendingChanges) {
+          const entity = currentEntities.get(tempId);
           if (!entity) continue;
 
+          // Only sync if entity has a real Convex ID
+          const realId = entity._id;
+          if (!realId) continue;
+
           if (entity.isDeleted) {
-            deleteMutation({ id }).catch(console.error);
+            deleteMutation({ id: realId }).catch(console.error);
           } else {
             updateMutation({
-              id,
+              id: realId,
               zoneAttributes: entity.zoneAttributes,
               name: entity.name,
             }).catch(console.error);
