@@ -355,7 +355,7 @@ export function OutboundOrdersTable() {
       // Vehicle Status Column
       {
         id: "vehicleStatus",
-        header: () => <div className="text-center">Xe</div>,
+        header: () => <div className="text-center">Vehicle</div>,
         cell: ({ row }) => {
           const vehicleArrived = !!row.original.vehicleArrivedAt;
           
@@ -366,7 +366,7 @@ export function OutboundOrdersTable() {
                   className="bg-green-500/10 text-green-600 border-green-500/60 text-xs"
                   variant={"outline"}
                 >
-                  ✅ Đã tới
+                  ✅ Arrived
                 </Badge>
               </div>
             );
