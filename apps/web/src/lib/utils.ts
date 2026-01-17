@@ -15,7 +15,7 @@ export function snapValueToStep(
   value: number,
   min: number | undefined,
   max: number | undefined,
-  step: number,
+  step: number
 ): number {
   const offset = min ?? 0;
   const remainder = (value - offset) % step;
@@ -31,7 +31,7 @@ export function snapValueToStep(
 export function handleDecimalOperation(
   operator: "+" | "-",
   value1: number,
-  value2: number,
+  value2: number
 ): number {
   let result = operator === "+" ? value1 + value2 : value1 - value2;
 
@@ -93,6 +93,7 @@ export function getBadgeStyleByStatus(status: string): string {
 
     // 4. Success / Final States
     case "completed":
+    case "complete":
     case "received":
     case "confirmed":
       return "bg-green-500/10 text-green-600 border-green-500/60";

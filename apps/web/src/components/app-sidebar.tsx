@@ -41,8 +41,8 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "Purchase Orders",
-          url: "/purchase-orders",
+          title: "Inbound Orders",
+          url: "/inbound-orders",
         },
         {
           title: "Receiving Sessions",

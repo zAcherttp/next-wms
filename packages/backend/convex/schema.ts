@@ -299,6 +299,7 @@ export default defineSchema({
     quantityOrdered: v.number(),
     unitCost: v.number(),
     quantityReceived: v.number(),
+    recommendedZoneId: v.optional(v.id("storage_zones")),
   })
     .index("purchaseOrderId", ["purchaseOrderId"])
     .index("skuId", ["skuId"]),
@@ -312,6 +313,7 @@ export default defineSchema({
     branchId: v.id("branches"),
     receivedAt: v.number(),
     receiveSessionStatusTypeId: v.id("system_lookups"),
+    notes: v.optional(v.string()),
   })
     .index("purchaseOrderId", ["purchaseOrderId"])
     .index("branchId", ["branchId"])
@@ -326,6 +328,7 @@ export default defineSchema({
     notes: v.optional(v.string()),
     recommendedZoneId: v.optional(v.id("storage_zones")),
     receiveSessionItemStatusTypeId: v.id("system_lookups"),
+    returnTypeId: v.optional(v.id("system_lookups")),
   })
     .index("receiveSessionId", ["receiveSessionId"])
     .index("skuId", ["skuId"])
@@ -556,6 +559,7 @@ export default defineSchema({
     requestedByUserId: v.string(),
     requestedAt: v.number(),
     returnStatusTypeId: v.string(),
+    purchaseOrderId: v.optional(v.string()),
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
   })
@@ -565,16 +569,17 @@ export default defineSchema({
     .index("supplierId", ["supplierId"])
     .index("requestedByUserId", ["requestedByUserId"])
     .index("returnStatusTypeId", ["returnStatusTypeId"])
-    .index("isDeleted", ["isDeleted"]),
+    .index("isDeleted", ["isDeleted"])
+    .index("purchaseOrderId", ["purchaseOrderId"]),
 
   return_request_details: defineTable({
     returnRequestId: v.id("return_requests"),
-    batchId: v.string(),
+    batchId: v.optional(v.string()),
     skuId: v.string(),
     quantityToReturn: v.number(),
     reasonTypeId: v.string(),
     customReasonNotes: v.optional(v.string()),
-    expectedCreditAmount: v.number(),
+    expectedCreditAmount: v.optional(v.number()),
   })
     .index("returnRequestId", ["returnRequestId"])
     .index("batchId", ["batchId"])
