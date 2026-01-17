@@ -6,7 +6,9 @@
 import { useFrame, useThree } from "@react-three/fiber";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
+import { toast } from "sonner";
 import * as THREE from "three";
+import { validatePlacement } from "@/lib/utils/collision";
 import { useLayoutStore } from "@/store/layout-editor-store";
 
 // ============================================================================
@@ -41,9 +43,11 @@ function GhostMesh({ dimensions, color = "#3b82f6" }: GhostMeshProps) {
 export const GhostPreview: React.FC = () => {
   const ghostEntity = useLayoutStore((s) => s.ghostEntity);
   const updateGhostPosition = useLayoutStore((s) => s.updateGhostPosition);
+  const updateGhostAttributes = useLayoutStore((s) => s.updateGhostAttributes);
   const confirmGhost = useLayoutStore((s) => s.confirmGhost);
   const cancelGhost = useLayoutStore((s) => s.cancelGhost);
   const selectEntity = useLayoutStore((s) => s.selectEntity);
+  const entities = useLayoutStore((s) => s.entities);
 
   const { raycaster, camera, gl } = useThree();
   const mouseRef = useRef(new THREE.Vector2());
@@ -52,6 +56,56 @@ export const GhostPreview: React.FC = () => {
     [],
   );
   const intersectionPoint = useMemo(() => new THREE.Vector3(), []);
+
+  // Find closest floor to a position
+  const findClosestFloor = useCallback(
+    (position: { x: number; y: number; z: number }) => {
+      let closestFloor: { tempId: string; realId: string | undefined } | null =
+        null;
+      let minDistance = Number.POSITIVE_INFINITY;
+
+      for (const [tempId, entity] of entities) {
+        if (entity.storageBlockType !== "floor" || entity.isDeleted) continue;
+
+        const floorPos = entity.zoneAttributes.position as {
+          x: number;
+          z: number;
+        };
+        const floorDims = entity.zoneAttributes.dimensions as {
+          width: number;
+          length: number;
+        };
+
+        if (!floorPos || !floorDims) continue;
+
+        // Check if position is within floor bounds
+        const inBounds =
+          position.x >= floorPos.x &&
+          position.x <= floorPos.x + floorDims.width &&
+          position.z >= floorPos.z &&
+          position.z <= floorPos.z + floorDims.length;
+
+        if (inBounds) {
+          return { tempId, realId: entity._id };
+        }
+
+        // Calculate distance to floor center
+        const floorCenterX = floorPos.x + floorDims.width / 2;
+        const floorCenterZ = floorPos.z + floorDims.length / 2;
+        const dx = position.x - floorCenterX;
+        const dz = position.z - floorCenterZ;
+        const distance = Math.sqrt(dx * dx + dz * dz);
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestFloor = { tempId, realId: entity._id };
+        }
+      }
+
+      return closestFloor;
+    },
+    [entities],
+  );
 
   // Track mouse position
   const handleMouseMove = useCallback(
@@ -63,14 +117,66 @@ export const GhostPreview: React.FC = () => {
     [gl.domElement],
   );
 
-  // Handle click to place
+  // Handle click to place - with collision validation
   const handleClick = useCallback(() => {
     if (!ghostEntity) return;
+
+    const position = ghostEntity.zoneAttributes.position as {
+      x: number;
+      y: number;
+      z: number;
+    };
+    const dimensions = ghostEntity.zoneAttributes.dimensions as {
+      width: number;
+      height: number;
+      depth: number;
+    };
+    const rotation = ghostEntity.zoneAttributes.rotation as {
+      x: number;
+      y: number;
+      z: number;
+    };
+
+    // Find closest floor and update parent
+    const closestFloor = findClosestFloor(position);
+    if (!closestFloor) {
+      toast.warning("No floor zone found for placement");
+      return;
+    }
+
+    // Validate placement with collision check (using global positions)
+    const validation = validatePlacement({
+      tempId: ghostEntity.tempId,
+      storageBlockType: ghostEntity.storageBlockType,
+      parentId: closestFloor.realId ?? null,
+      position,
+      dimensions,
+      rotation,
+    });
+
+    if (!validation.valid) {
+      toast.warning(
+        validation.reason ?? "Cannot place here - collision detected",
+      );
+      return;
+    }
+
+    // Update ghost's parentId to the closest floor before confirming
+    if (closestFloor.realId) {
+      updateGhostAttributes({ parentId: closestFloor.realId });
+    }
+
     const tempId = confirmGhost();
     if (tempId) {
       selectEntity(tempId);
     }
-  }, [ghostEntity, confirmGhost, selectEntity]);
+  }, [
+    ghostEntity,
+    findClosestFloor,
+    updateGhostAttributes,
+    confirmGhost,
+    selectEntity,
+  ]);
 
   // Handle keyboard
   const handleKeyDown = useCallback(
@@ -80,13 +186,11 @@ export const GhostPreview: React.FC = () => {
       if (event.key === "Escape") {
         cancelGhost();
       } else if (event.key === "Enter") {
-        const tempId = confirmGhost();
-        if (tempId) {
-          selectEntity(tempId);
-        }
+        // Reuse click handler which includes validation
+        handleClick();
       }
     },
-    [ghostEntity, cancelGhost, confirmGhost, selectEntity],
+    [ghostEntity, cancelGhost, handleClick],
   );
 
   // Add event listeners

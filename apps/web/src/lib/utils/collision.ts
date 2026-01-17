@@ -433,6 +433,9 @@ function getRacksFromStore(
     if (parentId !== undefined && entity.parentId !== parentId) continue;
 
     const attrs = entity.zoneAttributes;
+    // Skip entities without required position/dimensions
+    if (!attrs?.position || !attrs?.dimensions) continue;
+    
     // Cast to Rack type - name is stored in entity, not in Rack interface
     racks.set(tempId, {
       _id: tempId,
@@ -464,6 +467,9 @@ function getObstaclesFromStore(
     if (parentId !== undefined && entity.parentId !== parentId) continue;
 
     const attrs = entity.zoneAttributes;
+    // Skip entities without required position/dimensions
+    if (!attrs?.position || !attrs?.dimensions) continue;
+    
     // Cast to Obstacle type - label is the correct property, not name
     obstacles.set(tempId, {
       _id: tempId,
