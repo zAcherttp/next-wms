@@ -31,6 +31,8 @@ export const useDebugContext = () => useContext(DebugContext);
 import { CollisionDebugOverlay } from "@/components/zones/debug/collision-overlay";
 import { CameraTargetHelper } from "@/components/zones/debug/helper";
 import { GhostPreview } from "@/components/zones/ghost-preview";
+import { Obstacle } from "@/components/zones/obstacle";
+import { Rack } from "@/components/zones/rack";
 import { ShortcutPreview } from "@/components/zones/shortcut-preview";
 import { useLayoutStore } from "@/store/layout-editor-store";
 import { Zone } from "./zone";
@@ -81,6 +83,28 @@ function SceneContent() {
     () => floorEntities.map((e) => e.tempId),
     [floorEntities],
   );
+
+  // Get all rack entities for rendering at canvas root (global positions)
+  const rackEntities = useMemo(() => {
+    const rackIds = entitiesByType.get("rack");
+    if (!rackIds) return [];
+    return Array.from(rackIds)
+      .map((id) => entities.get(id))
+      .filter(
+        (e): e is NonNullable<typeof e> => e !== undefined && !e.isDeleted,
+      );
+  }, [entities, entitiesByType]);
+
+  // Get all obstacle entities for rendering at canvas root (global positions)
+  const obstacleEntities = useMemo(() => {
+    const obstacleIds = entitiesByType.get("obstacle");
+    if (!obstacleIds) return [];
+    return Array.from(obstacleIds)
+      .map((id) => entities.get(id))
+      .filter(
+        (e): e is NonNullable<typeof e> => e !== undefined && !e.isDeleted,
+      );
+  }, [entities, entitiesByType]);
 
   // debug leva tools
   const {
@@ -262,6 +286,16 @@ function SceneContent() {
       {/* Floor/Zone entities */}
       {floorIds.map((floorId) => (
         <Zone key={floorId} zoneId={floorId} />
+      ))}
+
+      {/* Rack entities - rendered at canvas root with global positions */}
+      {rackEntities.map((rack) => (
+        <Rack key={rack.tempId} rackId={rack.tempId} />
+      ))}
+
+      {/* Obstacle entities - rendered at canvas root with global positions */}
+      {obstacleEntities.map((obstacle) => (
+        <Obstacle key={obstacle.tempId} obstacleId={obstacle.tempId} />
       ))}
 
       {/* Camera controls with constraints */}

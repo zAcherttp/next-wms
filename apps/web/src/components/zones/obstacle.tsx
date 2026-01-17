@@ -85,60 +85,34 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
   }, [entity]);
 
   // Callback to apply confirmed transforms with validation + collision + Convex sync
+  // Positions are now GLOBAL - TransformControls with space="world" returns world coords
   const handleConfirm = useCallback(
     async (updates: { position?: Vec3; rotation?: Vec3 }) => {
       if (isCommitting) return;
       setIsCommitting(true);
 
-      // TransformControls already provides position in LOCAL space (relative to parent zone)
-      // Only apply guardrails and bounds clamping
-      const localUpdates = { ...updates };
-      if (updates.position && entity) {
-        // Enforce y=0 for ground placement
-        localUpdates.position = {
-          x: updates.position.x,
+      // Global position updates - only apply guardrails
+      const globalUpdates = { ...updates };
+      if (updates.position) {
+        // Round to 2 decimal places to avoid floating-point precision issues
+        globalUpdates.position = {
+          x: Math.round(updates.position.x * 100) / 100,
           y: 0, // Guardrail: always ground level
-          z: updates.position.z,
+          z: Math.round(updates.position.z * 100) / 100,
         };
-
-        // Clamp to floor bounds
-        const store = useLayoutStore.getState();
-        let parent = entity.parentId
-          ? store.getEntityByRealId(entity.parentId)
-          : null;
-        if (!parent && entity.parentId) {
-          parent = store.getEntity(entity.parentId as string);
-        }
-        if (parent?.storageBlockType === "floor") {
-          const floorDims = parent.zoneAttributes.dimensions as {
-            width: number;
-            length?: number;
-            depth?: number;
-          };
-          const floorWidth = floorDims?.width ?? 50;
-          const floorLength = floorDims?.length ?? floorDims?.depth ?? 50;
-
-          localUpdates.position.x = Math.max(
-            0,
-            Math.min(localUpdates.position.x, floorWidth - dimensions.width),
-          );
-          localUpdates.position.z = Math.max(
-            0,
-            Math.min(localUpdates.position.z, floorLength - dimensions.depth),
-          );
-        }
       }
 
       // Enforce rotation guardrail: only y rotation allowed
       if (updates.rotation) {
-        localUpdates.rotation = {
+        globalUpdates.rotation = {
           x: 0, // Guardrail: no x rotation
           y: updates.rotation.y,
           z: 0, // Guardrail: no z rotation
         };
       }
 
-      const result = await commitUpdate(obstacleId, localUpdates, {
+      // commitUpdate handles: validation, floor transfer detection, 4-corner bounds, collision
+      const result = await commitUpdate(obstacleId, globalUpdates, {
         showToast: true,
       });
 
@@ -162,7 +136,7 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
 
       setIsCommitting(false);
     },
-    [obstacleId, commitUpdate, dimensions, isCommitting, entity],
+    [obstacleId, commitUpdate, dimensions, isCommitting],
   );
 
   // Store original position when transform starts
@@ -213,7 +187,7 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
         <TransformControls
           object={groupRef.current}
           mode="translate"
-          space="local"
+          space="world"
           translationSnap={TRANSLATION_SNAP}
           showY={false}
           onMouseUp={() => {
@@ -230,7 +204,7 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
         <TransformControls
           object={groupRef.current}
           mode="rotate"
-          space="local"
+          space="world"
           rotationSnap={ROTATION_SNAP}
           showX={false}
           showZ={false}

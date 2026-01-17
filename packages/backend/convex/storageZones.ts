@@ -38,14 +38,17 @@ export const update = mutation({
   args: {
     id: v.id("storage_zones"),
     name: v.optional(v.string()),
+    parentId: v.optional(v.id("storage_zones")),
     zoneTypeId: v.optional(v.id("system_lookups")),
     zoneAttributes: v.record(v.string(), v.any()),
   },
-  handler: async (ctx, { id, zoneAttributes, name, zoneTypeId }) => {
+  handler: async (ctx, { id, zoneAttributes, name, zoneTypeId, parentId }) => {
     const existing = await ctx.db.get(id);
     if (!existing) throw new Error("Entity not found");
     
     await ctx.db.patch(id, {
+      // Only include parentId if explicitly provided (not undefined)
+      ...(parentId !== undefined && { parentId }),
       zoneAttributes,
       zoneTypeId,
       name,

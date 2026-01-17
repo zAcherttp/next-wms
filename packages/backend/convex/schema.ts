@@ -485,7 +485,6 @@ export default defineSchema({
     vehicleArrivedAt: v.optional(v.number()),
     createdByUserId: v.id("users"),
     outboundStatusTypeId: v.id("system_lookups"),
-    vehicleArrivedAt: v.optional(v.number()), // Timestamp when vehicle arrived
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
   })

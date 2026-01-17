@@ -106,51 +106,236 @@ function validateFloorResize(
 }
 
 /**
- * Get world position for an entity by adding parent zone offset
- * Entities with a floor/zone parent have positions relative to that zone.
+ * Get the 4 corners of an entity's bounding box in XZ plane (global coords)
+ * Used for checking if entity is fully within a floor zone
  */
-function getWorldPosition(
-  localPosition: Vec3,
-  parentId: Id<"storage_zones"> | string | null,
-): Vec3 {
-  if (!parentId) {
-    return localPosition; // Root-level entity, position is already world
-  }
+function getEntityCorners(
+  position: Vec3,
+  dimensions: Dimensions,
+  rotationY = 0,
+): { x: number; z: number }[] {
+  const halfW = dimensions.width / 2;
+  const halfD = dimensions.depth / 2;
+  const cos = Math.cos(rotationY);
+  const sin = Math.sin(rotationY);
 
+  // Entity center (position is at corner, shift to center)
+  const centerX = position.x + halfW;
+  const centerZ = position.z + halfD;
+
+  // Calculate rotated corners
+  const corners = [
+    { localX: -halfW, localZ: -halfD }, // bottom-left
+    { localX: halfW, localZ: -halfD }, // bottom-right
+    { localX: halfW, localZ: halfD }, // top-right
+    { localX: -halfW, localZ: halfD }, // top-left
+  ];
+
+  return corners.map(({ localX, localZ }) => ({
+    x: localX * cos - localZ * sin + centerX,
+    z: localX * sin + localZ * cos + centerZ,
+  }));
+}
+
+/**
+ * Check if all 4 corners of an entity are within a floor's bounds
+ */
+function isFullyWithinFloor(
+  entityPosition: Vec3,
+  entityDimensions: Dimensions,
+  entityRotationY: number,
+  floorPosition: Vec3,
+  floorDimensions: { width: number; length: number },
+): boolean {
+  const corners = getEntityCorners(
+    entityPosition,
+    entityDimensions,
+    entityRotationY,
+  );
+
+  const minX = floorPosition.x;
+  const maxX = floorPosition.x + floorDimensions.width;
+  const minZ = floorPosition.z;
+  const maxZ = floorPosition.z + floorDimensions.length;
+
+  return corners.every(
+    (corner) =>
+      corner.x >= minX &&
+      corner.x <= maxX &&
+      corner.z >= minZ &&
+      corner.z <= maxZ,
+  );
+}
+
+/**
+ * Find the closest floor to a given position
+ * Returns the floor that contains most of the entity, or the nearest one
+ */
+function findClosestFloor(
+  entityPosition: Vec3,
+  entityDimensions: Dimensions,
+  entityRotationY: number,
+  excludeFloorTempId?: string,
+): { floorTempId: string; floorRealId: Id<"storage_zones"> | undefined } | null {
   const store = useLayoutStore.getState();
-  // Try to get parent by realId first, then by tempId
-  let parent = store.getEntityByRealId(parentId as Id<"storage_zones">);
-  if (!parent) {
-    parent = store.getEntity(parentId as string);
+
+  // Get entity center position
+  const centerX = entityPosition.x + entityDimensions.width / 2;
+  const centerZ = entityPosition.z + entityDimensions.depth / 2;
+
+  let bestFloor: {
+    tempId: string;
+    realId: Id<"storage_zones"> | undefined;
+    distance: number;
+    containsCenter: boolean;
+    cornerCount: number;
+  } | null = null;
+
+  for (const [tempId, entity] of store.entities) {
+    if (entity.storageBlockType !== "floor") continue;
+    if (entity.isDeleted) continue;
+    if (excludeFloorTempId && tempId === excludeFloorTempId) continue;
+
+    const floorPos = entity.zoneAttributes.position as Vec3 | undefined;
+    const floorDims = entity.zoneAttributes.dimensions as
+      | { width: number; length: number }
+      | undefined;
+
+    if (!floorPos || !floorDims) continue;
+
+    const floorMinX = floorPos.x;
+    const floorMaxX = floorPos.x + floorDims.width;
+    const floorMinZ = floorPos.z;
+    const floorMaxZ = floorPos.z + floorDims.length;
+
+    // Check if entity center is within this floor
+    const containsCenter =
+      centerX >= floorMinX &&
+      centerX <= floorMaxX &&
+      centerZ >= floorMinZ &&
+      centerZ <= floorMaxZ;
+
+    // Count how many corners are within this floor
+    const corners = getEntityCorners(
+      entityPosition,
+      entityDimensions,
+      entityRotationY,
+    );
+    const cornerCount = corners.filter(
+      (c) =>
+        c.x >= floorMinX &&
+        c.x <= floorMaxX &&
+        c.z >= floorMinZ &&
+        c.z <= floorMaxZ,
+    ).length;
+
+    // Calculate distance from entity center to floor center
+    const floorCenterX = (floorMinX + floorMaxX) / 2;
+    const floorCenterZ = (floorMinZ + floorMaxZ) / 2;
+    const dx = centerX - floorCenterX;
+    const dz = centerZ - floorCenterZ;
+    const distance = Math.sqrt(dx * dx + dz * dz);
+
+    // Prioritize: center contained > more corners > closer distance
+    if (!bestFloor) {
+      bestFloor = {
+        tempId,
+        realId: entity._id,
+        distance,
+        containsCenter,
+        cornerCount,
+      };
+    } else {
+      const betterCenter = containsCenter && !bestFloor.containsCenter;
+      const sameCenter = containsCenter === bestFloor.containsCenter;
+      const moreCorners = sameCenter && cornerCount > bestFloor.cornerCount;
+      const closer =
+        sameCenter &&
+        cornerCount === bestFloor.cornerCount &&
+        distance < bestFloor.distance;
+
+      if (betterCenter || moreCorners || closer) {
+        bestFloor = {
+          tempId,
+          realId: entity._id,
+          distance,
+          containsCenter,
+          cornerCount,
+        };
+      }
+    }
   }
 
-  if (!parent?.zoneAttributes) {
-    return localPosition;
-  }
+  if (!bestFloor) return null;
 
-  // Get parent's world position (recursively handles nested zones)
-  const parentPos = parent.zoneAttributes.position as Vec3 | undefined;
-  if (!parentPos) {
-    return localPosition;
-  }
-
-  // Child positions are relative to parent origin
   return {
-    x: localPosition.x + parentPos.x,
-    y: localPosition.y + parentPos.y,
-    z: localPosition.z + parentPos.z,
+    floorTempId: bestFloor.tempId,
+    floorRealId: bestFloor.realId,
+  };
+}
+
+/**
+ * Clamp position so all 4 corners stay within floor bounds
+ */
+function clampToFloorBounds(
+  entityPosition: Vec3,
+  entityDimensions: Dimensions,
+  entityRotationY: number,
+  floorPosition: Vec3,
+  floorDimensions: { width: number; length: number },
+): Vec3 {
+  // For simplicity with rotation, use bounding box approach
+  const corners = getEntityCorners(
+    entityPosition,
+    entityDimensions,
+    entityRotationY,
+  );
+
+  // Find min/max of corners
+  let minCornerX = corners[0].x;
+  let maxCornerX = corners[0].x;
+  let minCornerZ = corners[0].z;
+  let maxCornerZ = corners[0].z;
+  for (const c of corners) {
+    minCornerX = Math.min(minCornerX, c.x);
+    maxCornerX = Math.max(maxCornerX, c.x);
+    minCornerZ = Math.min(minCornerZ, c.z);
+    maxCornerZ = Math.max(maxCornerZ, c.z);
+  }
+
+  // Floor bounds
+  const floorMinX = floorPosition.x;
+  const floorMaxX = floorPosition.x + floorDimensions.width;
+  const floorMinZ = floorPosition.z;
+  const floorMaxZ = floorPosition.z + floorDimensions.length;
+
+  // Calculate how much to shift
+  let shiftX = 0;
+  let shiftZ = 0;
+
+  if (minCornerX < floorMinX) shiftX = floorMinX - minCornerX;
+  else if (maxCornerX > floorMaxX) shiftX = floorMaxX - maxCornerX;
+
+  if (minCornerZ < floorMinZ) shiftZ = floorMinZ - minCornerZ;
+  else if (maxCornerZ > floorMaxZ) shiftZ = floorMaxZ - maxCornerZ;
+
+  return {
+    x: entityPosition.x + shiftX,
+    y: entityPosition.y,
+    z: entityPosition.z + shiftZ,
   };
 }
 
 /**
  * Check collision for proposed position/rotation/dimensions
+ * With global positioning, all positions are already in world coordinates
  */
 function checkCollisionForUpdate(
-  entityId: string, // Now accepts tempId
+  entityId: string, // tempId
   currentAttrs: Record<string, unknown>,
   updates: Record<string, unknown>,
   blockType: BlockType,
-  parentId?: Id<"storage_zones"> | string | null,
+  _parentId?: Id<"storage_zones"> | string | null, // Kept for API compat
 ): { hasCollision: boolean; reason?: string } {
   // Only check collision for racks and obstacles
   if (blockType !== "rack" && blockType !== "obstacle") {
@@ -163,8 +348,8 @@ function checkCollisionForUpdate(
     return { hasCollision: false };
   }
 
-  // Merge current with updates
-  const newLocalPosition =
+  // Merge current with updates - positions are now global
+  const newPosition =
     (updates.position as Vec3) ?? (currentAttrs.position as Vec3);
   const newRotation = (updates.rotation as Vec3) ??
     (currentAttrs.rotation as Vec3) ?? { x: 0, y: 0, z: 0 };
@@ -172,16 +357,13 @@ function checkCollisionForUpdate(
     (updates.dimensions as Dimensions) ??
     (currentAttrs.dimensions as Dimensions);
 
-  if (!newLocalPosition || !newDimensions) {
+  if (!newPosition || !newDimensions) {
     return { hasCollision: false };
   }
 
-  // Convert local position to world position for collision check
-  const newWorldPosition = getWorldPosition(newLocalPosition, parentId ?? null);
-
-  // Create OBB for proposed position (in world coords)
+  // Create OBB for proposed position (already global coords)
   const proposedOBB = createOBB2D(
-    newWorldPosition,
+    newPosition,
     newDimensions,
     newRotation.y ?? 0,
   );
@@ -191,7 +373,6 @@ function checkCollisionForUpdate(
 
   for (const [tempId, entity] of entities) {
     // Skip self and deleted entities
-    // Compare by tempId since entityId is now tempId
     if (tempId === entityId || entity.isDeleted) continue;
 
     // Only check collidable entity types
@@ -202,16 +383,14 @@ function checkCollisionForUpdate(
       continue;
 
     const attrs = entity.zoneAttributes;
-    const localPos = attrs.position as Vec3 | undefined;
+    const pos = attrs.position as Vec3 | undefined;
     const dims = attrs.dimensions as Dimensions | undefined;
     const rot = attrs.rotation as Vec3 | undefined;
 
-    if (!localPos || !dims) continue;
+    if (!pos || !dims) continue;
 
-    // Convert other entity's local position to world position
-    const worldPos = getWorldPosition(localPos, entity.parentId);
-
-    const otherOBB = createOBB2D(worldPos, dims, rot?.y ?? 0);
+    // Positions are now global - use directly
+    const otherOBB = createOBB2D(pos, dims, rot?.y ?? 0);
 
     if (checkOBBCollision(proposedOBB, otherOBB)) {
       const name =
@@ -289,14 +468,83 @@ export function useEntityMutation() {
         }
       }
 
-      // 3. COLLISION CHECK - For geometry changes
-      if (hasGeometryChange(updates) && !skipCollision) {
+      // 3. FLOOR TRANSFER & 4-CORNER BOUNDS CHECK - For rack/obstacle position changes
+      let finalUpdates = { ...updates };
+      let newParentId = entity.parentId;
+      
+      if (
+        (entity.storageBlockType === "rack" || entity.storageBlockType === "obstacle") &&
+        "position" in updates &&
+        !skipCollision
+      ) {
+        const newPosition = updates.position as Vec3;
+        const dims = (updates.dimensions ?? entity.zoneAttributes.dimensions) as Dimensions;
+        const rotY = ((updates.rotation ?? entity.zoneAttributes.rotation) as Vec3 | undefined)?.y ?? 0;
+
+        // Get current parent floor
+        const store = useLayoutStore.getState();
+        const currentFloor = entity.parentId
+          ? store.getEntityByRealId(entity.parentId) ?? store.getEntity(entity.parentId as string)
+          : null;
+        
+        // Check if entity is fully within current floor
+        let isWithinCurrentFloor = false;
+        if (currentFloor?.storageBlockType === "floor") {
+          const floorPos = currentFloor.zoneAttributes.position as Vec3;
+          const floorDims = currentFloor.zoneAttributes.dimensions as { width: number; length: number };
+          isWithinCurrentFloor = isFullyWithinFloor(newPosition, dims, rotY, floorPos, floorDims);
+        }
+
+        if (!isWithinCurrentFloor) {
+          // Entity moved outside current floor - find closest floor
+          const closestFloor = findClosestFloor(newPosition, dims, rotY);
+          
+          if (closestFloor) {
+            // Get the floor entity
+            const targetFloor = store.getEntity(closestFloor.floorTempId);
+            if (targetFloor) {
+              const targetFloorPos = targetFloor.zoneAttributes.position as Vec3;
+              const targetFloorDims = targetFloor.zoneAttributes.dimensions as { width: number; length: number };
+              
+              // Clamp position to target floor bounds using 4-corner check
+              const clampedPosition = clampToFloorBounds(
+                newPosition,
+                dims,
+                rotY,
+                targetFloorPos,
+                targetFloorDims,
+              );
+              
+              // Update position and parent
+              finalUpdates.position = clampedPosition;
+              
+              // Use floor's _id (real Convex ID) - only set if floor has been saved
+              // If floor is a draft (no _id), keep current parent until floor is saved
+              if (targetFloor._id) {
+                newParentId = targetFloor._id;
+                
+                // Trigger re-parent if floor changed
+                if (entity.parentId !== newParentId) {
+                  finalUpdates = { ...finalUpdates, __newParentId: newParentId };
+                }
+              }
+            }
+          } else {
+            // No valid floor found - reject the move
+            if (showToast) toast.error("Entity must be placed within a floor zone");
+            return { success: false, error: "No valid floor zone found" };
+          }
+        }
+      }
+
+      // 4. COLLISION CHECK - For geometry changes
+      if (hasGeometryChange(finalUpdates) && !skipCollision) {
         const collision = checkCollisionForUpdate(
           id,
           entity.zoneAttributes,
-          updates,
+          finalUpdates,
           entity.storageBlockType,
-          entity.parentId,
+          newParentId,
         );
 
         if (collision.hasCollision) {
@@ -306,10 +554,22 @@ export function useEntityMutation() {
         }
       }
 
-      // 3. OPTIMISTIC UPDATE - Update local state immediately
-      updateEntity(id, updates);
+      // 5. OPTIMISTIC UPDATE - Update local state immediately
+      // Remove internal __newParentId marker before updating
+      const { __newParentId, ...cleanUpdates } = finalUpdates as Record<string, unknown> & { __newParentId?: unknown };
+      updateEntity(id, cleanUpdates);
+      
+      // Handle parent change for cross-floor transfers
+      if (__newParentId && __newParentId !== entity.parentId) {
+        // Update parentId in the store (this needs to be handled by the store)
+        // For now, include it in the updates sent to Convex
+        console.log(`[commitUpdate] Floor transfer: ${entity.parentId} -> ${__newParentId}`);
+      }
 
-      // 4. COMMIT - Sync to Convex (only if entity has a real _id)
+      // Merge with original for Convex update
+      const mergedAttrsForCommit = { ...entity.zoneAttributes, ...cleanUpdates };
+
+      // 6. COMMIT - Sync to Convex (only if entity has a real _id)
       if (!entity._id) {
         // Entity is a draft, no Convex ID yet - just update locally
         return { success: true };
@@ -318,12 +578,14 @@ export function useEntityMutation() {
       try {
         // Sync name from zoneAttributes to entity name if present
         const entityName =
-          (mergedAttrs.name as string | undefined) ?? entity.name;
+          (mergedAttrsForCommit.name as string | undefined) ?? entity.name;
 
         await updateMutation({
           id: entity._id,
-          zoneAttributes: mergedAttrs,
+          zoneAttributes: mergedAttrsForCommit,
           name: entityName,
+          // Include new parentId if floor transfer occurred
+          ...(__newParentId && { parentId: __newParentId as Id<"storage_zones"> }),
         });
         return { success: true };
       } catch (err) {

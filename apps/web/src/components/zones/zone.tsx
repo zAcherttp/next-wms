@@ -1,13 +1,11 @@
-// Zone/Floor component - renders floor bounds and child entities
-// Migrated to use new SmartStore with StorageEntity
+// Zone/Floor component - renders floor bounds only
+// Child entities (racks, obstacles) are now rendered at canvas root with global positions
 
 import { Plane, Text, Wireframe } from "@react-three/drei";
 import { useTheme } from "next-themes";
 import type React from "react";
 import { useMemo } from "react";
 import * as THREE from "three";
-import { Obstacle } from "@/components/zones/obstacle";
-import { Rack } from "@/components/zones/rack";
 import { useLayoutStore } from "@/store/layout-editor-store";
 
 // ============================================================================
@@ -35,16 +33,6 @@ export const Zone: React.FC<{ zoneId: string }> = ({ zoneId }) => {
 
   // Get entity from new store (zoneId is now tempId)
   const entity = useLayoutStore((s) => s.entities.get(zoneId));
-  const getChildren = useLayoutStore((s) => s.getChildren);
-
-  // Get child entities (racks and obstacles) - use tempId
-  const childRacks = useMemo(() => {
-    return getChildren(zoneId, "rack");
-  }, [getChildren, zoneId]);
-
-  const childObstacles = useMemo(() => {
-    return getChildren(zoneId, "obstacle");
-  }, [getChildren, zoneId]);
 
   // Extract attributes from entity
   const { position, dimensions, color, name } = useMemo(() => {
@@ -71,7 +59,7 @@ export const Zone: React.FC<{ zoneId: string }> = ({ zoneId }) => {
   const length = dimensions.length;
 
   return (
-    // Zone group - positioned at zone origin. Children use positions relative to this.
+    // Zone group - positioned at zone origin
     <group position={[position.x, position.y, position.z]}>
       {/* Zone floor - positioned at zone center (relative to zone origin) */}
       <Plane
@@ -96,16 +84,7 @@ export const Zone: React.FC<{ zoneId: string }> = ({ zoneId }) => {
       >
         {name}
       </Text>
-
-      {/* Racks - child entities (positions are zone-relative) */}
-      {childRacks.map((rack) => (
-        <Rack key={rack.tempId} rackId={rack.tempId} />
-      ))}
-
-      {/* Obstacles - child entities (positions are zone-relative) */}
-      {childObstacles.map((obstacle) => (
-        <Obstacle key={obstacle.tempId} obstacleId={obstacle.tempId} />
-      ))}
+      {/* Child entities (racks, obstacles) are now rendered at canvas root */}
     </group>
   );
 };

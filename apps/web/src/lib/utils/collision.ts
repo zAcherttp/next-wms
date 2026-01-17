@@ -589,14 +589,12 @@ export function validatePlacement(
     case "rack":
     case "obstacle": {
       // Full collision check + bounds check
+      // Positions are now GLOBAL - use directly
       const bounds = getParentBounds(parentId);
-
-      // Convert local position to world position for collision check
-      const worldPosition = getWorldPosition(position, parentId);
 
       // Check bounds first (faster)
       const withinBounds = isWithinBounds(
-        worldPosition,
+        position, // Already global
         dimensions,
         bounds,
         rotation?.y ?? 0,
@@ -616,7 +614,7 @@ export function validatePlacement(
       // Check collisions - only against entities in the same parent floor
       const collisionResult = checkCollisions(
         {
-          position: worldPosition,
+          position, // Already global
           dimensions,
           rotationY: rotation?.y ?? 0,
           bounds,
