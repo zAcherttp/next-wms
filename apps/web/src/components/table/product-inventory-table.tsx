@@ -31,6 +31,7 @@ import {
   Package,
   PackageX,
 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
@@ -74,7 +75,6 @@ import {
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
-import { ProductInventoryDetailDialog } from "@/components/product-inventory-detail-dialog";
 
 // Type for product inventory item
 export type ProductInventoryItem = {
@@ -119,6 +119,10 @@ interface ProductInventoryTableProps {
 export function ProductInventoryTable({
   onViewDetails,
 }: ProductInventoryTableProps) {
+  const router = useRouter();
+  const params = useParams();
+  const workspace = params.workspace as string;
+  
   const { organizationId } = useCurrentUser();
   const { currentBranch } = useBranches({ organizationId });
 
@@ -133,9 +137,6 @@ export function ProductInventoryTable({
   const [stockStatusFilter, setStockStatusFilter] = React.useState<string[]>(
     []
   );
-  const [selectedProductId, setSelectedProductId] =
-    React.useState<Id<"products"> | null>(null);
-  const [isDetailDialogOpen, setIsDetailDialogOpen] = React.useState(false);
 
   // Fetch product inventory data
   const { data: products, isLoading } = useQuery({
@@ -197,11 +198,10 @@ export function ProductInventoryTable({
 
   const handleViewDetails = React.useCallback(
     (productId: Id<"products">) => {
-      setSelectedProductId(productId);
-      setIsDetailDialogOpen(true);
+      router.push(`/${workspace}/inventory/products/${productId}`);
       onViewDetails?.(productId);
     },
-    [onViewDetails]
+    [router, workspace, onViewDetails]
   );
 
   const getStockStatusBadge = (status: string) => {
@@ -440,15 +440,6 @@ export function ProductInventoryTable({
 
   return (
     <div className="space-y-4">
-      {/* Product Detail Dialog */}
-      {selectedProductId && (
-        <ProductInventoryDetailDialog
-          productId={selectedProductId}
-          open={isDetailDialogOpen}
-          onOpenChange={setIsDetailDialogOpen}
-        />
-      )}
-
       {/* Search and Filter Bar */}
       <div className="flex items-center justify-between gap-4">
         <InputGroup className="max-w-sm">

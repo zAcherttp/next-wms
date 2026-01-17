@@ -9,7 +9,6 @@ import {
   Barcode,
   Box,
   Calendar,
-  DollarSign,
   Info,
   Layers,
   MapPin,
@@ -22,7 +21,6 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
@@ -44,25 +42,59 @@ import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
 
+// --- Components ---
+
 interface InfoItemProps {
   icon: React.ReactNode;
   label: string;
   value: React.ReactNode;
+  subValue?: string;
 }
 
-function InfoItem({ icon, label, value }: InfoItemProps) {
+function InfoItem({ icon, label, value, subValue }: InfoItemProps) {
   return (
-    <div className="flex items-start gap-3 py-2">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+    <div className="flex items-start gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:bg-accent/5">
+      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="text-muted-foreground text-xs uppercase tracking-wide">{label}</p>
-        <p className="font-medium text-sm leading-snug">{value ?? "-"}</p>
+        <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-1">
+          {label}
+        </p>
+        <p className="font-semibold text-base leading-tight truncate" title={String(value)}>
+          {value ?? "-"}
+        </p>
+        {subValue && (
+          <p className="text-muted-foreground text-xs mt-1">{subValue}</p>
+        )}
       </div>
     </div>
   );
 }
+
+interface StatCardProps {
+  label: string;
+  value: string | number;
+  className?: string;
+  valueClassName?: string;
+}
+
+function StatCard({ label, value, className, valueClassName }: StatCardProps) {
+  return (
+    <Card className={cn("overflow-hidden", className)}>
+      <CardContent className="p-6">
+        <p className="text-muted-foreground text-xs font-semibold uppercase tracking-wider mb-2">
+          {label}
+        </p>
+        <p className={cn("text-3xl font-bold tracking-tight", valueClassName)}>
+          {value}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+// --- Main Dialog Component ---
 
 interface ProductInventoryDetailDialogProps {
   productId: Id<"products">;
@@ -91,9 +123,9 @@ export function ProductInventoryDetailDialog({
       return (
         <Badge
           variant="outline"
-          className="bg-red-500/10 text-red-600 border-red-500/60"
+          className="bg-red-500/10 text-red-600 border-red-200 h-7 px-3 gap-1.5"
         >
-          <PackageX className="mr-1 h-3 w-3" />
+          <PackageX className="h-3.5 w-3.5" />
           Out of Stock
         </Badge>
       );
@@ -102,9 +134,9 @@ export function ProductInventoryDetailDialog({
       return (
         <Badge
           variant="outline"
-          className="bg-yellow-500/10 text-yellow-600 border-yellow-500/60"
+          className="bg-yellow-500/10 text-yellow-600 border-yellow-200 h-7 px-3 gap-1.5"
         >
-          <AlertTriangle className="mr-1 h-3 w-3" />
+          <AlertTriangle className="h-3.5 w-3.5" />
           Low Stock
         </Badge>
       );
@@ -112,9 +144,9 @@ export function ProductInventoryDetailDialog({
     return (
       <Badge
         variant="outline"
-        className="bg-green-500/10 text-green-600 border-green-500/60"
+        className="bg-green-500/10 text-green-600 border-green-200 h-7 px-3 gap-1.5"
       >
-        <Package className="mr-1 h-3 w-3" />
+        <Package className="h-3.5 w-3.5" />
         In Stock
       </Badge>
     );
@@ -139,25 +171,31 @@ export function ProductInventoryDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[1400px] max-h-[90vh] flex flex-col gap-0 p-0 overflow-hidden">
-        <DialogHeader className="px-6 pt-6 pb-4 shrink-0 bg-background z-10">
+      <DialogContent className="w-[95vw] max-w-6xl p-0 gap-0 max-h-[90vh] flex flex-col overflow-hidden">
+        <DialogHeader className="px-8 py-5 border-b shrink-0 bg-background z-10">
           <div className="flex items-center justify-between">
-            <DialogTitle className="flex items-center gap-2">
-              <Package className="h-5 w-5" />
+            <DialogTitle className="flex items-center gap-2 text-xl">
+              <Package className="h-5 w-5 text-muted-foreground" />
               Product Inventory Details
             </DialogTitle>
+            {/* Header Status Badges (Always visible) */}
             {productDetail && (
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
+                 <div className="hidden sm:flex items-center gap-2 text-sm text-muted-foreground mr-2">
+                    <span className="bg-primary/10 px-2 py-0.5 rounded text-primary font-mono text-xs">
+                         ID: {productDetail.product._id.slice(-6)}
+                    </span>
+                 </div>
                 {getStockStatusBadge(
                   productDetail.summary.totalQuantity,
                   productDetail.product.reorderPoint ?? 10
                 )}
                 {productDetail.product.isActive ? (
-                  <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/60">
+                  <Badge variant="secondary" className="bg-green-100 text-green-700 h-7 px-3">
                     Active
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="bg-gray-500/10 text-gray-600 border-gray-500/60">
+                  <Badge variant="secondary" className="bg-gray-100 text-gray-700 h-7 px-3">
                     Inactive
                   </Badge>
                 )}
@@ -167,377 +205,283 @@ export function ProductInventoryDetailDialog({
         </DialogHeader>
 
         {isLoading ? (
-          <div className="flex h-40 items-center justify-center px-6">
-            <p className="text-muted-foreground">Loading product details...</p>
+          <div className="flex h-64 items-center justify-center">
+            <div className="flex flex-col items-center gap-2">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                <p className="text-muted-foreground animate-pulse">Loading product details...</p>
+            </div>
           </div>
         ) : !productDetail ? (
-          <div className="flex h-40 items-center justify-center px-6">
-            <p className="text-muted-foreground">Product not found.</p>
+          <div className="flex h-64 items-center justify-center">
+            <p className="text-muted-foreground text-lg">Product not found.</p>
           </div>
         ) : (
-          <div className="flex-1 w-full overflow-y-auto min-h-0">
-            <div className="px-8 pb-8 space-y-6">
-              {/* Product Information Card */}
-              <Card>
-                <CardHeader className="pb-4">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Info className="h-4 w-4" />
-                    Product Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_auto_1fr] gap-8">
-                    {/* Left side - Product details */}
-                    <div className="space-y-3">
-                      <div>
-                        <h3 className="text-2xl font-semibold leading-tight mb-3">
-                          {productDetail.product.name}
-                        </h3>
-                        {productDetail.product.description && (
-                          <p className="text-muted-foreground text-sm leading-relaxed">
-                            {productDetail.product.description}
-                          </p>
+          <div className="flex-1 overflow-y-auto bg-muted/5">
+            <div className="p-8 space-y-8">
+              
+              {/* SECTION 1: Header Info & Attributes */}
+              <div className="space-y-6">
+                <div className="flex flex-col md:flex-row justify-between items-start gap-6">
+                    <div className="space-y-2 max-w-3xl">
+                        <h2 className="text-3xl font-bold tracking-tight text-foreground">
+                            {productDetail.product.name}
+                        </h2>
+                        {productDetail.product.description ? (
+                            <p className="text-muted-foreground text-base leading-relaxed">
+                                {productDetail.product.description}
+                            </p>
+                        ) : (
+                            <p className="text-muted-foreground italic">No description available.</p>
                         )}
-                      </div>
                     </div>
+                </div>
 
-                    <Separator orientation="vertical" className="hidden lg:block" />
-                    <Separator className="lg:hidden" />
-
-                    {/* Right side - Product attributes in 2 columns */}
-                    <div className="grid grid-cols-2 gap-x-8 gap-y-2">
-                      <InfoItem
-                        icon={<Tag className="h-4 w-4 text-primary" />}
-                        label="Category"
-                        value={productDetail.product.categoryName}
-                      />
-                      <InfoItem
-                        icon={<Box className="h-4 w-4 text-primary" />}
-                        label="Brand"
-                        value={productDetail.product.brandName}
-                      />
-                      <InfoItem
-                        icon={<Calendar className="h-4 w-4 text-primary" />}
-                        label="Shelf Life"
-                        value={
-                          productDetail.product.shelfLifeDays
-                            ? `${productDetail.product.shelfLifeDays} days`
-                            : "N/A"
-                        }
-                      />
-                      <InfoItem
-                        icon={<AlertTriangle className="h-4 w-4 text-primary" />}
-                        label="Reorder Point"
-                        value={productDetail.product.reorderPoint ?? "Not Set"}
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Summary Stats - Horizontal row */}
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
-                <Card className="bg-linear-to-br from-primary/5 to-primary/10 border-primary/20">
-                  <CardContent className="pt-6 pb-5 px-6">
-                    <p className="text-muted-foreground text-xs uppercase tracking-wide mb-2">
-                      Total Quantity
-                    </p>
-                    <p className="text-3xl font-bold text-primary">
-                      {productDetail.summary.totalQuantity.toLocaleString()}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6 pb-5 px-6">
-                    <p className="text-muted-foreground text-xs uppercase tracking-wide mb-2">
-                      Variants
-                    </p>
-                    <p className="text-3xl font-bold">
-                      {productDetail.summary.totalVariants}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardContent className="pt-6 pb-5 px-6">
-                    <p className="text-muted-foreground text-xs uppercase tracking-wide mb-2">
-                      Batches
-                    </p>
-                    <p className="text-3xl font-bold">
-                      {productDetail.summary.totalBatches}
-                    </p>
-                  </CardContent>
-                </Card>
-                <Card className="bg-linear-to-br from-green-500/5 to-green-500/10 border-green-500/20">
-                  <CardContent className="pt-6 pb-5 px-6">
-                    <p className="text-muted-foreground text-xs uppercase tracking-wide mb-2">
-                      Total Value
-                    </p>
-                    <p className="text-3xl font-bold text-green-600 whitespace-nowrap">
-                      {formatCurrency(productDetail.summary.totalValue)}
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <InfoItem
+                    icon={<Tag className="h-5 w-5" />}
+                    label="Category"
+                    value={productDetail.product.categoryName}
+                  />
+                  <InfoItem
+                    icon={<Box className="h-5 w-5" />}
+                    label="Brand"
+                    value={productDetail.product.brandName}
+                  />
+                  <InfoItem
+                    icon={<Calendar className="h-5 w-5" />}
+                    label="Shelf Life"
+                    value={
+                      productDetail.product.shelfLifeDays
+                        ? `${productDetail.product.shelfLifeDays} days`
+                        : "N/A"
+                    }
+                  />
+                  <InfoItem
+                    icon={<AlertTriangle className="h-5 w-5" />}
+                    label="Reorder Point"
+                    value={productDetail.product.reorderPoint ?? "Not Set"}
+                    subValue={productDetail.product.reorderPoint ? "Min quantity alert" : undefined}
+                  />
+                </div>
               </div>
 
-              {/* Tabs for Variants and Batches */}
-              <Tabs defaultValue="variants" className="w-full">
-                <TabsList className="grid w-full max-w-md grid-cols-2">
-                  <TabsTrigger value="variants">
-                    Variants ({productDetail.variants.length})
-                  </TabsTrigger>
-                  <TabsTrigger value="batches">
-                    Batches ({productDetail.batches.length})
-                  </TabsTrigger>
-                </TabsList>
+              <Separator />
 
-                <TabsContent value="variants" className="mt-4">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Layers className="h-4 w-4" />
-                        Product Variants (SKUs)
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>SKU Code</TableHead>
-                              <TableHead>Description</TableHead>
-                              <TableHead className="text-right">Qty</TableHead>
-                              <TableHead className="text-right">
-                                Cost Price
-                              </TableHead>
-                              <TableHead className="text-right">
-                                Sell Price
-                              </TableHead>
-                              <TableHead>Properties</TableHead>
-                              <TableHead>Barcodes</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {productDetail.variants.length === 0 ? (
-                              <TableRow>
-                                <TableCell
-                                  colSpan={7}
-                                  className="h-24 text-center text-muted-foreground"
-                                >
-                                  No variants found.
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              productDetail.variants.map((variant) => (
-                                <TableRow key={variant._id}>
-                                  <TableCell className="font-medium">
-                                    {variant.skuCode}
-                                  </TableCell>
-                                  <TableCell className="max-w-[200px] truncate">
+              {/* SECTION 2: Summary Statistics */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <StatCard 
+                    label="Total Quantity" 
+                    value={productDetail.summary.totalQuantity.toLocaleString()}
+                    className="bg-blue-50/50 border-blue-100"
+                    valueClassName="text-blue-700"
+                />
+                <StatCard 
+                    label="Active Variants" 
+                    value={productDetail.summary.totalVariants}
+                />
+                <StatCard 
+                    label="Total Batches" 
+                    value={productDetail.summary.totalBatches}
+                />
+                <StatCard 
+                    label="Total Value" 
+                    value={formatCurrency(productDetail.summary.totalValue)}
+                    className="bg-green-50/50 border-green-100"
+                    valueClassName="text-green-700"
+                />
+              </div>
+
+              {/* SECTION 3: Detailed Tables (Tabs) */}
+              <div className="bg-background rounded-xl border shadow-sm">
+                <Tabs defaultValue="variants" className="w-full">
+                  <div className="px-6 py-4 border-b flex items-center justify-between bg-muted/20">
+                    <TabsList className="h-9">
+                      <TabsTrigger value="variants" className="px-4">
+                        Variants ({productDetail.variants.length})
+                      </TabsTrigger>
+                      <TabsTrigger value="batches" className="px-4">
+                        Batches ({productDetail.batches.length})
+                      </TabsTrigger>
+                    </TabsList>
+                  </div>
+
+                  <TabsContent value="variants" className="m-0 p-0">
+                    <Table>
+                      <TableHeader className="bg-muted/30">
+                        <TableRow>
+                          <TableHead className="pl-6">SKU Code</TableHead>
+                          <TableHead>Description</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                          <TableHead className="text-right">Cost</TableHead>
+                          <TableHead className="text-right">Price</TableHead>
+                          <TableHead>Properties</TableHead>
+                          <TableHead className="pr-6">Barcodes</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {productDetail.variants.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={7} className="h-32 text-center text-muted-foreground">
+                              No variants found.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          productDetail.variants.map((variant) => (
+                            <TableRow key={variant._id} className="hover:bg-muted/5">
+                              <TableCell className="pl-6 font-medium font-mono text-primary">
+                                {variant.skuCode}
+                              </TableCell>
+                              <TableCell className="max-w-[240px]">
+                                <p className="truncate" title={variant.description}>
                                     {variant.description}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <span
-                                      className={cn(
-                                        "font-medium",
-                                        variant.totalQuantity === 0
-                                          ? "text-red-600"
-                                          : variant.totalQuantity <=
-                                              (productDetail.product
-                                                .reorderPoint ?? 10)
-                                            ? "text-yellow-600"
-                                            : ""
-                                      )}
-                                    >
-                                      {variant.totalQuantity.toLocaleString()}
-                                    </span>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {formatCurrency(variant.costPrice)}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {formatCurrency(variant.sellingPrice)}
-                                  </TableCell>
-                                  <TableCell>
-                                    <div className="flex flex-wrap gap-1">
-                                      {variant.weightKg && (
-                                        <Badge
-                                          variant="secondary"
-                                          className="text-xs"
-                                        >
-                                          <Scale className="mr-1 h-3 w-3" />
-                                          {variant.weightKg}kg
-                                        </Badge>
-                                      )}
-                                      {variant.temperatureSensitive && (
-                                        <Badge
-                                          variant="secondary"
-                                          className="text-xs bg-blue-100 text-blue-700"
-                                        >
-                                          <Thermometer className="mr-1 h-3 w-3" />
-                                          Cold
-                                        </Badge>
-                                      )}
-                                      {variant.stackingLimit && (
-                                        <Badge
-                                          variant="secondary"
-                                          className="text-xs"
-                                        >
-                                          Stack: {variant.stackingLimit}
-                                        </Badge>
-                                      )}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    {variant.barcodes.length > 0 ? (
-                                      <div className="flex flex-wrap gap-1">
-                                        {variant.barcodes
-                                          .slice(0, 2)
-                                          .map((barcode, idx) => (
-                                            <Badge
-                                              key={idx}
-                                              variant="outline"
-                                              className="text-xs font-mono"
-                                            >
-                                              <Barcode className="mr-1 h-3 w-3" />
-                                              {barcode}
-                                            </Badge>
-                                          ))}
-                                        {variant.barcodes.length > 2 && (
-                                          <Badge
-                                            variant="outline"
-                                            className="text-xs"
-                                          >
-                                            +{variant.barcodes.length - 2}
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <span className="text-muted-foreground text-sm">
-                                        -
-                                      </span>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="batches" className="mt-4">
-                  <Card>
-                    <CardHeader className="pb-3">
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Warehouse className="h-4 w-4" />
-                        Inventory Batches
-                      </CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="rounded-md border">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>SKU</TableHead>
-                              <TableHead>Location</TableHead>
-                              <TableHead>Branch</TableHead>
-                              <TableHead className="text-right">Qty</TableHead>
-                              <TableHead>Batch #</TableHead>
-                              <TableHead>Received</TableHead>
-                              <TableHead>Expires</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {productDetail.batches.length === 0 ? (
-                              <TableRow>
-                                <TableCell
-                                  colSpan={7}
-                                  className="h-24 text-center text-muted-foreground"
+                                </p>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <span
+                                  className={cn(
+                                    "font-bold inline-block min-w-[30px]",
+                                    variant.totalQuantity === 0
+                                      ? "text-red-600"
+                                      : variant.totalQuantity <=
+                                        (productDetail.product.reorderPoint ?? 10)
+                                      ? "text-yellow-600"
+                                      : "text-foreground"
+                                  )}
                                 >
-                                  No batches found.
-                                </TableCell>
-                              </TableRow>
-                            ) : (
-                              productDetail.batches.map((batch) => {
-                                const isExpiringSoon =
-                                  batch.expiresAt &&
-                                  batch.expiresAt <
-                                    Date.now() + 30 * 24 * 60 * 60 * 1000;
-                                const isExpired =
-                                  batch.expiresAt &&
-                                  batch.expiresAt < Date.now();
+                                  {variant.totalQuantity.toLocaleString()}
+                                </span>
+                              </TableCell>
+                              <TableCell className="text-right text-muted-foreground">
+                                {formatCurrency(variant.costPrice)}
+                              </TableCell>
+                              <TableCell className="text-right font-medium">
+                                {formatCurrency(variant.sellingPrice)}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex flex-wrap gap-1.5">
+                                  {variant.weightKg && (
+                                    <Badge variant="outline" className="text-[10px] h-5 gap-1">
+                                      <Scale className="h-3 w-3" />
+                                      {variant.weightKg}kg
+                                    </Badge>
+                                  )}
+                                  {variant.temperatureSensitive && (
+                                    <Badge variant="secondary" className="text-[10px] h-5 gap-1 bg-blue-50 text-blue-700 border-blue-100">
+                                      <Thermometer className="h-3 w-3" />
+                                      Cold
+                                    </Badge>
+                                  )}
+                                  {variant.stackingLimit && (
+                                    <Badge variant="outline" className="text-[10px] h-5 gap-1">
+                                      <Layers className="h-3 w-3" />
+                                      Max: {variant.stackingLimit}
+                                    </Badge>
+                                  )}
+                                </div>
+                              </TableCell>
+                              <TableCell className="pr-6">
+                                {variant.barcodes.length > 0 ? (
+                                  <div className="flex flex-wrap gap-1">
+                                    {variant.barcodes.slice(0, 2).map((barcode, idx) => (
+                                      <Badge key={idx} variant="secondary" className="text-[10px] font-mono h-5">
+                                        <Barcode className="mr-1 h-3 w-3" />
+                                        {barcode}
+                                      </Badge>
+                                    ))}
+                                    {variant.barcodes.length > 2 && (
+                                      <Badge variant="secondary" className="text-[10px] h-5">
+                                        +{variant.barcodes.length - 2}
+                                      </Badge>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <span className="text-muted-foreground text-sm">-</span>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TabsContent>
 
-                                return (
-                                  <TableRow key={batch._id}>
-                                    <TableCell className="font-medium">
-                                      {batch.skuCode}
-                                    </TableCell>
-                                    <TableCell>
-                                      <div className="flex items-center gap-1">
-                                        <MapPin className="h-3 w-3 text-muted-foreground" />
+                  <TabsContent value="batches" className="m-0 p-0">
+                    <Table>
+                      <TableHeader className="bg-muted/30">
+                        <TableRow>
+                          <TableHead className="pl-6">SKU / Batch</TableHead>
+                          <TableHead>Location</TableHead>
+                          <TableHead className="text-right">Quantity</TableHead>
+                          <TableHead>Received Date</TableHead>
+                          <TableHead className="pr-6">Expiry Status</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {productDetail.batches.length === 0 ? (
+                          <TableRow>
+                            <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                              No active batches found in inventory.
+                            </TableCell>
+                          </TableRow>
+                        ) : (
+                          productDetail.batches.map((batch) => {
+                            const isExpiringSoon =
+                              batch.expiresAt &&
+                              batch.expiresAt < Date.now() + 30 * 24 * 60 * 60 * 1000;
+                            const isExpired =
+                              batch.expiresAt && batch.expiresAt < Date.now();
+
+                            return (
+                              <TableRow key={batch._id} className="hover:bg-muted/5">
+                                <TableCell className="pl-6">
+                                  <div className="flex flex-col">
+                                    <span className="font-medium font-mono text-primary">{batch.skuCode}</span>
+                                    <span className="text-xs text-muted-foreground font-mono mt-0.5">
+                                      #{batch.supplierBatchNumber || batch.internalBatchNumber || "N/A"}
+                                    </span>
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <div className="flex flex-col">
+                                      <span className="text-sm font-medium">{batch.branchName}</span>
+                                      <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                                        <MapPin className="h-3 w-3" />
                                         {batch.zoneName}
                                       </div>
-                                    </TableCell>
-                                    <TableCell>{batch.branchName}</TableCell>
-                                    <TableCell className="text-right font-medium">
-                                      {batch.quantity.toLocaleString()}
-                                    </TableCell>
-                                    <TableCell className="font-mono text-sm">
-                                      {batch.supplierBatchNumber ||
-                                        batch.internalBatchNumber ||
-                                        "-"}
-                                    </TableCell>
-                                    <TableCell>
-                                      {formatDate(batch.receivedAt)}
-                                    </TableCell>
-                                    <TableCell>
-                                      {batch.expiresAt ? (
-                                        <span
-                                          className={cn(
-                                            isExpired
-                                              ? "text-red-600 font-medium"
-                                              : isExpiringSoon
-                                                ? "text-yellow-600 font-medium"
-                                                : ""
-                                          )}
-                                        >
-                                          {formatDate(batch.expiresAt)}
-                                          {isExpired && (
-                                            <Badge
-                                              variant="destructive"
-                                              className="ml-2 text-xs"
-                                            >
-                                              Expired
-                                            </Badge>
-                                          )}
-                                          {isExpiringSoon && !isExpired && (
-                                            <Badge
-                                              variant="outline"
-                                              className="ml-2 text-xs bg-yellow-500/10 text-yellow-600 border-yellow-500/60"
-                                            >
-                                              Expiring Soon
-                                            </Badge>
-                                          )}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <span className="font-bold">{batch.quantity.toLocaleString()}</span>
+                                </TableCell>
+                                <TableCell>
+                                    <span className="text-sm">{formatDate(batch.receivedAt)}</span>
+                                </TableCell>
+                                <TableCell className="pr-6">
+                                  {batch.expiresAt ? (
+                                    <div className="flex items-center gap-2">
+                                        <span className={cn(
+                                            "text-sm",
+                                            isExpired ? "text-red-600 font-medium" : isExpiringSoon ? "text-yellow-600 font-medium" : ""
+                                        )}>
+                                            {formatDate(batch.expiresAt)}
                                         </span>
-                                      ) : (
-                                        <span className="text-muted-foreground">
-                                          -
-                                        </span>
-                                      )}
-                                    </TableCell>
-                                  </TableRow>
-                                );
-                              })
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+                                        {isExpired && <Badge variant="destructive" className="h-5 text-[10px]">Expired</Badge>}
+                                        {isExpiringSoon && !isExpired && <Badge variant="outline" className="h-5 text-[10px] border-yellow-500 text-yellow-600 bg-yellow-50">Expiring</Badge>}
+                                    </div>
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm italic">No Expiry</span>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            );
+                          })
+                        )}
+                      </TableBody>
+                    </Table>
+                  </TabsContent>
+                </Tabs>
+              </div>
+
             </div>
           </div>
         )}
