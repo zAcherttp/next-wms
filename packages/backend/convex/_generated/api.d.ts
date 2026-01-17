@@ -27,6 +27,7 @@ import type * as returnRequest from "../returnRequest.js";
 import type * as seedMockData from "../seedMockData.js";
 import type * as storageZones from "../storageZones.js";
 import type * as suppliers from "../suppliers.js";
+import type * as systemLookups from "../systemLookups.js";
 
 import type {
   ApiFromModules,
@@ -54,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   seedMockData: typeof seedMockData;
   storageZones: typeof storageZones;
   suppliers: typeof suppliers;
+  systemLookups: typeof systemLookups;
 }>;
 
 /**

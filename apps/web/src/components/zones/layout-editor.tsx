@@ -284,7 +284,7 @@ export const WarehouseEditor = forwardRef<
 
     return (
       <div
-        className={`relative h-full min-h-100 w-full overflow-hidden border-t ${className ?? ""}`}
+        className={`relative h-full min-h-0 w-full overflow-hidden border-t ${className ?? ""}`}
       >
         <ErrorBoundary onError={onError}>
           <ResizablePanelGroup direction="horizontal">

@@ -13,7 +13,7 @@ import { EditorPage } from "@/components/zones/editor-page";
 
 export default function Page() {
   return (
-    <div className="flex w-full grow flex-col">
+    <div className="flex min-h-0 w-full grow flex-col overflow-hidden">
       {/* Mobile warning */}
       <div className="flex flex-1 items-center justify-center md:hidden">
         <Empty>
@@ -32,7 +32,7 @@ export default function Page() {
         </Empty>
       </div>
       {/* Desktop view */}
-      <div className="hidden flex-1 md:flex">
+      <div className="hidden min-h-0 flex-1 md:flex">
         <EditorPage />
       </div>
     </div>

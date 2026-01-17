@@ -78,7 +78,7 @@ export function EditorPage() {
   }, [isLoading]);
 
   return (
-    <div className="flex w-full grow flex-col">
+    <div className="flex min-h-0 w-full grow flex-col overflow-hidden">
       <Progress
         value={progress}
         className={`h-1 transition-all duration-300 ${progress === 0 ? "opacity-0" : "opacity-100"}`}

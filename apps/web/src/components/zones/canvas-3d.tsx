@@ -339,7 +339,7 @@ export const Canvas3D: React.FC = () => {
     Math.min(window.devicePixelRatio, 2);
 
   return (
-    <div className="relative h-full w-full">
+    <div className="relative h-full w-full overflow-hidden box-border min-h-0">
       {/* <Leva /> */}
       <Canvas
         shadows={enableShadows}
