@@ -1,7 +1,12 @@
 "use client";
 
-import { Check, MapPin, Plus, Trash2 } from "lucide-react";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { Check, Loader2, MapPin, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -19,7 +24,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { EditableField } from "@/components/ui/editable-field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -43,51 +47,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
-import { MOCK_PO } from "@/mock/data/purchase-orders";
-
-// Extract unique suppliers from mock data
-const MOCK_SUPPLIERS = Array.from(
-  new Set(MOCK_PO.map((po) => po.supplier?.name).filter(Boolean)),
-) as string[];
-
-// Mock branches
-const MOCK_BRANCHES = ["Main Warehouse", "Branch A", "Branch B", "Branch C"];
-
-// Mock SKUs data
-const MOCK_SKUS = [
-  { id: "sku-1", code: "SKU-001A", name: "Industrial Bearing 6mm" },
-  { id: "sku-2", code: "SKU-002B", name: "Stainless Steel Bolt M8" },
-  { id: "sku-3", code: "SKU-003C", name: "Rubber Gasket 50mm" },
-  { id: "sku-4", code: "SKU-004D", name: "Copper Wire 2.5mm" },
-  { id: "sku-5", code: "SKU-005E", name: "Aluminum Sheet 1mm" },
-  { id: "sku-6", code: "SKU-006F", name: "Plastic Container 500ml" },
-  { id: "sku-7", code: "SKU-007G", name: "LED Light Bulb 12W" },
-  { id: "sku-8", code: "SKU-008H", name: "Electric Motor 1HP" },
-  { id: "sku-9", code: "SKU-009I", name: "PVC Pipe 2inch" },
-  { id: "sku-10", code: "SKU-010J", name: "Steel Cable 5mm" },
-];
-
-// Mock Zones data
-const MOCK_ZONES = [
-  { id: "zone-1", name: "Zone A - Receiving" },
-  { id: "zone-2", name: "Zone B - Storage" },
-  { id: "zone-3", name: "Zone C - Cold Storage" },
-  { id: "zone-4", name: "Zone D - Hazardous Materials" },
-  { id: "zone-5", name: "Zone E - Bulk Storage" },
-  { id: "zone-6", name: "Zone F - Fast Moving" },
-  { id: "zone-7", name: "Zone G - Overflow" },
-  { id: "zone-8", name: "Zone H - Returns" },
-];
-
-interface ProductItem {
-  id: string;
-  skuId: string;
-  skuCode: string;
-  skuName: string;
-  quantity: number;
-  zoneId?: string;
-  zoneName?: string;
-}
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import type { PurchaseOrderProductItem } from "@/lib/types";
 
 interface AddPurchaseOrderDialogProps {
   trigger?: React.ReactNode;
@@ -97,29 +59,71 @@ export function AddPurchaseOrderDialog({
   trigger,
 }: AddPurchaseOrderDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const [poCode, setPoCode] = React.useState("PO-00012");
-  const [receivingBranch, setReceivingBranch] = React.useState<string>("");
-  const [supplier, setSupplier] = React.useState<string>("");
-  const [products, setProducts] = React.useState<ProductItem[]>([]);
+  const [receivingBranchId, setReceivingBranchId] = React.useState<string>("");
+  const [supplierId, setSupplierId] = React.useState<string>("");
+  const [products, setProducts] = React.useState<PurchaseOrderProductItem[]>([]);
   const [skuPopoverOpen, setSkuPopoverOpen] = React.useState(false);
   const [zonePopoverOpenId, setZonePopoverOpenId] = React.useState<
     string | null
   >(null);
 
-  // Get list of already selected SKU IDs
-  const selectedSkuIds = products.map((p) => p.skuId);
+  const { userId, organizationId } = useCurrentUser();
+  const { currentBranch, branches } = useBranches({ organizationId });
 
-  // Filter out already selected SKUs
-  const availableSkus = MOCK_SKUS.filter(
-    (sku) => !selectedSkuIds.includes(sku.id),
-  );
+  // Auto-select current branch when dialog opens
+  React.useEffect(() => {
+    if (open && currentBranch && !receivingBranchId) {
+      setReceivingBranchId(currentBranch._id);
+    }
+  }, [open, currentBranch, receivingBranchId]);
 
-  const handleAddProduct = (sku: (typeof MOCK_SKUS)[0]) => {
-    const newProduct: ProductItem = {
+  // Fetch next PO code when branch is selected
+  const { data: nextPoCode } = useQuery({
+    ...convexQuery(api.purchaseOrders.generateNextPurchaseOrderCode, {
+      branchId: receivingBranchId as Id<"branches">,
+    }),
+    enabled: !!receivingBranchId && open,
+  });
+
+  // Fetch active suppliers
+  const { data: suppliers, isLoading: isLoadingSuppliers } = useQuery({
+    ...convexQuery(api.suppliers.getActive, {
+      organizationId: organizationId as Id<"organizations">,
+    }),
+    enabled: !!organizationId && open,
+  });
+
+  // Fetch product variants
+  const { data: productVariants, isLoading: isLoadingProducts } = useQuery({
+    ...convexQuery(api.purchaseOrders.listAllProductVariants, {
+      organizationId: organizationId as Id<"organizations">,
+    }),
+    enabled: !!organizationId && open,
+  });
+
+  // Fetch zones for selected branch
+  const { data: zones, isLoading: isLoadingZones } = useQuery({
+    ...convexQuery(api.storageZones.getByBranch, {
+      branchId: receivingBranchId as Id<"branches">,
+      includeDeleted: false,
+    }),
+    enabled: !!receivingBranchId && open,
+  });
+
+  // Get list of already selected variant IDs
+  const selectedVariantIds = products.map((p) => p.variantId);
+
+  // Filter out already selected products
+  const availableProducts = productVariants?.filter(
+    (pv) => !selectedVariantIds.includes(pv._id)
+  ) ?? [];
+
+  const handleAddProduct = (product: NonNullable<typeof productVariants>[0]) => {
+    const newProduct: PurchaseOrderProductItem = {
       id: String(Date.now()),
-      skuId: sku.id,
-      skuCode: sku.code,
-      skuName: sku.name,
+      variantId: product._id,
+      skuCode: product.skuCode,
+      description: product.description,
       quantity: 1,
     };
     setProducts([...products, newProduct]);
@@ -136,26 +140,91 @@ export function AddPurchaseOrderDialog({
 
   const handleSelectZone = (
     productId: string,
-    zone: (typeof MOCK_ZONES)[0],
+    zone: NonNullable<typeof zones>[0]
   ) => {
     setProducts(
       products.map((p) =>
-        p.id === productId ? { ...p, zoneId: zone.id, zoneName: zone.name } : p,
-      ),
+        p.id === productId ? { ...p, zoneId: zone._id, zoneName: zone.name } : p
+      )
     );
     setZonePopoverOpenId(null);
   };
 
-  const handleCreatePurchaseOrder = () => {
-    // TODO: Implement actual creation logic
-    console.log("Creating purchase order:", {
-      poCode,
-      receivingBranch,
-      supplier,
-      products,
-    });
-    setOpen(false);
+  // Create purchase order mutation
+  const createPurchaseOrder = useConvexMutation(
+    api.purchaseOrders.createPurchaseOrder
+  );
+
+  const { mutate: handleCreatePurchaseOrder, isPending: isCreating } = useMutation({
+    mutationFn: async () => {
+      if (!receivingBranchId || !supplierId || !userId || products.length === 0) {
+        throw new Error("Please fill all required fields");
+      }
+
+      // Validate all products have zones
+      const productsWithoutZones = products.filter((p) => !p.zoneId);
+      if (productsWithoutZones.length > 0) {
+        throw new Error(
+          `Please select a zone for: ${productsWithoutZones.map((p) => p.skuCode).join(", ")}`
+        );
+      }
+
+      return createPurchaseOrder({
+        receivingBranchId: receivingBranchId as Id<"branches">,
+        userId: userId as Id<"users">,
+        supplierId: supplierId as Id<"suppliers">,
+        items: products.map((p) => ({
+          variantId: p.variantId,
+          quantity: p.quantity,
+          zoneId: p.zoneId!,
+        })),
+      });
+    },
+    onSuccess: (result) => {
+      toast.success(`Purchase order ${result.code} created successfully`);
+      // Reset form
+      setReceivingBranchId("");
+      setSupplierId("");
+      setProducts([]);
+      setOpen(false);
+    },
+    onError: (error) => {
+      toast.error(error.message || "Failed to create purchase order");
+    },
+  });
+
+  const handleSubmit = () => {
+    if (!receivingBranchId) {
+      toast.error("Please select a receiving branch");
+      return;
+    }
+    if (!supplierId) {
+      toast.error("Please select a supplier");
+      return;
+    }
+    if (products.length === 0) {
+      toast.error("Please add at least one product");
+      return;
+    }
+    // Validate all products have zones
+    const productsWithoutZones = products.filter((p) => !p.zoneId);
+    if (productsWithoutZones.length > 0) {
+      toast.error(
+        `Please select a zone for: ${productsWithoutZones.map((p) => p.skuCode).join(", ")}`
+      );
+      return;
+    }
+    handleCreatePurchaseOrder();
   };
+
+  // Reset form when dialog closes
+  React.useEffect(() => {
+    if (!open) {
+      setReceivingBranchId("");
+      setSupplierId("");
+      setProducts([]);
+    }
+  }, [open]);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -175,28 +244,28 @@ export function AddPurchaseOrderDialog({
         {/* Form Fields */}
         <div className="flex max-w-150 flex-row gap-4">
           <div className="space-y-2">
-            <Label htmlFor="receiving-branch">
+            <Label htmlFor="po-id">
               PO-ID<span className="text-destructive">*</span>
             </Label>
-            <EditableField
-              value={poCode}
-              onChange={setPoCode}
-              placeholder="Leave blank to auto-generate"
-              inputClassName="min-w-40"
+            <Input
+              id="po-id"
+              value={nextPoCode?.code ?? "Loading..."}
+              disabled
+              className="min-w-40 bg-muted"
             />
           </div>
           <div className="space-y-2">
             <Label htmlFor="receiving-branch">
               Receiving Branch<span className="text-destructive">*</span>
             </Label>
-            <Select value={receivingBranch} onValueChange={setReceivingBranch}>
+            <Select value={receivingBranchId} onValueChange={setReceivingBranchId}>
               <SelectTrigger className="min-w-40">
                 <SelectValue placeholder="Branch" />
               </SelectTrigger>
               <SelectContent>
-                {MOCK_BRANCHES.map((branch) => (
-                  <SelectItem key={branch} value={branch}>
-                    {branch}
+                {branches?.filter((b) => b.isActive && !b.isDeleted).map((branch) => (
+                  <SelectItem key={branch._id} value={branch._id}>
+                    {branch.name}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -207,16 +276,22 @@ export function AddPurchaseOrderDialog({
             <Label htmlFor="supplier">
               Supplier <span className="text-destructive">*</span>
             </Label>
-            <Select value={supplier} onValueChange={setSupplier}>
+            <Select value={supplierId} onValueChange={setSupplierId}>
               <SelectTrigger className="min-w-40">
                 <SelectValue placeholder="Supplier" />
               </SelectTrigger>
               <SelectContent>
-                {MOCK_SUPPLIERS.map((s) => (
-                  <SelectItem key={s} value={s}>
-                    {s}
-                  </SelectItem>
-                ))}
+                {isLoadingSuppliers ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="size-4 animate-spin" />
+                  </div>
+                ) : (
+                  suppliers?.map((s) => (
+                    <SelectItem key={s._id} value={s._id}>
+                      {s.name}
+                    </SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -229,7 +304,7 @@ export function AddPurchaseOrderDialog({
               <TableHeader>
                 <TableRow>
                   <TableHead className="px-3">SKU Code</TableHead>
-                  <TableHead>Product Name</TableHead>
+                  <TableHead>Description</TableHead>
                   <TableHead className="text-center">Quantity</TableHead>
                   <TableHead>Location</TableHead>
                 </TableRow>
@@ -250,7 +325,7 @@ export function AddPurchaseOrderDialog({
                       <TableCell className="px-3 font-medium">
                         {product.skuCode}
                       </TableCell>
-                      <TableCell>{product.skuName}</TableCell>
+                      <TableCell>{product.description}</TableCell>
                       <TableCell className="text-center">
                         <Input
                           type="number"
@@ -259,7 +334,7 @@ export function AddPurchaseOrderDialog({
                           onChange={(e) =>
                             handleUpdateProductQuantity(
                               product.id,
-                              Number.parseInt(e.target.value, 10) || 1,
+                              Number.parseInt(e.target.value, 10) || 1
                             )
                           }
                           className="mx-auto w-20 text-center"
@@ -278,8 +353,9 @@ export function AddPurchaseOrderDialog({
                               size="sm"
                               className={cn(
                                 "w-full justify-start",
-                                !product.zoneName && "text-muted-foreground",
+                                !product.zoneName && "text-muted-foreground"
                               )}
+                              disabled={!receivingBranchId || isLoadingZones}
                             >
                               <MapPin className="mr-1 size-4" />
                               {product.zoneName || "Select zone"}
@@ -291,9 +367,9 @@ export function AddPurchaseOrderDialog({
                               <CommandList>
                                 <CommandEmpty>No zone found.</CommandEmpty>
                                 <CommandGroup>
-                                  {MOCK_ZONES.map((zone) => (
+                                  {zones?.map((zone) => (
                                     <CommandItem
-                                      key={zone.id}
+                                      key={zone._id}
                                       value={zone.name}
                                       onSelect={() =>
                                         handleSelectZone(product.id, zone)
@@ -302,9 +378,9 @@ export function AddPurchaseOrderDialog({
                                       <Check
                                         className={cn(
                                           "mr-2 h-4 w-4",
-                                          product.zoneId === zone.id
+                                          product.zoneId === zone._id
                                             ? "opacity-100"
-                                            : "opacity-0",
+                                            : "opacity-0"
                                         )}
                                       />
                                       {zone.name}
@@ -336,28 +412,37 @@ export function AddPurchaseOrderDialog({
           {/* Add Product Button with SKU Selection */}
           <Popover open={skuPopoverOpen} onOpenChange={setSkuPopoverOpen}>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="mt-4">
-                Add product <Plus className="ml-1 size-4" />
+              <Button variant="outline" className="mt-4" disabled={isLoadingProducts}>
+                {isLoadingProducts ? (
+                  <>
+                    <Loader2 className="mr-1 size-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  <>
+                    Add product <Plus className="ml-1 size-4" />
+                  </>
+                )}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-87.5 p-0" align="start">
               <Command>
-                <CommandInput placeholder="Search SKU code or name..." />
+                <CommandInput placeholder="Search SKU code or description..." />
                 <CommandList>
-                  <CommandEmpty>No SKU found.</CommandEmpty>
-                  <CommandGroup heading="Available SKUs">
-                    {availableSkus.map((sku) => (
+                  <CommandEmpty>No product found.</CommandEmpty>
+                  <CommandGroup heading="Available Products">
+                    {availableProducts.map((product) => (
                       <CommandItem
-                        key={sku.id}
-                        value={`${sku.code} ${sku.name}`}
-                        onSelect={() => handleAddProduct(sku)}
+                        key={product._id}
+                        value={`${product.skuCode} ${product.description}`}
+                        onSelect={() => handleAddProduct(product)}
                         className="flex flex-col items-start gap-1 py-2"
                       >
                         <span className="font-medium text-blue-600">
-                          {sku.code}
+                          {product.skuCode}
                         </span>
                         <span className="text-muted-foreground text-sm">
-                          {sku.name}
+                          {product.description}
                         </span>
                       </CommandItem>
                     ))}
@@ -370,8 +455,18 @@ export function AddPurchaseOrderDialog({
 
         {/* Footer */}
         <DialogFooter className="mt-6">
-          <Button onClick={handleCreatePurchaseOrder}>
-            Create Purchase Order
+          <Button
+            onClick={handleSubmit}
+            disabled={isCreating || !receivingBranchId || !supplierId || products.length === 0}
+          >
+            {isCreating ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              "Create Purchase Order"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

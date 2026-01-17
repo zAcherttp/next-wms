@@ -57,6 +57,19 @@ export type PurchaseOrderDetailed = {
   totalQuantityOrdered: number;
 };
 
+/**
+ * Purchase order product item - used when adding products to a new PO
+ */
+export type PurchaseOrderProductItem = {
+  id: string;
+  variantId: Id<"product_variants">;
+  skuCode: string;
+  description: string;
+  quantity: number;
+  zoneId?: Id<"storage_zones">;
+  zoneName?: string;
+};
+
 // ============================================================================
 // RETURN REQUEST TYPES
 // ============================================================================
@@ -236,6 +249,23 @@ export type ReceiveSessionGeneral = Omit<
 };
 
 /**
+ * Receive Session List Item - used in the receive sessions table
+ * Matches the response from listReceiveSessions API
+ */
+export type ReceiveSessionListItem = {
+  _id: Id<"receive_sessions">;
+  receiveSessionCode: string;
+  supplierName: string;
+  receivedAt: number;
+  status: string; // "Complete" | "In Progress" | "Pending" | "Returned"
+  statusCode: string; // "COMPLETE" | "IN_PROGRESS" | "PENDING" | "RETURNED"
+  totalItems: number; // Number of SKUs
+  totalExpected: number; // Total expected quantity
+  totalReceived: number; // Total received quantity
+  progressPercentage: number;
+};
+
+/**
  * Receive Session Detail Item - Individual SKU item in a receive session
  * Omits IDs and replaces with enriched data
  */
@@ -306,3 +336,42 @@ export type PendingPurchaseOrder = Pick<
 };
 
 export type StorageZone = Doc<"storage_zones">;
+
+// ============================================================
+// Receive Session Verifying Page Types
+// ============================================================
+
+/**
+ * Receive Session Progress Item - Individual item in the verifying page
+ * Matches the response from getReceiveSessionProgress API
+ */
+export type ReceiveSessionProgressItem = {
+  detailId: Id<"receive_sessions_details">;
+  skuId: Id<"product_variants">;
+  skuCode: string;
+  productName: string;
+  quantityExpected: number;
+  quantityReceived: number;
+  remainingQuantity: number;
+  notes?: string;
+  status: string;
+  statusCode: string;
+  isComplete: boolean;
+};
+
+/**
+ * Receive Session Progress - Data structure for the verifying page
+ * Matches the response from getReceiveSessionProgress API
+ */
+export type ReceiveSessionProgress = {
+  receiveSessionCode: string;
+  purchaseOrderCode: string;
+  status: string;
+  statusCode: string;
+  totalExpectedQuantity: number;
+  totalReceivedQuantity: number;
+  progressPercentage: number;
+  totalItems: number;
+  completedItems: number;
+  items: ReceiveSessionProgressItem[];
+};

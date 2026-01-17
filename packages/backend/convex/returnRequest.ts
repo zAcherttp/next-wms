@@ -138,7 +138,10 @@ export const listWithDetails = query({
         const supplier = await getSupplierById(ctx, request.supplierId);
 
         // Get requested by user
-        const requestedByUser = await getUserById(ctx, request.requestedByUserId);
+        const requestedByUser = await getUserById(
+          ctx,
+          request.requestedByUserId,
+        );
 
         // Get status
         const status = await getSystemLookup(ctx, request.returnStatusTypeId);
@@ -289,7 +292,10 @@ export const getReturnRequestWithDetails = query({
 
     // Step 3: Get related data for the header
     const supplier = await getSupplierById(ctx, returnRequest.supplierId);
-    const requestedByUser = await getUserById(ctx, returnRequest.requestedByUserId);
+    const requestedByUser = await getUserById(
+      ctx,
+      returnRequest.requestedByUserId,
+    );
     const status = await getSystemLookup(ctx, returnRequest.returnStatusTypeId);
 
     // Step 4: Query all associated return request details
@@ -309,7 +315,9 @@ export const getReturnRequestWithDetails = query({
         // Get product name if variant exists
         let productName: string | null = null;
         if (productVariant) {
-          const product = await ctx.db.get(productVariant.productId as Id<"products">);
+          const product = await ctx.db.get(
+            productVariant.productId as Id<"products">,
+          );
           productName = (product as { name?: string } | null)?.name ?? null;
         }
 
@@ -332,10 +340,6 @@ export const getReturnRequestWithDetails = query({
       (sum, detail) => sum + detail.quantityToReturn,
       0,
     );
-    const totalExpectedCredit = returnDetails.reduce(
-      (sum, detail) => sum + detail.expectedCreditAmount,
-      0,
-    );
 
     // Step 6: Return the complete return request with enriched details
     return {
@@ -349,7 +353,6 @@ export const getReturnRequestWithDetails = query({
       returnStatus: status ? { lookupValue: status.lookupValue } : null,
       totalSKUs,
       totalExpectedQuantity,
-      totalExpectedCredit,
       details: enrichedDetails,
     };
   },
@@ -415,14 +418,13 @@ export const createReturnRequest = mutation({
     supplierId: v.string(),
     requestedByUserId: v.string(),
     returnStatusTypeId: v.string(),
+    purchaseOrderId: v.string(),
     details: v.array(
       v.object({
-        batchId: v.string(),
         skuId: v.string(),
         quantityToReturn: v.number(),
         reasonTypeId: v.string(),
         customReasonNotes: v.optional(v.string()),
-        expectedCreditAmount: v.number(),
       }),
     ),
   },
@@ -442,18 +444,17 @@ export const createReturnRequest = mutation({
       requestedAt: Date.now(),
       returnStatusTypeId: args.returnStatusTypeId,
       isDeleted: false,
+      purchaseOrderId: args.purchaseOrderId,
     });
 
     // Step 3: Create all return request detail records
     for (const detail of args.details) {
       await ctx.db.insert("return_request_details", {
         returnRequestId,
-        batchId: detail.batchId,
         skuId: detail.skuId,
         quantityToReturn: detail.quantityToReturn,
         reasonTypeId: detail.reasonTypeId,
         customReasonNotes: detail.customReasonNotes,
-        expectedCreditAmount: detail.expectedCreditAmount,
       });
     }
 

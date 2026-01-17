@@ -2,6 +2,94 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 /**
+ * Generate the next purchase order code
+ * Format: PO-YYYY-MM-XXX where XXX is a 3-digit sequence number for the month
+ * Example: PO-2026-01-004 (4th order in January 2026)
+ */
+export const generateNextPurchaseOrderCode = query({
+  args: {
+    branchId: v.id("branches"),
+  },
+  handler: async (ctx, args) => {
+    // Get branch to get organizationId
+    const branch = await ctx.db.get(args.branchId);
+    if (!branch) {
+      throw new Error("Branch not found");
+    }
+
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, "0");
+
+    // Get the start and end of current month
+    const startOfMonth = new Date(year, now.getMonth(), 1).getTime();
+    const endOfMonth = new Date(year, now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+
+    // Count orders created this month in the organization
+    const monthOrders = await ctx.db
+      .query("purchase_orders")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", branch.organizationId)
+      )
+      .filter((q) =>
+        q.and(
+          q.gte(q.field("orderedAt"), startOfMonth),
+          q.lte(q.field("orderedAt"), endOfMonth)
+        )
+      )
+      .collect();
+
+    const sequence = (monthOrders.length + 1).toString().padStart(3, "0");
+    const code = `PO-${year}-${month}-${sequence}`;
+
+    return { code };
+  },
+});
+
+/**
+ * List all active product variants
+ * Returns skuCode and description for display in the add purchase order dialog
+ */
+export const listAllProductVariants = query({
+  args: {
+    organizationId: v.id("organizations"),
+  },
+  handler: async (ctx, args) => {
+    // Get all active products for this organization
+    const products = await ctx.db
+      .query("products")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId)
+      )
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .collect();
+
+    // Get variants for each product
+    const variantsWithDetails = [];
+    for (const product of products) {
+      const variants = await ctx.db
+        .query("product_variants")
+        .withIndex("productId", (q) => q.eq("productId", product._id))
+        .filter((q) => q.eq(q.field("isActive"), true))
+        .filter((q) => q.eq(q.field("isDeleted"), false))
+        .collect();
+
+      for (const variant of variants) {
+        variantsWithDetails.push({
+          _id: variant._id,
+          skuCode: variant.skuCode,
+          description: variant.description,
+          productName: product.name,
+        });
+      }
+    }
+
+    return variantsWithDetails;
+  },
+});
+
+/**
  * Get product variants by supplier (brand)
  * Returns productId, variant details, and product name for display
  */
@@ -69,7 +157,7 @@ export const createPurchaseOrder = mutation({
       v.object({
         variantId: v.id("product_variants"),
         quantity: v.number(),
-        unitPrice: v.number(),
+        zoneId: v.id("storage_zones"), // Required zone for each item
       })
     ),
   },
@@ -79,16 +167,6 @@ export const createPurchaseOrder = mutation({
     // Validate items array is not empty
     if (!args.items || args.items.length === 0) {
       throw new Error("Purchase order must contain at least one item");
-    }
-
-    // Validate quantities are positive
-    for (const item of args.items) {
-      if (item.quantity <= 0) {
-        throw new Error("Item quantity must be greater than 0");
-      }
-      if (item.unitPrice < 0) {
-        throw new Error("Unit price cannot be negative");
-      }
     }
 
     // Get branch to verify it exists and get organizationId
@@ -103,14 +181,19 @@ export const createPurchaseOrder = mutation({
       throw new Error("Supplier not found");
     }
 
-    // Get the "Pending" status from system_lookups
+    // Validate all items have zones
+    for (const item of args.items) {
+      const zone = await ctx.db.get(item.zoneId);
+      if (!zone) {
+        throw new Error(`Zone not found for item with variantId: ${item.variantId}`);
+      }
+    }
+
+    // Get the "Pending" status from system_lookups using lookupCode
     const pendingStatus = await ctx.db
       .query("system_lookups")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("lookupType"), "PurchaseOrderStatus"),
-          q.eq(q.field("lookupValue"), "Pending")
-        )
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "PENDING")
       )
       .first();
 
@@ -118,30 +201,32 @@ export const createPurchaseOrder = mutation({
       throw new Error("Pending status not found in system lookups");
     }
 
-    // Generate purchase order code (format: PO-YYYYMMDD-XXXX)
+    // Generate purchase order code (format: PO-YYYY-MM-XXX)
     const now = Date.now();
     const date = new Date(now);
-    const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
 
-    // Get count of orders today to generate sequence number
-    const startOfDay = new Date(date.setHours(0, 0, 0, 0)).getTime();
-    const endOfDay = new Date(date.setHours(23, 59, 59, 999)).getTime();
+    // Get the start and end of current month
+    const startOfMonth = new Date(year, date.getMonth(), 1).getTime();
+    const endOfMonth = new Date(year, date.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
 
-    const todayOrders = await ctx.db
+    // Count orders created this month in the organization
+    const monthOrders = await ctx.db
       .query("purchase_orders")
       .withIndex("organizationId", (q) =>
         q.eq("organizationId", branch.organizationId)
       )
       .filter((q) =>
         q.and(
-          q.gte(q.field("orderedAt"), startOfDay),
-          q.lte(q.field("orderedAt"), endOfDay)
+          q.gte(q.field("orderedAt"), startOfMonth),
+          q.lte(q.field("orderedAt"), endOfMonth)
         )
       )
       .collect();
 
-    const sequence = (todayOrders.length + 1).toString().padStart(4, "0");
-    const code = `PO-${dateStr}-${sequence}`;
+    const sequence = (monthOrders.length + 1).toString().padStart(3, "0");
+    const code = `PO-${year}-${month}-${sequence}`;
 
     // Calculate expected delivery date (use supplier's default lead time)
     const expectedDeliveryAt =
@@ -160,14 +245,15 @@ export const createPurchaseOrder = mutation({
       isDeleted: false,
     });
 
-    // Insert purchase order details for each item
+    // Insert purchase order details for each item with zone
     for (const item of args.items) {
       await ctx.db.insert("purchase_order_details", {
         purchaseOrderId: orderId,
         skuId: item.variantId,
         quantityOrdered: item.quantity,
-        unitCost: item.unitPrice,
+        unitCost: 0,
         quantityReceived: 0,
+        recommendedZoneId: item.zoneId,
       });
     }
 
@@ -178,6 +264,7 @@ export const createPurchaseOrder = mutation({
     };
   },
 });
+
 
 /**
  * Get all purchase orders for a branch (list view for table)
@@ -297,7 +384,9 @@ export const getPurchaseOrderDetailed = query({
       code: order.code,
       orderedAt: order.orderedAt,
       expectedDeliveryAt: order.expectedDeliveryAt ?? null,
-      createdByUser: createdByUser ? { fullName: createdByUser.fullName } : null,
+      createdByUser: createdByUser
+        ? { fullName: createdByUser.fullName }
+        : null,
       supplier: supplier
         ? {
             name: supplier.name,

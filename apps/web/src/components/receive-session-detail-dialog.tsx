@@ -1,5 +1,9 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,6 +14,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -18,67 +23,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
-
-// Mock data for receive session details
-const MOCK_RECEIVE_SESSION_DETAIL = {
-  code: "RS-20260103-0001",
-  employee: {
-    fullName: "Mike",
-  },
-  createdAt: new Date("2025-02-28T10:12:00"),
-  status: "Returned",
-  items: [
-    {
-      id: "1",
-      sku: "SKU-1",
-      productName: "Coca",
-      expectedQty: 13,
-      receivedQty: 13,
-      note: "None",
-      status: "Accepted",
-    },
-    {
-      id: "2",
-      sku: "SKU-2",
-      productName: "Pepsi",
-      expectedQty: 10,
-      receivedQty: 10,
-      note: "Móp thùng",
-      status: "Returned",
-    },
-    {
-      id: "3",
-      sku: "SKU-3",
-      productName: "7up",
-      expectedQty: 5,
-      receivedQty: 3,
-      note: "Thiếu 2 thùng",
-      status: "Returned",
-    },
-  ],
-};
-
-const getSessionStatusBadgeStyle = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "receiving":
-      return "bg-orange-500/10 text-orange-600 border-orange-500/60";
-    case "completed":
-      return "bg-green-500/10 text-green-600 border-green-500/60";
-    case "pending":
-      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60";
-    case "returned":
-      return "bg-blue-500/10 text-blue-600 border-blue-500/60";
-    default:
-      return "bg-gray-500/10 text-gray-600 border-gray-500/60";
-  }
-};
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 
 const getItemStatusBadgeStyle = (status: string) => {
   switch (status.toLowerCase()) {
-    case "accepted":
+    case "complete":
       return "bg-green-500/10 text-green-600 border-green-500/60";
-    case "returned":
+    case "partial":
+      return "bg-orange-500/10 text-orange-600 border-orange-500/60";
+    case "pending":
+      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60";
+    case "return_requested":
       return "bg-red-500/10 text-red-600 border-red-500/60";
     default:
       return "bg-gray-500/10 text-gray-600 border-gray-500/60";
@@ -92,34 +48,50 @@ interface InfoItemProps {
 
 function InfoItem({ label, value }: InfoItemProps) {
   return (
-    <div className="space-y-0.5">
-      <p className="text-muted-foreground text-sm">{label}</p>
+    <div className="space-y-1">
+      <p className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
+        {label}
+      </p>
       <div className="font-medium text-foreground text-sm">{value}</div>
     </div>
   );
 }
 
 interface ReceiveSessionDetailDialogProps {
+  sessionId: Id<"receive_sessions"> | null;
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
   trigger?: React.ReactNode;
 }
 
 export function ReceiveSessionDetailDialog({
+  sessionId,
+  open: controlledOpen,
+  onOpenChange,
   trigger,
 }: ReceiveSessionDetailDialogProps) {
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
 
-  // Calculate totals
-  const totalSKUs = MOCK_RECEIVE_SESSION_DETAIL.items.length;
-  const totalExpectedQty = MOCK_RECEIVE_SESSION_DETAIL.items.reduce(
-    (sum, item) => sum + item.expectedQty,
-    0,
-  );
-  const totalReceivedQty = MOCK_RECEIVE_SESSION_DETAIL.items.reduce(
-    (sum, item) => sum + item.receivedQty,
-    0,
-  );
+  // Use controlled state if provided, otherwise use internal state
+  const open = controlledOpen ?? internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
 
-  const formatDateTime = (date: Date) => {
+  const { userId } = useCurrentUser();
+
+  const { data: sessionDetail, isPending } = useQuery({
+    ...convexQuery(
+      api.receiveSessions.getReceiveSessionDetailed,
+      userId && open && sessionId
+        ? {
+            receiveSessionId: sessionId,
+          }
+        : "skip"
+    ),
+    enabled: !!userId && open && !!sessionId,
+  });
+
+  const formatDateTime = React.useCallback((timestamp: number) => {
+    const date = new Date(timestamp);
     const time = new Intl.DateTimeFormat("en-GB", {
       hour: "2-digit",
       minute: "2-digit",
@@ -133,7 +105,7 @@ export function ReceiveSessionDetailDialog({
     }).format(date);
 
     return `${time} ${dateStr}`;
-  };
+  }, []);
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -144,101 +116,173 @@ export function ReceiveSessionDetailDialog({
           </span>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-xl">
-        <DialogHeader>
-          <DialogTitle className="font-semibold text-xl">
-            {MOCK_RECEIVE_SESSION_DETAIL.code}
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="sm:max-w-4xl w-full">
+        <DialogTitle className="sr-only">Receive Session Details</DialogTitle>
+        {isPending || !sessionDetail ? (
+          <div className="space-y-4">
+            <Skeleton className="h-8 w-32" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-32 w-full" />
+          </div>
+        ) : (
+          <>
+            <DialogHeader>
+              <DialogTitle className="font-bold text-2xl">
+                {sessionDetail.receiveSessionCode}
+              </DialogTitle>
+            </DialogHeader>
 
-        {/* Work Session Details Card */}
-        <Card className="py-6">
-          <CardContent>
-            <div className="grid grid-cols-3 gap-x-8 gap-y-4">
-              {/* Row 1 */}
-              <InfoItem
-                label="Employee:"
-                value={MOCK_RECEIVE_SESSION_DETAIL.employee.fullName}
-              />
-              <InfoItem
-                label="Time:"
-                value={formatDateTime(MOCK_RECEIVE_SESSION_DETAIL.createdAt)}
-              />
-              <InfoItem
-                label="Status:"
-                value={
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "font-medium",
-                      getSessionStatusBadgeStyle(
-                        MOCK_RECEIVE_SESSION_DETAIL.status,
-                      ),
+            {/* Work Session Details Card */}
+            <Card className="flex py-4">
+              <CardContent className="px-6 py-0">
+                <div className="grid grid-cols-3 gap-x-8 gap-y-4">
+                  {/* Column 1: Employee & Status */}
+                  <div className="space-y-4">
+                    <InfoItem
+                      label="Employee"
+                      value={
+                        sessionDetail.workSession?.employeeName ??
+                        "Not assigned"
+                      }
+                    />
+                    <InfoItem
+                      label="Status"
+                      value={
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "font-medium",
+                            getBadgeStyleByStatus(sessionDetail.status ?? "")
+                          )}
+                        >
+                          {sessionDetail.status ?? "Unknown"}
+                        </Badge>
+                      }
+                    />
+                  </div>
+
+                  {/* Column 2: Time & PO Info */}
+                  <div className="space-y-4">
+                    <InfoItem
+                      label="Time"
+                      value={formatDateTime(sessionDetail.receivedAt)}
+                    />
+                    <InfoItem
+                      label="Purchase Order"
+                      value={sessionDetail.purchaseOrderCode ?? "-"}
+                    />
+                  </div>
+
+                  {/* Column 3: Summary */}
+                  <div className="space-y-4">
+                    <InfoItem
+                      label="Total SKUs"
+                      value={sessionDetail.summary.totalSku}
+                    />
+                    <InfoItem
+                      label="Expected / Received"
+                      value={`${sessionDetail.summary.totalExpectedQuantity} / ${sessionDetail.summary.totalReceivedQuantity}`}
+                    />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Items Card */}
+            <div className="space-y-3">
+              <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">
+                Items
+              </h3>
+
+              <div className="rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-25">SKU</TableHead>
+                      <TableHead className="w-37.5">Name</TableHead>
+                      <TableHead className="w-20 text-center">
+                        Expected
+                      </TableHead>
+                      <TableHead className="w-20 text-center">
+                        Received
+                      </TableHead>
+                      <TableHead>Note</TableHead>
+                      <TableHead className="w-28 text-center">Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {sessionDetail.items.length > 0 ? (
+                      sessionDetail.items.map((item) => (
+                        <TableRow key={item.detailId}>
+                          <TableCell className="font-medium text-blue-600">
+                            {item.skuCode}
+                          </TableCell>
+                          <TableCell>{item.productName ?? "-"}</TableCell>
+                          <TableCell className="text-center">
+                            {item.quantityExpected}
+                          </TableCell>
+                          <TableCell className="text-center font-medium text-blue-600">
+                            {item.quantityReceived}
+                          </TableCell>
+                          <TableCell className="text-muted-foreground">
+                            {item.notes ?? "-"}
+                          </TableCell>
+                          <TableCell className="text-center">
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "font-medium",
+                                getItemStatusBadgeStyle(item.statusCode)
+                              )}
+                            >
+                              {item.status}
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center">
+                          No items found
+                        </TableCell>
+                      </TableRow>
                     )}
-                  >
-                    {MOCK_RECEIVE_SESSION_DETAIL.status}
-                  </Badge>
-                }
-              />
+                  </TableBody>
+                </Table>
+              </div>
 
-              {/* Row 2 */}
-              <InfoItem label="Total SKUs:" value={totalSKUs} />
-              <InfoItem
-                label="Total Expected Quantity:"
-                value={totalExpectedQty}
-              />
-              <InfoItem
-                label="Total Received Quantity:"
-                value={totalReceivedQty}
-              />
+              {/* Totals Summary */}
+              <div className="flex justify-end">
+                <div className="inline-flex items-center gap-4 rounded-lg border bg-card px-4 py-2.5 shadow-sm">
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">SKUs:</span>
+                    <span className="font-semibold text-sm">
+                      {sessionDetail.summary.totalSku}
+                    </span>
+                  </div>
+                  <div className="h-4 w-px bg-border" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">
+                      Total Expected:
+                    </span>
+                    <span className="font-semibold text-sm">
+                      {sessionDetail.summary.totalExpectedQuantity}
+                    </span>
+                  </div>
+                  <div className="h-4 w-px bg-border" />
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground text-sm">
+                      Total Received:
+                    </span>
+                    <span className="font-bold text-blue-600 text-sm">
+                      {sessionDetail.summary.totalReceivedQuantity}
+                    </span>
+                  </div>
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-
-        {/* Items Card */}
-
-        <div className="rounded-xl border p-2 shadow-sm">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-25">SKU</TableHead>
-                <TableHead className="w-37.5">Name</TableHead>
-                <TableHead className="w-25 text-center">Exp Qty</TableHead>
-                <TableHead className="w-25 text-center">Received</TableHead>
-                <TableHead>Note</TableHead>
-                <TableHead className="w-30 text-center">Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {MOCK_RECEIVE_SESSION_DETAIL.items.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell className="font-medium">{item.sku}</TableCell>
-                  <TableCell>{item.productName}</TableCell>
-                  <TableCell className="text-center">
-                    {item.expectedQty}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {item.receivedQty}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {item.note}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    <Badge
-                      variant="outline"
-                      className={cn(
-                        "font-medium",
-                        getItemStatusBadgeStyle(item.status),
-                      )}
-                    >
-                      {item.status}
-                    </Badge>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
   );

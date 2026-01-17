@@ -109,7 +109,7 @@ export function PurchaseOrderDetailDialog({
           </span>
         )}
       </DialogTrigger>
-      <DialogContent className="sm:max-w-xl">
+      <DialogContent className="sm:max-w-2xl">
         <DialogTitle className="sr-only">Purchase Order Details</DialogTitle>
         {isPending || !orderDetail ? (
           <div className="space-y-4">

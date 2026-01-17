@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,6 +14,8 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ChevronLeft,
   ChevronRight,
@@ -50,255 +54,297 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
+import type { ReceiveSessionListItem } from "@/lib/types";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
-import {
-  MOCK_RECEIVE_SESSIONS,
-  type ReceiveSession,
-} from "@/mock/data/receiving-sessions";
 
-export const columns: ColumnDef<ReceiveSession>[] = [
-  {
-    accessorKey: "code",
-    header: "IO-ID",
-    cell: ({ row }) => <TableCellFirst>{row.getValue("code")}</TableCellFirst>,
-  },
-  {
-    accessorKey: "from",
-    header: ({ column }) => {
-      const suppliers = Array.from(
-        new Set(MOCK_RECEIVE_SESSIONS.map((session) => session.from)),
-      ).map((name) => ({ label: name, value: name }));
-
-      const currentFilter = column.getFilterValue() as string[] | undefined;
-
-      return (
-        <FilterPopover
-          label="From"
-          options={suppliers}
-          currentValue={currentFilter}
-          onChange={(value) => column.setFilterValue(value)}
-          variant="multi-select"
-        />
-      );
-    },
-    filterFn: (row, id, value) => {
-      if (!value || (Array.isArray(value) && value.length === 0)) return true;
-      const rowValue = row.getValue(id) as string;
-      return Array.isArray(value)
-        ? value.includes(rowValue)
-        : rowValue === value;
-    },
-    cell: ({ row }) => <div>{row.getValue("from")}</div>,
-  },
-  {
-    accessorKey: "totalItems",
-    header: ({ column }) => {
-      const sortOptions = [
-        { label: "Default", value: "default" },
-        { label: "Ascending", value: "asc" },
-        { label: "Descending", value: "desc" },
-      ];
-
-      const currentSort = column.getIsSorted();
-      const currentValue = currentSort ? String(currentSort) : "default";
-
-      return (
-        <div className="flex items-center justify-end">
-          <FilterPopover
-            label="Total items"
-            options={sortOptions}
-            currentValue={currentValue}
-            onChange={(value) => {
-              if (value === "default" || !value) {
-                column.clearSorting();
-              } else {
-                column.toggleSorting(value === "desc", false);
-              }
-            }}
-            isSort
-          />
-        </div>
-      );
-    },
-    cell: ({ row }) => (
-      <div className="text-right font-medium">{row.getValue("totalItems")}</div>
-    ),
-  },
-  {
-    accessorKey: "orderedAt",
-    header: ({ column }) => {
-      const sortOptions = [
-        { label: "Default", value: "default" },
-        { label: "Ascending", value: "asc" },
-        { label: "Descending", value: "desc" },
-      ];
-
-      const currentSort = column.getIsSorted();
-      const currentValue = currentSort ? String(currentSort) : "default";
-
-      return (
-        <div className="flex items-center justify-end">
-          <FilterPopover
-            label="Ordered at"
-            options={sortOptions}
-            currentValue={currentValue}
-            onChange={(value) => {
-              if (value === "default" || !value) {
-                column.clearSorting();
-              } else {
-                column.toggleSorting(value === "desc", false);
-              }
-            }}
-            isSort
-          />
-        </div>
-      );
-    },
-    cell: ({ row }) => {
-      const timestamp = row.getValue("orderedAt") as number;
-      const formatted = new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date(timestamp));
-
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
-  },
-  {
-    accessorKey: "expectedBy",
-    header: ({ column }) => {
-      const sortOptions = [
-        { label: "Default", value: "default" },
-        { label: "Ascending", value: "asc" },
-        { label: "Descending", value: "desc" },
-      ];
-
-      const currentSort = column.getIsSorted();
-      const currentValue = currentSort ? String(currentSort) : "default";
-
-      return (
-        <div className="flex items-center justify-end">
-          <FilterPopover
-            label="Expected by"
-            options={sortOptions}
-            currentValue={currentValue}
-            onChange={(value) => {
-              if (value === "default" || !value) {
-                column.clearSorting();
-              } else {
-                column.toggleSorting(value === "desc", false);
-              }
-            }}
-            isSort
-          />
-        </div>
-      );
-    },
-    cell: ({ row }) => {
-      const timestamp = row.getValue("expectedBy") as number;
-      const formatted = new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-      }).format(new Date(timestamp));
-
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
-  },
-  {
-    accessorKey: "status",
-    header: ({ column }) => {
-      const statusFilterOptions = [
-        { label: "All", value: "all" },
-        { label: "Receiving", value: "receiving" },
-        { label: "Pending", value: "pending" },
-        { label: "Completed", value: "completed" },
-        { label: "Returned", value: "returned" },
-      ];
-
-      const currentFilter = column.getFilterValue() as string | undefined;
-
-      return (
-        <div className="flex items-center justify-center">
-          <FilterPopover
-            label="Status"
-            options={statusFilterOptions}
-            currentValue={currentFilter}
-            onChange={(value) => column.setFilterValue(value)}
-          />
-        </div>
-      );
-    },
-    filterFn: (row, id, value) => {
-      const rowValue = row.getValue(id) as string;
-      return rowValue.toLowerCase() === value.toLowerCase();
-    },
-    cell: ({ row }) => (
-      <div className="text-center">
-        <Badge
-          className={cn(
-            "w-24 justify-center rounded-sm text-center text-xs",
-            getBadgeStyleByStatus(row.getValue("status")),
-          )}
-          variant={"outline"}
-        >
-          {row.getValue("status")}
-        </Badge>
-      </div>
-    ),
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const session = row.original;
-
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size={"icon-sm"}>
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(session.code)}
-            >
-              Copy IO-ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <ReceiveSessionDetailDialog
-              trigger={
-                <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
-                  View details
-                </DropdownMenuItem>
-              }
-            />
-            {(session.status === "Pending" ||
-              session.status === "Receiving") && (
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`receiving-sessions/${session.id}/verifying` as Route}
-                >
-                  Proceed
-                </Link>
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
-  },
-];
+// Stable empty array to prevent new reference on each render
+const EMPTY_ARRAY: ReceiveSessionListItem[] = [];
 
 export function ReceiveSessionsTable() {
+  const { userId, organizationId } = useCurrentUser();
+
+  const { currentBranch } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: false,
+  });
+
+  const { data: receiveSessions, isPending } = useQuery({
+    ...convexQuery(
+      api.receiveSessions.listReceiveSessions,
+      userId && currentBranch
+        ? {
+            branchId: currentBranch._id,
+          }
+        : "skip"
+    ),
+    enabled: !!userId && !!currentBranch,
+  });
+
+  // Dialog state
+  const [selectedSessionId, setSelectedSessionId] =
+    React.useState<Id<"receive_sessions"> | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
+
+  const columns: ColumnDef<ReceiveSessionListItem>[] = React.useMemo(
+    () => [
+      {
+        accessorKey: "receiveSessionCode",
+        header: "IO-ID",
+        cell: ({ row }) => (
+          <TableCellFirst className="capitalize">
+            {row.getValue("receiveSessionCode")}
+          </TableCellFirst>
+        ),
+      },
+      {
+        accessorKey: "supplierName",
+        header: ({ column }) => {
+          const suppliers = receiveSessions
+            ? Array.from(
+                new Set(receiveSessions.map((session) => session.supplierName))
+              ).map((name) => ({
+                label: name,
+                value: name,
+              }))
+            : [];
+
+          const currentFilter = column.getFilterValue() as string[] | undefined;
+
+          return (
+            <FilterPopover
+              label="Supplier"
+              options={suppliers}
+              currentValue={currentFilter}
+              onChange={(value) => column.setFilterValue(value)}
+              variant="multi-select"
+            />
+          );
+        },
+        filterFn: (row, id, value) => {
+          if (!value || (Array.isArray(value) && value.length === 0))
+            return true;
+          const rowValue = row.getValue(id) as string;
+          return Array.isArray(value)
+            ? value.includes(rowValue)
+            : rowValue === value;
+        },
+        cell: ({ row }) => <div>{row.getValue("supplierName")}</div>,
+      },
+      {
+        accessorKey: "totalItems",
+        header: ({ column }) => {
+          const sortOptions = [
+            { label: "Default", value: "default" },
+            { label: "Ascending", value: "asc" },
+            { label: "Descending", value: "desc" },
+          ];
+
+          const currentSort = column.getIsSorted();
+          const currentValue = currentSort ? String(currentSort) : "default";
+
+          return (
+            <div className="flex items-center justify-end">
+              <FilterPopover
+                label="Total SKUs"
+                options={sortOptions}
+                currentValue={currentValue}
+                onChange={(value) => {
+                  if (value === "default" || !value) {
+                    column.clearSorting();
+                  } else {
+                    column.toggleSorting(value === "desc", false);
+                  }
+                }}
+                isSort
+              />
+            </div>
+          );
+        },
+        cell: ({ row }) => (
+          <div className="text-right font-medium">
+            {row.getValue("totalItems")}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "totalExpected",
+        header: ({ column }) => {
+          const sortOptions = [
+            { label: "Default", value: "default" },
+            { label: "Ascending", value: "asc" },
+            { label: "Descending", value: "desc" },
+          ];
+
+          const currentSort = column.getIsSorted();
+          const currentValue = currentSort ? String(currentSort) : "default";
+
+          return (
+            <div className="flex items-center justify-end">
+              <FilterPopover
+                label="Total Items"
+                options={sortOptions}
+                currentValue={currentValue}
+                onChange={(value) => {
+                  if (value === "default" || !value) {
+                    column.clearSorting();
+                  } else {
+                    column.toggleSorting(value === "desc", false);
+                  }
+                }}
+                isSort
+              />
+            </div>
+          );
+        },
+        cell: ({ row }) => (
+          <div className="text-right font-medium">
+            {row.getValue("totalExpected")}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "receivedAt",
+        header: ({ column }) => {
+          const sortOptions = [
+            { label: "Default", value: "default" },
+            { label: "Ascending", value: "asc" },
+            { label: "Descending", value: "desc" },
+          ];
+
+          const currentSort = column.getIsSorted();
+          const currentValue = currentSort ? String(currentSort) : "default";
+
+          return (
+            <div className="flex items-center justify-end">
+              <FilterPopover
+                label="Received at"
+                options={sortOptions}
+                currentValue={currentValue}
+                onChange={(value) => {
+                  if (value === "default" || !value) {
+                    column.clearSorting();
+                  } else {
+                    column.toggleSorting(value === "desc", false);
+                  }
+                }}
+                isSort
+              />
+            </div>
+          );
+        },
+        cell: ({ row }) => {
+          const timestamp = row.getValue("receivedAt") as number;
+          const formatted = new Intl.DateTimeFormat("en-US", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+          }).format(new Date(timestamp));
+
+          return <div className="text-right font-medium">{formatted}</div>;
+        },
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => {
+          const statusFilterOptions = [
+            { label: "All", value: "all" },
+            { label: "In Progress", value: "In Progress" },
+            { label: "Pending", value: "Pending" },
+            { label: "Complete", value: "Complete" },
+            { label: "Returned", value: "Returned" },
+          ];
+
+          const currentFilter = column.getFilterValue() as string | undefined;
+
+          return (
+            <div className="flex items-center justify-center">
+              <FilterPopover
+                label="Status"
+                options={statusFilterOptions}
+                currentValue={currentFilter}
+                onChange={(value) => column.setFilterValue(value)}
+              />
+            </div>
+          );
+        },
+        filterFn: (row, id, value) => {
+          if (!value || value === "all") return true;
+          const rowValue = row.getValue(id) as string;
+          return rowValue?.toLowerCase() === value?.toLowerCase();
+        },
+        cell: ({ row }) => (
+          <div className="text-center">
+            <Badge
+              className={cn(
+                "w-24 justify-center rounded-sm text-center text-xs",
+                getBadgeStyleByStatus(row.getValue("status"))
+              )}
+              variant={"outline"}
+            >
+              {row.getValue("status")}
+            </Badge>
+          </div>
+        ),
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => {
+          const session = row.original;
+
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size={"icon-sm"}>
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() =>
+                    navigator.clipboard.writeText(session.receiveSessionCode)
+                  }
+                >
+                  Copy IO-ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedSessionId(session._id);
+                    setDetailDialogOpen(true);
+                  }}
+                >
+                  View details
+                </DropdownMenuItem>
+                {(session.statusCode === "PENDING" ||
+                  session.statusCode === "IN_PROGRESS") && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={
+                        `receiving-sessions/${session._id}/verifying` as Route
+                      }
+                    >
+                      Proceed
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+    ],
+    [receiveSessions]
+  );
+
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    [],
+    []
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -308,7 +354,7 @@ export function ReceiveSessionsTable() {
     useDebouncedInput("", 300);
 
   const table = useReactTable({
-    data: MOCK_RECEIVE_SESSIONS,
+    data: receiveSessions ?? EMPTY_ARRAY,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -327,8 +373,9 @@ export function ReceiveSessionsTable() {
   });
 
   React.useEffect(() => {
-    table.getColumn("code")?.setFilterValue(debouncedFilterValue);
-  }, [debouncedFilterValue, table]);
+    table.getColumn("receiveSessionCode")?.setFilterValue(debouncedFilterValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedFilterValue]);
 
   const activeFiltersCount =
     sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);
@@ -338,6 +385,27 @@ export function ReceiveSessionsTable() {
     table.resetSorting();
     setFilterValue("");
   };
+
+  if (isPending) {
+    return (
+      <div className="w-full space-y-4">
+        <div className="flex flex-row justify-between pb-4">
+          <div className="h-10 w-50 animate-pulse rounded bg-muted" />
+          <div className="h-10 w-25 animate-pulse rounded bg-muted" />
+        </div>
+        <div className="overflow-hidden rounded-md border">
+          <div className="bg-card p-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="mb-2 h-12 w-full animate-pulse rounded bg-muted"
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full">
@@ -377,7 +445,7 @@ export function ReceiveSessionsTable() {
                         ? null
                         : flexRender(
                             header.column.columnDef.header,
-                            header.getContext(),
+                            header.getContext()
                           )}
                     </TableHead>
                   );
@@ -396,7 +464,7 @@ export function ReceiveSessionsTable() {
                     <TableCell key={cell.id}>
                       {flexRender(
                         cell.column.columnDef.cell,
-                        cell.getContext(),
+                        cell.getContext()
                       )}
                     </TableCell>
                   ))}
@@ -408,7 +476,7 @@ export function ReceiveSessionsTable() {
                   colSpan={columns.length}
                   className="h-24 text-center"
                 >
-                  No results.
+                  No receive sessions found.
                 </TableCell>
               </TableRow>
             )}
@@ -455,6 +523,11 @@ export function ReceiveSessionsTable() {
           </Button>
         </div>
       </div>
+      <ReceiveSessionDetailDialog
+        sessionId={selectedSessionId}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
     </div>
   );
 }

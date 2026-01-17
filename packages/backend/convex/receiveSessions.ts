@@ -8,33 +8,46 @@ import { mutation, query } from "./_generated/server";
 
 /**
  * Generate a unique receive session code
- * Format: RS-YYYYMMDD-XXXX (e.g., RS-20260104-0001)
+ * Format: RS-YYYY-MM-XXX (e.g., RS-2026-01-003)
  */
 async function generateReceiveSessionCode(
   ctx: any,
-  branchId: Id<"branches">
+  branchId: Id<"branches">,
 ): Promise<string> {
   const now = Date.now();
   const date = new Date(now);
-  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, "0");
 
-  // Get count of sessions today for this branch
-  const startOfDay = new Date(date.setHours(0, 0, 0, 0)).getTime();
-  const endOfDay = new Date(date.setHours(23, 59, 59, 999)).getTime();
+  // Get count of sessions this month for this branch
+  const startOfMonth = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    1,
+  ).getTime();
+  const endOfMonth = new Date(
+    date.getFullYear(),
+    date.getMonth() + 1,
+    0,
+    23,
+    59,
+    59,
+    999,
+  ).getTime();
 
-  const todaySessions = await ctx.db
+  const monthSessions = await ctx.db
     .query("receive_sessions")
     .withIndex("branchId", (q: any) => q.eq("branchId", branchId))
     .filter((q: any) =>
       q.and(
-        q.gte(q.field("receivedAt"), startOfDay),
-        q.lte(q.field("receivedAt"), endOfDay)
-      )
+        q.gte(q.field("receivedAt"), startOfMonth),
+        q.lte(q.field("receivedAt"), endOfMonth),
+      ),
     )
     .collect();
 
-  const sequence = (todaySessions.length + 1).toString().padStart(4, "0");
-  return `RS-${dateStr}-${sequence}`;
+  const sequence = (monthSessions.length + 1).toString().padStart(3, "0");
+  return `RS-${year}-${month}-${sequence}`;
 }
 
 /**
@@ -43,7 +56,7 @@ async function generateReceiveSessionCode(
  */
 async function generateWorkSessionCode(
   ctx: any,
-  branchId: Id<"branches">
+  branchId: Id<"branches">,
 ): Promise<string> {
   const now = Date.now();
   const date = new Date(now);
@@ -58,8 +71,8 @@ async function generateWorkSessionCode(
     .filter((q: any) =>
       q.and(
         q.gte(q.field("startedAt"), startOfDay),
-        q.lte(q.field("startedAt"), endOfDay)
-      )
+        q.lte(q.field("startedAt"), endOfDay),
+      ),
     )
     .collect();
 
@@ -73,12 +86,12 @@ async function generateWorkSessionCode(
 async function getSystemLookup(
   ctx: any,
   lookupType: string,
-  lookupCode: string
+  lookupCode: string,
 ): Promise<Id<"system_lookups"> | null> {
   const lookup = await ctx.db
     .query("system_lookups")
     .withIndex("lookupType_lookupCode", (q: any) =>
-      q.eq("lookupType", lookupType).eq("lookupCode", lookupCode)
+      q.eq("lookupType", lookupType).eq("lookupCode", lookupCode),
     )
     .first();
 
@@ -93,7 +106,7 @@ async function ensureSystemLookup(
   lookupType: string,
   lookupCode: string,
   lookupValue: string,
-  description: string
+  description: string,
 ): Promise<Id<"system_lookups">> {
   const existingLookup = await getSystemLookup(ctx, lookupType, lookupCode);
 
@@ -113,13 +126,103 @@ async function ensureSystemLookup(
 }
 
 /**
+ * Generate a supplier batch number
+ * Format: SB-YYYYMMDD-XXX
+ */
+async function generateSupplierBatchNumber(
+  ctx: any,
+  branchId: Id<"branches">,
+): Promise<string> {
+  const now = Date.now();
+  const date = new Date(now);
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
+
+  const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0).getTime();
+  const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).getTime();
+
+  const todayBatches = await ctx.db
+    .query("inventory_batches")
+    .withIndex("branchId", (q: any) => q.eq("branchId", branchId))
+    .filter((q: any) =>
+      q.and(
+        q.gte(q.field("receivedAt"), startOfDay),
+        q.lte(q.field("receivedAt"), endOfDay),
+      ),
+    )
+    .collect();
+
+  const sequence = (todayBatches.length + 1).toString().padStart(3, "0");
+  return `SB-${dateStr}-${sequence}`;
+}
+
+/**
+ * Generate an internal batch number
+ * Format: IB-YYYYMMDD-XXX
+ */
+async function generateInternalBatchNumber(
+  ctx: any,
+  branchId: Id<"branches">,
+): Promise<string> {
+  const now = Date.now();
+  const date = new Date(now);
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
+
+  const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0).getTime();
+  const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).getTime();
+
+  const todayBatches = await ctx.db
+    .query("inventory_batches")
+    .withIndex("branchId", (q: any) => q.eq("branchId", branchId))
+    .filter((q: any) =>
+      q.and(
+        q.gte(q.field("receivedAt"), startOfDay),
+        q.lte(q.field("receivedAt"), endOfDay),
+      ),
+    )
+    .collect();
+
+  const sequence = (todayBatches.length + 1).toString().padStart(3, "0");
+  return `IB-${dateStr}-${sequence}`;
+}
+
+/**
+ * Generate a return request code
+ * Format: RR-YYYYMMDD-XXXX
+ */
+async function generateReturnRequestCode(
+  ctx: any,
+  branchId: Id<"branches">,
+): Promise<string> {
+  const now = Date.now();
+  const date = new Date(now);
+  const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
+
+  const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0).getTime();
+  const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).getTime();
+
+  const todayReturns = await ctx.db
+    .query("return_requests")
+    .withIndex("branchId", (q: any) => q.eq("branchId", branchId as any))
+    .filter((q: any) =>
+      q.and(
+        q.gte(q.field("requestedAt"), startOfDay),
+        q.lte(q.field("requestedAt"), endOfDay),
+      ),
+    )
+    .collect();
+
+  const sequence = (todayReturns.length + 1).toString().padStart(4, "0");
+  return `RR-${dateStr}-${sequence}`;
+}
+
+/**
  * Get a random storage zone from the branch for zone recommendation
  * Filters by branch and optionally by zone type
  */
 async function getRandomStorageZone(
   ctx: any,
   branchId: Id<"branches">,
-  zoneTypeCode?: string
+  zoneTypeCode?: string,
 ): Promise<Id<"storage_zones"> | null> {
   let zones = await ctx.db
     .query("storage_zones")
@@ -152,13 +255,13 @@ async function ensureWorkSession(
   organizationId: Id<"organizations">,
   branchId: Id<"branches">,
   receiveSessionId: Id<"receive_sessions">,
-  assignedUserId: Id<"users">
+  assignedUserId: Id<"users">,
 ): Promise<Id<"work_sessions">> {
   // Check if work session already exists for this receive session
   const existingSession = await ctx.db
     .query("work_sessions")
     .withIndex("receiveSessionId", (q: any) =>
-      q.eq("receiveSessionId", receiveSessionId)
+      q.eq("receiveSessionId", receiveSessionId),
     )
     .first();
 
@@ -172,7 +275,7 @@ async function ensureWorkSession(
     "SessionType",
     "INBOUND",
     "Inbound Receiving",
-    "Work session for receiving inbound goods"
+    "Work session for receiving inbound goods",
   );
 
   const sessionStatusId = await ensureSystemLookup(
@@ -180,7 +283,7 @@ async function ensureWorkSession(
     "SessionStatus",
     "IN_PROGRESS",
     "In Progress",
-    "Session is currently in progress"
+    "Session is currently in progress",
   );
 
   // Generate work session code
@@ -208,6 +311,26 @@ async function ensureWorkSession(
 // ================================================================
 
 /**
+ * Get all return reason types from system lookups
+ * Used for populating return reason dropdown in the UI
+ */
+export const getReturnReasons = query({
+  args: {},
+  handler: async (ctx) => {
+    const reasons = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType", (q) => q.eq("lookupType", "ReturnReason"))
+      .collect();
+
+    return reasons.map((reason) => ({
+      _id: reason._id,
+      lookupCode: reason.lookupCode,
+      lookupValue: reason.lookupValue,
+    }));
+  },
+});
+
+/**
  * Get pending purchase orders by branch (for dropdown selection when creating receive session)
  * Returns only POs with "Pending" status that don't already have a receive session
  */
@@ -220,7 +343,7 @@ export const getPendingPurchaseOrdersByBranch = query({
     const pendingStatus = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "Pending")
+        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "PENDING"),
       )
       .first();
 
@@ -235,8 +358,8 @@ export const getPendingPurchaseOrdersByBranch = query({
       .filter((q) =>
         q.and(
           q.eq(q.field("isDeleted"), false),
-          q.eq(q.field("purchaseOrderStatusTypeId"), pendingStatus._id)
-        )
+          q.eq(q.field("purchaseOrderStatusTypeId"), pendingStatus._id),
+        ),
       )
       .collect();
 
@@ -247,7 +370,7 @@ export const getPendingPurchaseOrdersByBranch = query({
       .collect();
 
     const existingPOIds = new Set(
-      existingReceiveSessions.map((rs) => rs.purchaseOrderId)
+      existingReceiveSessions.map((rs) => rs.purchaseOrderId),
     );
 
     // Filter out POs that already have receive sessions and enrich with supplier name
@@ -317,7 +440,7 @@ export const getReceiveSessionDetailed = query({
     const details = await ctx.db
       .query("receive_sessions_details")
       .withIndex("receiveSessionId", (q) =>
-        q.eq("receiveSessionId", args.receiveSessionId)
+        q.eq("receiveSessionId", args.receiveSessionId),
       )
       .collect();
 
@@ -327,7 +450,7 @@ export const getReceiveSessionDetailed = query({
         const variant = await ctx.db.get(detail.skuId);
         const product = variant ? await ctx.db.get(variant.productId) : null;
         const itemStatus = await ctx.db.get(
-          detail.receiveSessionItemStatusTypeId
+          detail.receiveSessionItemStatusTypeId,
         );
         const zone = detail.recommendedZoneId
           ? await ctx.db.get(detail.recommendedZoneId)
@@ -346,14 +469,14 @@ export const getReceiveSessionDetailed = query({
           recommendedZone: zone?.name ?? null,
           recommendedZoneId: detail.recommendedZoneId,
         };
-      })
+      }),
     );
 
     // Get linked work session
     const workSession = await ctx.db
       .query("work_sessions")
       .withIndex("receiveSessionId", (q) =>
-        q.eq("receiveSessionId", args.receiveSessionId)
+        q.eq("receiveSessionId", args.receiveSessionId),
       )
       .first();
 
@@ -384,11 +507,11 @@ export const getReceiveSessionDetailed = query({
     const totalSku = enrichedDetails.length;
     const totalExpectedQuantity = enrichedDetails.reduce(
       (sum, d) => sum + d.quantityExpected,
-      0
+      0,
     );
     const totalReceivedQuantity = enrichedDetails.reduce(
       (sum, d) => sum + d.quantityReceived,
-      0
+      0,
     );
 
     return {
@@ -428,43 +551,49 @@ export const getReceiveSessionProgress = query({
     // Get purchase order
     const purchaseOrder = await ctx.db.get(session.purchaseOrderId);
 
+    // Get session status
+    const sessionStatus = await ctx.db.get(session.receiveSessionStatusTypeId);
+
     // Get all details
     const details = await ctx.db
       .query("receive_sessions_details")
       .withIndex("receiveSessionId", (q) =>
-        q.eq("receiveSessionId", args.receiveSessionId)
+        q.eq("receiveSessionId", args.receiveSessionId),
       )
       .collect();
 
-    // Enrich with SKU codes and calculate totals
+    // Enrich with SKU codes, product names, and calculate totals
     const items = await Promise.all(
       details.map(async (detail) => {
         const variant = await ctx.db.get(detail.skuId);
+        const product = variant ? await ctx.db.get(variant.productId) : null;
         const itemStatus = await ctx.db.get(
-          detail.receiveSessionItemStatusTypeId
+          detail.receiveSessionItemStatusTypeId,
         );
 
         return {
           detailId: detail._id,
           skuId: detail.skuId,
           skuCode: variant?.skuCode ?? "Unknown",
+          productName: product?.name ?? "Unknown Product",
           quantityExpected: detail.quantityExpected,
           quantityReceived: detail.quantityReceived,
           remainingQuantity: detail.quantityExpected - detail.quantityReceived,
+          notes: detail.notes,
           status: itemStatus?.lookupValue ?? "Unknown",
           statusCode: itemStatus?.lookupCode ?? "UNKNOWN",
           isComplete: detail.quantityReceived >= detail.quantityExpected,
         };
-      })
+      }),
     );
 
     const totalExpectedQuantity = items.reduce(
       (sum, i) => sum + i.quantityExpected,
-      0
+      0,
     );
     const totalReceivedQuantity = items.reduce(
       (sum, i) => sum + i.quantityReceived,
-      0
+      0,
     );
     const completedItems = items.filter((i) => i.isComplete).length;
     const progressPercentage =
@@ -475,6 +604,8 @@ export const getReceiveSessionProgress = query({
     return {
       receiveSessionCode: session.receiveSessionCode,
       purchaseOrderCode: purchaseOrder?.code ?? "Unknown",
+      status: sessionStatus?.lookupValue ?? "Unknown",
+      statusCode: sessionStatus?.lookupCode ?? "UNKNOWN",
       totalExpectedQuantity,
       totalReceivedQuantity,
       progressPercentage,
@@ -507,13 +638,13 @@ export const listReceiveSessions = query({
         .withIndex("lookupType_lookupCode", (q) =>
           q
             .eq("lookupType", "ReceiveSessionStatus")
-            .eq("lookupCode", args.statusFilter!)
+            .eq("lookupCode", args.statusFilter!),
         )
         .first();
 
       if (statusLookup) {
         sessions = sessions.filter(
-          (s) => s.receiveSessionStatusTypeId === statusLookup._id
+          (s) => s.receiveSessionStatusTypeId === statusLookup._id,
         );
       }
     }
@@ -531,21 +662,21 @@ export const listReceiveSessions = query({
         const details = await ctx.db
           .query("receive_sessions_details")
           .withIndex("receiveSessionId", (q) =>
-            q.eq("receiveSessionId", session._id)
+            q.eq("receiveSessionId", session._id),
           )
           .collect();
 
         const totalExpected = details.reduce(
           (sum, d) => sum + d.quantityExpected,
-          0
+          0,
         );
         const totalReceived = details.reduce(
           (sum, d) => sum + d.quantityReceived,
-          0
+          0,
         );
 
         return {
-          receiveSessionId: session._id,
+          _id: session._id,
           receiveSessionCode: session.receiveSessionCode,
           purchaseOrderCode: purchaseOrder?.code ?? "Unknown",
           supplierName: supplier?.name ?? "Unknown",
@@ -560,7 +691,7 @@ export const listReceiveSessions = query({
               ? Math.round((totalReceived / totalExpected) * 100)
               : 0,
         };
-      })
+      }),
     );
 
     return enrichedSessions;
@@ -602,13 +733,13 @@ export const createReceiveSession = mutation({
     const existingSession = await ctx.db
       .query("receive_sessions")
       .withIndex("purchaseOrderId", (q) =>
-        q.eq("purchaseOrderId", args.purchaseOrderId)
+        q.eq("purchaseOrderId", args.purchaseOrderId),
       )
       .first();
 
     if (existingSession) {
       throw new Error(
-        `A receive session already exists for this purchase order: ${existingSession.receiveSessionCode}`
+        `A receive session already exists for this purchase order: ${existingSession.receiveSessionCode}`,
       );
     }
 
@@ -616,7 +747,7 @@ export const createReceiveSession = mutation({
     const poDetails = await ctx.db
       .query("purchase_order_details")
       .withIndex("purchaseOrderId", (q) =>
-        q.eq("purchaseOrderId", args.purchaseOrderId)
+        q.eq("purchaseOrderId", args.purchaseOrderId),
       )
       .collect();
 
@@ -630,7 +761,7 @@ export const createReceiveSession = mutation({
       "ReceiveSessionStatus",
       "PENDING",
       "Pending",
-      "Receive session is pending"
+      "Receive session is pending",
     );
 
     const pendingItemStatusId = await ensureSystemLookup(
@@ -638,13 +769,13 @@ export const createReceiveSession = mutation({
       "ReceiveSessionItemStatus",
       "PENDING",
       "Pending",
-      "Item is pending receiving"
+      "Item is pending receiving",
     );
 
     // Generate receive session code
     const receiveSessionCode = await generateReceiveSessionCode(
       ctx,
-      purchaseOrder.branchId
+      purchaseOrder.branchId,
     );
 
     // Create receive session
@@ -664,6 +795,7 @@ export const createReceiveSession = mutation({
         quantityExpected: poDetail.quantityOrdered,
         quantityReceived: 0,
         receiveSessionItemStatusTypeId: pendingItemStatusId,
+        recommendedZoneId: poDetail.recommendedZoneId,
       });
     }
 
@@ -673,8 +805,21 @@ export const createReceiveSession = mutation({
       branch.organizationId,
       purchaseOrder.branchId,
       receiveSessionId,
-      args.userId
+      args.userId,
     );
+
+    // Update purchase order status to "Received"
+    const receivedStatusId = await getSystemLookup(
+      ctx,
+      "PurchaseOrderStatus",
+      "RECEIVED",
+    );
+
+    if (receivedStatusId) {
+      await ctx.db.patch(args.purchaseOrderId, {
+        purchaseOrderStatusTypeId: receivedStatusId,
+      });
+    }
 
     return {
       success: true,
@@ -733,23 +878,29 @@ export const processReceiveItem = mutation({
       newStatusCode === "COMPLETE"
         ? "Complete"
         : newStatusCode === "PARTIAL"
-        ? "Partial"
-        : "Pending",
-      `Item receiving is ${newStatusCode.toLowerCase()}`
+          ? "Partial"
+          : "Pending",
+      `Item receiving is ${newStatusCode.toLowerCase()}`,
     );
 
     // Get a random storage zone recommendation from the same branch
     const recommendedZoneId = await getRandomStorageZone(
       ctx,
       session.branchId,
-      "STORAGE" // Filter for storage type zones
+      "STORAGE", // Filter for storage type zones
     );
+
+    // Append notes instead of overwriting
+    let newNotes = detail.notes || "";
+    if (args.notes) {
+      newNotes = newNotes ? `${newNotes}\n- ${args.notes}` : `- ${args.notes}`;
+    }
 
     // Update the detail record
     await ctx.db.patch(args.receiveSessionDetailId, {
       quantityReceived: newQuantityReceived,
       receiveSessionItemStatusTypeId: newStatusId,
-      notes: args.notes ?? detail.notes,
+      notes: newNotes,
       recommendedZoneId: recommendedZoneId ?? detail.recommendedZoneId,
     });
 
@@ -757,7 +908,7 @@ export const processReceiveItem = mutation({
     const allDetails = await ctx.db
       .query("receive_sessions_details")
       .withIndex("receiveSessionId", (q) =>
-        q.eq("receiveSessionId", detail.receiveSessionId)
+        q.eq("receiveSessionId", detail.receiveSessionId),
       )
       .collect();
 
@@ -792,9 +943,9 @@ export const processReceiveItem = mutation({
       sessionStatusCode === "COMPLETE"
         ? "Complete"
         : sessionStatusCode === "IN_PROGRESS"
-        ? "In Progress"
-        : "Pending",
-      `Receive session is ${sessionStatusCode.toLowerCase().replace("_", " ")}`
+          ? "In Progress"
+          : "Pending",
+      `Receive session is ${sessionStatusCode.toLowerCase().replace("_", " ")}`,
     );
 
     await ctx.db.patch(detail.receiveSessionId, {
@@ -807,7 +958,7 @@ export const processReceiveItem = mutation({
       const poDetails = await ctx.db
         .query("purchase_order_details")
         .withIndex("purchaseOrderId", (q) =>
-          q.eq("purchaseOrderId", session.purchaseOrderId)
+          q.eq("purchaseOrderId", session.purchaseOrderId),
         )
         .filter((q) => q.eq(q.field("skuId"), detail.skuId))
         .first();
@@ -895,8 +1046,8 @@ export const createReturnFromReceiveSession = mutation({
       .filter((q) =>
         q.and(
           q.gte(q.field("requestedAt"), startOfDay),
-          q.lte(q.field("requestedAt"), endOfDay)
-        )
+          q.lte(q.field("requestedAt"), endOfDay),
+        ),
       )
       .collect();
 
@@ -909,7 +1060,7 @@ export const createReturnFromReceiveSession = mutation({
       "ReturnStatus",
       "PENDING",
       "Pending",
-      "Return request is pending"
+      "Return request is pending",
     );
 
     // Create return request
@@ -941,7 +1092,7 @@ export const createReturnFromReceiveSession = mutation({
       "ReceiveSessionItemStatus",
       "RETURN_REQUESTED",
       "Return Requested",
-      "Return has been requested for this item"
+      "Return has been requested for this item",
     );
 
     await ctx.db.patch(args.receiveSessionDetailId, {
@@ -978,7 +1129,7 @@ export const updateReceiveSessionStatus = mutation({
       args.statusCode,
       args.statusCode.charAt(0).toUpperCase() +
         args.statusCode.slice(1).toLowerCase().replace("_", " "),
-      `Receive session status: ${args.statusCode}`
+      `Receive session status: ${args.statusCode}`,
     );
 
     await ctx.db.patch(args.receiveSessionId, {
@@ -990,7 +1141,7 @@ export const updateReceiveSessionStatus = mutation({
       const workSession = await ctx.db
         .query("work_sessions")
         .withIndex("receiveSessionId", (q) =>
-          q.eq("receiveSessionId", args.receiveSessionId)
+          q.eq("receiveSessionId", args.receiveSessionId),
         )
         .first();
 
@@ -1000,7 +1151,7 @@ export const updateReceiveSessionStatus = mutation({
           "SessionStatus",
           "COMPLETED",
           "Completed",
-          "Session has been completed"
+          "Session has been completed",
         );
 
         await ctx.db.patch(workSession._id, {
@@ -1020,7 +1171,15 @@ export const updateReceiveSessionStatus = mutation({
 
 /**
  * Complete a receive session
- * Marks all items and work session as complete
+ * Updates each item's status based on received vs expected:
+ * - COMPLETE if record >= expected
+ * - RETURN_REQUESTED items stay as is
+ * 
+ * Additionally:
+ * - Creates ONE return request for all RETURN_REQUESTED items
+ * - Creates inventory batches for COMPLETE items
+ * 
+ * Marks session and work session as complete
  */
 export const completeReceiveSession = mutation({
   args: {
@@ -1033,25 +1192,186 @@ export const completeReceiveSession = mutation({
       throw new Error("Receive session not found");
     }
 
-    // Get complete status
-    const completeStatusId = await ensureSystemLookup(
+    // Get branch info for organizationId
+    const branch = await ctx.db.get(session.branchId);
+    if (!branch) {
+      throw new Error("Branch not found");
+    }
+
+    // Get purchase order for supplier info
+    const purchaseOrder = await ctx.db.get(session.purchaseOrderId);
+    if (!purchaseOrder) {
+      throw new Error("Purchase order not found");
+    }
+
+    // Get all session details
+    const details = await ctx.db
+      .query("receive_sessions_details")
+      .withIndex("receiveSessionId", (q) =>
+        q.eq("receiveSessionId", args.receiveSessionId),
+      )
+      .collect();
+
+    // Get status IDs
+    const completeItemStatusId = await ensureSystemLookup(
       ctx,
-      "ReceiveSessionStatus",
+      "ReceiveSessionItemStatus",
       "COMPLETE",
       "Complete",
-      "Receive session is complete"
+      "Item has been fully received",
+    );
+
+    const returnRequestedStatusId = await getSystemLookup(
+      ctx,
+      "ReceiveSessionItemStatus",
+      "RETURN_REQUESTED",
+    );
+
+    // Get batch status for inventory batches (BatchStatus/ACTIVE)
+    const activeBatchStatusId = await ensureSystemLookup(
+      ctx,
+      "BatchStatus",
+      "ACTIVE",
+      "Active",
+      "Batch is active and available for use",
+    );
+
+    // Get pending status for return request
+    const pendingReturnStatusId = await ensureSystemLookup(
+      ctx,
+      "ReturnStatus",
+      "PENDING",
+      "Pending",
+      "Return request is pending",
+    );
+
+    // Separate items into return requested and complete
+    const returnRequestedItems: typeof details = [];
+    const completeItems: typeof details = [];
+
+    for (const detail of details) {
+      const isReturnRequested = returnRequestedStatusId && 
+        detail.receiveSessionItemStatusTypeId === returnRequestedStatusId;
+      
+      if (isReturnRequested) {
+        returnRequestedItems.push(detail);
+      } else if (detail.quantityReceived >= detail.quantityExpected) {
+        // Mark as complete
+        await ctx.db.patch(detail._id, {
+          receiveSessionItemStatusTypeId: completeItemStatusId,
+        });
+        completeItems.push(detail);
+      }
+    }
+
+    // ================================================================
+    // CREATE RETURN REQUEST for all RETURN_REQUESTED items
+    // ================================================================
+    let returnRequestId: any = null;
+    if (returnRequestedItems.length > 0 && args.verifiedByUserId) {
+      // Generate return request code
+      const requestCode = await generateReturnRequestCode(ctx, session.branchId);
+
+      // Create return request header
+      returnRequestId = await ctx.db.insert("return_requests", {
+        organizationId: branch.organizationId as any,
+        branchId: session.branchId as any,
+        requestCode,
+        supplierId: purchaseOrder.supplierId as any,
+        requestedByUserId: args.verifiedByUserId as any,
+        requestedAt: Date.now(),
+        returnStatusTypeId: pendingReturnStatusId as any,
+        purchaseOrderId: session.purchaseOrderId as any,
+        isDeleted: false,
+      });
+
+      // Create return request details for each item
+      for (const item of returnRequestedItems) {
+        // Get SKU info for expected credit calculation
+        const variant = await ctx.db.get(item.skuId);
+        const expectedCreditAmount = variant
+          ? variant.costPrice * item.quantityExpected
+          : 0;
+
+        await ctx.db.insert("return_request_details", {
+          returnRequestId,
+          skuId: item.skuId as any,
+          quantityToReturn: item.quantityExpected,
+          reasonTypeId: (item.returnTypeId || pendingReturnStatusId) as any,
+          customReasonNotes: item.notes || undefined,
+          expectedCreditAmount,
+        });
+      }
+    }
+
+    // ================================================================
+    // CREATE INVENTORY BATCHES for all COMPLETE items
+    // ================================================================
+    const createdBatches: any[] = [];
+    for (const item of completeItems) {
+      // Check if item has a recommended zone
+      if (!item.recommendedZoneId) {
+        // Skip items without a zone - this shouldn't happen if PO was created correctly
+        console.warn(`Item ${item._id} has no recommendedZoneId, skipping batch creation`);
+        continue;
+      }
+
+      // Generate batch numbers
+      const supplierBatchNumber = await generateSupplierBatchNumber(ctx, session.branchId);
+      const internalBatchNumber = await generateInternalBatchNumber(ctx, session.branchId);
+
+      // Create inventory batch
+      const batchId = await ctx.db.insert("inventory_batches", {
+        organizationId: branch.organizationId,
+        skuId: item.skuId,
+        zoneId: item.recommendedZoneId,
+        quantity: item.quantityReceived,
+        branchId: session.branchId,
+        supplierBatchNumber,
+        internalBatchNumber,
+        receivedAt: Date.now(),
+        batchStatusTypeId: activeBatchStatusId,
+        isDeleted: false,
+      });
+
+      createdBatches.push({
+        batchId,
+        skuId: item.skuId,
+        quantity: item.quantityReceived,
+        supplierBatchNumber,
+        internalBatchNumber,
+      });
+    }
+
+    // ================================================================
+    // UPDATE SESSION STATUS
+    // ================================================================
+    const allHandled = details.every((d) => {
+      const isReturnRequested = returnRequestedStatusId && 
+        d.receiveSessionItemStatusTypeId === returnRequestedStatusId;
+      const isComplete = d.quantityReceived >= d.quantityExpected;
+      return isReturnRequested || isComplete;
+    });
+
+    const sessionStatusCode = allHandled ? "COMPLETE" : "IN_PROGRESS";
+    const sessionStatusId = await ensureSystemLookup(
+      ctx,
+      "ReceiveSessionStatus",
+      sessionStatusCode,
+      sessionStatusCode === "COMPLETE" ? "Complete" : "In Progress",
+      `Receive session is ${sessionStatusCode.toLowerCase()}`,
     );
 
     // Update session status
     await ctx.db.patch(args.receiveSessionId, {
-      receiveSessionStatusTypeId: completeStatusId,
+      receiveSessionStatusTypeId: sessionStatusId,
     });
 
     // Update work session
     const workSession = await ctx.db
       .query("work_sessions")
       .withIndex("receiveSessionId", (q) =>
-        q.eq("receiveSessionId", args.receiveSessionId)
+        q.eq("receiveSessionId", args.receiveSessionId),
       )
       .first();
 
@@ -1061,7 +1381,7 @@ export const completeReceiveSession = mutation({
         "SessionStatus",
         "COMPLETED",
         "Completed",
-        "Session has been completed"
+        "Session has been completed",
       );
 
       await ctx.db.patch(workSession._id, {
@@ -1072,15 +1392,14 @@ export const completeReceiveSession = mutation({
       });
     }
 
-    // Update purchase order status to Received if all items received
-    const purchaseOrder = await ctx.db.get(session.purchaseOrderId);
-    if (purchaseOrder) {
+    // Update purchase order status to Received if all items handled
+    if (purchaseOrder && allHandled) {
       const receivedStatusId = await ensureSystemLookup(
         ctx,
         "PurchaseOrderStatus",
+        "RECEIVED",
         "Received",
-        "Received",
-        "Purchase order has been received"
+        "Purchase order has been received",
       );
 
       await ctx.db.patch(session.purchaseOrderId, {
@@ -1091,7 +1410,154 @@ export const completeReceiveSession = mutation({
     return {
       success: true,
       receiveSessionId: args.receiveSessionId,
+      sessionStatus: sessionStatusCode,
       completedAt: Date.now(),
+      returnRequestId,
+      returnRequestedItemCount: returnRequestedItems.length,
+      inventoryBatchesCreated: createdBatches.length,
+    };
+  },
+});
+
+/**
+ * Set a single item's status to RETURN_REQUESTED
+ * Used when user clicks Return for a specific SKU in the dialog
+ */
+export const setItemReturnRequested = mutation({
+  args: {
+    receiveSessionDetailId: v.id("receive_sessions_details"),
+    returnTypeId: v.id("system_lookups"), // Required return reason type
+    notes: v.optional(v.string()), // Optional additional notes
+  },
+  handler: async (ctx, args) => {
+    // Get the detail record
+    const detail = await ctx.db.get(args.receiveSessionDetailId);
+    if (!detail) {
+      throw new Error("Receive session detail not found");
+    }
+
+    // Validate return type exists
+    const returnType = await ctx.db.get(args.returnTypeId);
+    if (!returnType) {
+      throw new Error("Invalid return reason type");
+    }
+
+    // Get RETURN_REQUESTED status ID
+    const returnRequestedStatusId = await ensureSystemLookup(
+      ctx,
+      "ReceiveSessionItemStatus",
+      "RETURN_REQUESTED",
+      "Return Requested",
+      "Return has been requested for this item"
+    );
+
+    // Update the item status, returnTypeId, and notes
+    await ctx.db.patch(args.receiveSessionDetailId, {
+      receiveSessionItemStatusTypeId: returnRequestedStatusId,
+      returnTypeId: args.returnTypeId,
+      notes: args.notes || undefined,
+    });
+
+    return {
+      success: true,
+      detailId: args.receiveSessionDetailId,
+      newStatusCode: "RETURN_REQUESTED",
+    };
+  },
+});
+
+/**
+ * Save receive session state
+ * Determines overall session status based on item statuses:
+ * - COMPLETE: all items are either COMPLETE or RETURN_REQUESTED
+ * - PARTIAL: some items have been processed (received or returned)
+ * - IN_PROGRESS: at least one item has partial quantity
+ * Does NOT create a return request - just saves current state
+ */
+export const saveReceiveSessionState = mutation({
+  args: {
+    receiveSessionId: v.id("receive_sessions"),
+  },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.receiveSessionId);
+    if (!session) {
+      throw new Error("Receive session not found");
+    }
+
+    // Get all session details
+    const details = await ctx.db
+      .query("receive_sessions_details")
+      .withIndex("receiveSessionId", (q) =>
+        q.eq("receiveSessionId", args.receiveSessionId)
+      )
+      .collect();
+
+    // Get status lookup values for comparison
+    const returnRequestedStatus = await getSystemLookup(
+      ctx,
+      "ReceiveSessionItemStatus",
+      "RETURN_REQUESTED"
+    );
+    const completeItemStatus = await getSystemLookup(
+      ctx,
+      "ReceiveSessionItemStatus",
+      "COMPLETE"
+    );
+
+    // Analyze item statuses
+    let allHandled = true;
+    let anyProcessed = false;
+    let hasPartialItems = false;
+
+    for (const detail of details) {
+      const isReturnRequested =
+        returnRequestedStatus &&
+        detail.receiveSessionItemStatusTypeId === returnRequestedStatus;
+      const isComplete =
+        detail.quantityReceived >= detail.quantityExpected ||
+        (completeItemStatus &&
+          detail.receiveSessionItemStatusTypeId === completeItemStatus);
+      const isPartial =
+        detail.quantityReceived > 0 &&
+        detail.quantityReceived < detail.quantityExpected;
+
+      if (isReturnRequested || isComplete) {
+        anyProcessed = true;
+      } else if (isPartial) {
+        anyProcessed = true;
+        hasPartialItems = true;
+        allHandled = false;
+      } else {
+        // Not handled at all
+        allHandled = false;
+      }
+    }
+
+    // Determine session status (Save & Exit only sets PENDING or IN_PROGRESS, never COMPLETE)
+    let sessionStatusCode: string;
+    if (anyProcessed || hasPartialItems) {
+      sessionStatusCode = "IN_PROGRESS";
+    } else {
+      sessionStatusCode = "PENDING";
+    }
+
+    const sessionStatusId = await ensureSystemLookup(
+      ctx,
+      "ReceiveSessionStatus",
+      sessionStatusCode,
+      sessionStatusCode === "IN_PROGRESS" ? "In Progress" : "Pending",
+      `Receive session is ${sessionStatusCode.toLowerCase().replace("_", " ")}`
+    );
+
+    // Update session status
+    await ctx.db.patch(args.receiveSessionId, {
+      receiveSessionStatusTypeId: sessionStatusId,
+    });
+
+    return {
+      success: true,
+      receiveSessionId: args.receiveSessionId,
+      sessionStatus: sessionStatusCode,
     };
   },
 });
