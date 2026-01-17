@@ -479,6 +479,7 @@ export default defineSchema({
     orderDate: v.number(),
     requestedShipDate: v.optional(v.number()),
     trackingNumber: v.optional(v.string()),
+    vehicleArrivedAt: v.optional(v.number()),
     createdByUserId: v.id("users"),
     outboundStatusTypeId: v.id("system_lookups"),
     isDeleted: v.boolean(),
