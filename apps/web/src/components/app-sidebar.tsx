@@ -74,6 +74,10 @@ const data = {
       icon: Package,
       items: [
         {
+          title: "Products",
+          url: "/inventory/products",
+        },
+        {
           title: "Stock",
           url: "/inventory/stock",
         },
