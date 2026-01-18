@@ -14,6 +14,7 @@ export function useKeyboardShortcuts() {
   const transformMode = useLayoutStore((state) => state.transformMode);
   const setTransformMode = useLayoutStore((state) => state.setTransformMode);
   const resetCamera = useLayoutStore((state) => state.resetCamera);
+  const zoomToEntity = useLayoutStore((state) => state.zoomToEntity);
   const lastActionTimeRef = useRef<number>(0);
 
   useEffect(() => {
@@ -56,11 +57,15 @@ export function useKeyboardShortcuts() {
           redo();
         }
       }
-      // Ctrl+Space - Reset camera view
+      // Ctrl+Space - Reset camera view or zoom to selected entity
       else if (event.ctrlKey && event.code === "Space") {
         event.preventDefault();
         lastActionTimeRef.current = now;
-        resetCamera();
+        if (selectedEntityId) {
+          zoomToEntity(selectedEntityId);
+        } else {
+          resetCamera();
+        }
       }
       // M key - toggle Move mode (only when entity is selected)
       else if (
@@ -95,5 +100,11 @@ export function useKeyboardShortcuts() {
     return () => {
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [selectedEntityId, transformMode, setTransformMode, resetCamera]);
+  }, [
+    selectedEntityId,
+    transformMode,
+    setTransformMode,
+    resetCamera,
+    zoomToEntity,
+  ]);
 }

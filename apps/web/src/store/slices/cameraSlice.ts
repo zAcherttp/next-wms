@@ -18,12 +18,15 @@ export interface Vector3 {
 export interface CameraState {
   cameraPosition: Vector3 | null;
   resetCameraFn: (() => void) | null;
+  zoomToEntityFn: ((entityId: string) => void) | null;
 }
 
 export interface CameraActions {
   updateCameraPosition: (position: Vector3) => void;
   registerResetCamera: (fn: () => void) => void;
   resetCamera: () => void;
+  registerZoomToEntity: (fn: (entityId: string) => void) => void;
+  zoomToEntity: (entityId: string) => void;
 }
 
 export type CameraSlice = CameraState & CameraActions;
@@ -41,6 +44,7 @@ export const createCameraSlice: StateCreator<
   // Initial state
   cameraPosition: null,
   resetCameraFn: null,
+  zoomToEntityFn: null,
 
   // Actions
   updateCameraPosition: (position) => {
@@ -54,5 +58,14 @@ export const createCameraSlice: StateCreator<
   resetCamera: () => {
     const fn = get().resetCameraFn;
     if (fn) fn();
+  },
+
+  registerZoomToEntity: (fn) => {
+    set({ zoomToEntityFn: fn });
+  },
+
+  zoomToEntity: (entityId) => {
+    const fn = get().zoomToEntityFn;
+    if (fn) fn(entityId);
   },
 });

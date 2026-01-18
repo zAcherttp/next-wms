@@ -40,6 +40,10 @@ import { GhostPreview } from "@/components/zones/ghost-preview";
 import { Obstacle } from "@/components/zones/obstacle";
 import { Rack } from "@/components/zones/rack";
 import { ShortcutPreview } from "@/components/zones/shortcut-preview";
+import {
+  logCameraReset,
+  logCameraZoomToEntity,
+} from "@/store/editor-console-store";
 import { useLayoutStore } from "@/store/layout-editor-store";
 import { Zone } from "./zone";
 import { ZoneGrid } from "./zone-grid";
@@ -51,6 +55,7 @@ import { ZoneGrid } from "./zone-grid";
 function SceneContent() {
   const editorConfig = useLayoutStore((state) => state.editorConfig);
   const registerResetCamera = useLayoutStore((s) => s.registerResetCamera);
+  const registerZoomToEntity = useLayoutStore((s) => s.registerZoomToEntity);
   const cameraControlsRef = useRef<CameraControls>(null);
 
   // Subscribe to entities to trigger re-render when data changes
@@ -232,14 +237,80 @@ function SceneContent() {
       cameraControlsRef.current.setLookAt(
         centerX,
         cameraDistance,
-        centerZ + cameraDistance * 0.3,
+        centerZ + cameraDistance * Math.tan(Math.PI / 6), // 30 degree angle
         centerX,
         0,
         centerZ,
         true,
       );
+
+      logCameraReset();
     });
   }, [registerResetCamera, zoneBounds]);
+
+  // Register zoom to entity function with the store
+  useEffect(() => {
+    registerZoomToEntity((entityId: string) => {
+      if (!cameraControlsRef.current) return;
+
+      const entity = entities.get(entityId);
+      if (!entity) return;
+
+      const pos = entity.zoneAttributes.position as
+        | { x: number; z: number }
+        | undefined;
+      const dims = entity.zoneAttributes.dimensions as
+        | { width: number; length: number }
+        | undefined;
+
+      if (!pos) return;
+      if (
+        typeof pos.x !== "number" ||
+        typeof pos.z !== "number" ||
+        Number.isNaN(pos.x) ||
+        Number.isNaN(pos.z)
+      ) {
+        return;
+      }
+
+      let centerX: number;
+      let centerZ: number;
+      let cameraDistance: number;
+
+      if (
+        dims &&
+        typeof dims.width === "number" &&
+        typeof dims.length === "number" &&
+        !Number.isNaN(dims.width) &&
+        !Number.isNaN(dims.length)
+      ) {
+        // Calculate center of the entity
+        centerX = pos.x + dims.width / 2;
+        centerZ = pos.z + dims.length / 2;
+        // Calculate appropriate distance based on entity size
+        const maxDimension = Math.max(dims.width, dims.length);
+        cameraDistance = Math.max(maxDimension * 1.5, 8);
+      } else {
+        // No dimensions, zoom to position directly
+        centerX = pos.x;
+        centerZ = pos.z;
+        cameraDistance = 8; // Default distance
+      }
+
+      // Set camera to look at entity center from above
+      cameraControlsRef.current.setLookAt(
+        centerX,
+        cameraDistance,
+        centerZ + cameraDistance * Math.tan(Math.PI / 3), // 60 degree angle
+        centerX,
+        0,
+        centerZ,
+        true,
+      );
+
+      logCameraZoomToEntity(centerX, 0, centerZ);
+    });
+  }, [registerZoomToEntity, entities]);
 
   // Center camera on zoneBounds after initial load
   const hasInitializedCamera = useRef(false);
@@ -262,7 +333,7 @@ function SceneContent() {
     cameraControlsRef.current.setLookAt(
       centerX,
       cameraDistance,
-      centerZ + cameraDistance * 0.3, // Slight offset for angled view
+      centerZ + cameraDistance * Math.tan(Math.PI / 6), // 30 degree angle
       centerX,
       0,
       centerZ,
@@ -404,7 +475,7 @@ export const Canvas3D: React.FC = () => {
 
   return (
     <div className="relative box-border h-full min-h-0 w-full overflow-hidden">
-      <Leva hidden={false} />
+      <Leva hidden={true} />
       <Canvas
         shadows={enableShadows}
         dpr={pixelRatio}

@@ -122,6 +122,16 @@ export const logCollisionCheckInfo = (
   useEditorConsole.getState().debug(message, "collision");
 };
 
+export const logCameraReset = () => {
+  const message = "Camera reset to default view";
+  useEditorConsole.getState().info(message, "camera");
+};
+
+export const logCameraZoomToEntity = (x: number, y: number, z: number) => {
+  const message = `Camera zoomed to entity at position (${x.toFixed(2)}, ${y.toFixed(2)}, ${z.toFixed(2)})`;
+  useEditorConsole.getState().info(message, "camera");
+};
+
 // Re-export types
 export type {
   ConsoleFilters,
