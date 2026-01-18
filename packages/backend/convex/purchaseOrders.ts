@@ -23,19 +23,27 @@ export const generateNextPurchaseOrderCode = query({
 
     // Get the start and end of current month
     const startOfMonth = new Date(year, now.getMonth(), 1).getTime();
-    const endOfMonth = new Date(year, now.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+    const endOfMonth = new Date(
+      year,
+      now.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    ).getTime();
 
     // Count orders created this month in the organization
     const monthOrders = await ctx.db
       .query("purchase_orders")
       .withIndex("organizationId", (q) =>
-        q.eq("organizationId", branch.organizationId)
+        q.eq("organizationId", branch.organizationId),
       )
       .filter((q) =>
         q.and(
           q.gte(q.field("orderedAt"), startOfMonth),
-          q.lte(q.field("orderedAt"), endOfMonth)
-        )
+          q.lte(q.field("orderedAt"), endOfMonth),
+        ),
       )
       .collect();
 
@@ -59,7 +67,7 @@ export const listAllProductVariants = query({
     const products = await ctx.db
       .query("products")
       .withIndex("organizationId", (q) =>
-        q.eq("organizationId", args.organizationId)
+        q.eq("organizationId", args.organizationId),
       )
       .filter((q) => q.eq(q.field("isActive"), true))
       .filter((q) => q.eq(q.field("isDeleted"), false))
@@ -158,7 +166,7 @@ export const createPurchaseOrder = mutation({
         variantId: v.id("product_variants"),
         quantity: v.number(),
         zoneId: v.id("storage_zones"), // Required zone for each item
-      })
+      }),
     ),
   },
   handler: async (ctx, args) => {
@@ -185,7 +193,9 @@ export const createPurchaseOrder = mutation({
     for (const item of args.items) {
       const zone = await ctx.db.get(item.zoneId);
       if (!zone) {
-        throw new Error(`Zone not found for item with variantId: ${item.variantId}`);
+        throw new Error(
+          `Zone not found for item with variantId: ${item.variantId}`,
+        );
       }
     }
 
@@ -193,7 +203,7 @@ export const createPurchaseOrder = mutation({
     const pendingStatus = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "PENDING")
+        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "PENDING"),
       )
       .first();
 
@@ -209,19 +219,27 @@ export const createPurchaseOrder = mutation({
 
     // Get the start and end of current month
     const startOfMonth = new Date(year, date.getMonth(), 1).getTime();
-    const endOfMonth = new Date(year, date.getMonth() + 1, 0, 23, 59, 59, 999).getTime();
+    const endOfMonth = new Date(
+      year,
+      date.getMonth() + 1,
+      0,
+      23,
+      59,
+      59,
+      999,
+    ).getTime();
 
     // Count orders created this month in the organization
     const monthOrders = await ctx.db
       .query("purchase_orders")
       .withIndex("organizationId", (q) =>
-        q.eq("organizationId", branch.organizationId)
+        q.eq("organizationId", branch.organizationId),
       )
       .filter((q) =>
         q.and(
           q.gte(q.field("orderedAt"), startOfMonth),
-          q.lte(q.field("orderedAt"), endOfMonth)
-        )
+          q.lte(q.field("orderedAt"), endOfMonth),
+        ),
       )
       .collect();
 
@@ -265,7 +283,6 @@ export const createPurchaseOrder = mutation({
   },
 });
 
-
 /**
  * Get all purchase orders for a branch (list view for table)
  * Returns only fields needed for the table display
@@ -299,7 +316,7 @@ export const listPurchaseOrders = query({
             ? { lookupValue: status.lookupValue }
             : null,
         };
-      })
+      }),
     );
 
     return enrichedOrders;
@@ -325,7 +342,7 @@ export const getPurchaseOrderDetailed = query({
     const details = await ctx.db
       .query("purchase_order_details")
       .withIndex("purchaseOrderId", (q) =>
-        q.eq("purchaseOrderId", args.orderId)
+        q.eq("purchaseOrderId", args.orderId),
       )
       .collect();
 
@@ -364,7 +381,7 @@ export const getPurchaseOrderDetailed = query({
           quantityOrdered: detail.quantityOrdered,
           location,
         };
-      })
+      }),
     );
 
     // Get related entities
@@ -376,7 +393,7 @@ export const getPurchaseOrderDetailed = query({
     const totalItems = enrichedDetails.length;
     const totalQuantityOrdered = enrichedDetails.reduce(
       (sum, item) => sum + item.quantityOrdered,
-      0
+      0,
     );
 
     return {
@@ -398,5 +415,141 @@ export const getPurchaseOrderDetailed = query({
       totalItems,
       totalQuantityOrdered,
     };
+  },
+});
+
+// ============================================================================
+// EXCEL IMPORT LOOKUP QUERIES
+// ============================================================================
+
+/**
+ * Get branch by name (case-insensitive) for Excel import
+ * Returns branch ID and name if found, null otherwise
+ */
+export const getBranchByName = query({
+  args: {
+    organizationId: v.id("organizations"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const branches = await ctx.db
+      .query("branches")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    // Case-insensitive name matching
+    const normalizedSearchName = args.name.toLowerCase().trim();
+    const match = branches.find(
+      (b) => b.name.toLowerCase().trim() === normalizedSearchName,
+    );
+
+    if (!match) {
+      return null;
+    }
+
+    return {
+      _id: match._id,
+      name: match.name,
+    };
+  },
+});
+
+/**
+ * Get supplier by name (case-insensitive) for Excel import
+ * Returns supplier ID and name if found, null otherwise
+ */
+export const getSupplierByName = query({
+  args: {
+    organizationId: v.id("organizations"),
+    name: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const suppliers = await ctx.db
+      .query("suppliers")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .collect();
+
+    // Case-insensitive name matching
+    const normalizedSearchName = args.name.toLowerCase().trim();
+    const match = suppliers.find(
+      (s) => s.name.toLowerCase().trim() === normalizedSearchName,
+    );
+
+    if (!match) {
+      return null;
+    }
+
+    return {
+      _id: match._id,
+      name: match.name,
+    };
+  },
+});
+
+/**
+ * Batch lookup product variants by SKU codes for Excel import
+ * Returns array of matching variants with their details
+ * Non-matching SKU codes are silently skipped
+ */
+export const getVariantsBySkuCodes = query({
+  args: {
+    organizationId: v.id("organizations"),
+    skuCodes: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Get all active products for this organization
+    const products = await ctx.db
+      .query("products")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", args.organizationId),
+      )
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .collect();
+
+    const productIds = products.map((p) => p._id);
+    const productMap = new Map(products.map((p) => [p._id, p]));
+
+    // Get all variants for these products
+    const allVariants = [];
+    for (const productId of productIds) {
+      const variants = await ctx.db
+        .query("product_variants")
+        .withIndex("productId", (q) => q.eq("productId", productId))
+        .filter((q) => q.eq(q.field("isActive"), true))
+        .filter((q) => q.eq(q.field("isDeleted"), false))
+        .collect();
+      allVariants.push(...variants);
+    }
+
+    // Normalize requested SKU codes for case-insensitive matching
+    const normalizedSkuCodes = args.skuCodes.map((sku) =>
+      sku.toLowerCase().trim(),
+    );
+
+    // Filter variants that match requested SKU codes
+    const matchingVariants = allVariants.filter((v) =>
+      normalizedSkuCodes.includes(v.skuCode.toLowerCase().trim()),
+    );
+
+    // Return enriched variant data
+    return matchingVariants.map((variant) => {
+      const product = productMap.get(variant.productId);
+      return {
+        _id: variant._id,
+        skuCode: variant.skuCode,
+        description: variant.description,
+        productId: variant.productId,
+        productName: product?.name ?? null,
+      };
+    });
   },
 });

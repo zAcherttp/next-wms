@@ -53,12 +53,34 @@ import { cn } from "@/lib/utils";
 
 interface AddPurchaseOrderDialogProps {
   trigger?: React.ReactNode;
+  // Props for Excel import pre-fill
+  initialBranchId?: string;
+  initialSupplierId?: string;
+  initialProducts?: Array<{
+    variantId: string;
+    skuCode: string;
+    description: string;
+    quantity: number;
+  }>;
+  // External dialog control
+  defaultOpen?: boolean;
+  onOpenChange?: (open: boolean) => void;
 }
 
 export function AddPurchaseOrderDialog({
   trigger,
+  initialBranchId,
+  initialSupplierId,
+  initialProducts,
+  defaultOpen = false,
+  onOpenChange,
 }: AddPurchaseOrderDialogProps) {
-  const [open, setOpen] = React.useState(false);
+  const [internalOpen, setInternalOpen] = React.useState(false);
+  
+  // Use external control if provided, otherwise use internal state
+  const open = onOpenChange ? defaultOpen : internalOpen;
+  const setOpen = onOpenChange ?? setInternalOpen;
+  
   const [receivingBranchId, setReceivingBranchId] = React.useState<string>("");
   const [supplierId, setSupplierId] = React.useState<string>("");
   const [products, setProducts] = React.useState<PurchaseOrderProductItem[]>(
@@ -72,12 +94,36 @@ export function AddPurchaseOrderDialog({
   const { userId, organizationId } = useCurrentUser();
   const { currentBranch, branches } = useBranches({ organizationId });
 
-  // Auto-select current branch when dialog opens
+  // Initialize from props when dialog opens with pre-filled data
   React.useEffect(() => {
-    if (open && currentBranch && !receivingBranchId) {
-      setReceivingBranchId(currentBranch._id);
+    if (open) {
+      // Set branch: prefer initialBranchId, then currentBranch
+      if (initialBranchId) {
+        setReceivingBranchId(initialBranchId);
+      } else if (currentBranch && !receivingBranchId) {
+        setReceivingBranchId(currentBranch._id);
+      }
+      
+      // Set supplier from import
+      if (initialSupplierId) {
+        setSupplierId(initialSupplierId);
+      }
+      
+      // Set products from import
+      if (initialProducts && initialProducts.length > 0) {
+        const mappedProducts: PurchaseOrderProductItem[] = initialProducts.map(
+          (p, index) => ({
+            id: `import-${index}-${Date.now()}`,
+            variantId: p.variantId as Id<"product_variants">,
+            skuCode: p.skuCode,
+            description: p.description,
+            quantity: p.quantity,
+          })
+        );
+        setProducts(mappedProducts);
+      }
     }
-  }, [open, currentBranch, receivingBranchId]);
+  }, [open, currentBranch, initialBranchId, initialSupplierId, initialProducts]);
 
   // Fetch next PO code when branch is selected
   const { data: nextPoCode } = useQuery({
@@ -247,14 +293,14 @@ export function AddPurchaseOrderDialog({
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="flex max-h-250 w-full flex-col overflow-hidden sm:max-w-2xl">
+      <DialogContent className="flex max-h-250 w-full flex-col overflow-hidden sm:max-w-3xl">
         <DialogHeader>
           <DialogTitle>New Purchase Order</DialogTitle>
         </DialogHeader>
 
         {/* Form Fields */}
-        <div className="flex max-w-150 flex-row gap-4">
-          <div className="space-y-2">
+        <div className="flex  flex-row gap-4 w-full">
+          <div className="space-y-2 flex-1">
             <Label htmlFor="po-id">
               PO-ID<span className="text-destructive">*</span>
             </Label>
@@ -262,10 +308,10 @@ export function AddPurchaseOrderDialog({
               id="po-id"
               value={nextPoCode?.code ?? "Loading..."}
               disabled
-              className="min-w-40 bg-muted"
+              className="w-full bg-muted"
             />
           </div>
-          <div className="space-y-2">
+          <div className="space-y-2 flex-1">
             <Label htmlFor="receiving-branch">
               Receiving Branch<span className="text-destructive">*</span>
             </Label>
@@ -273,7 +319,7 @@ export function AddPurchaseOrderDialog({
               value={receivingBranchId}
               onValueChange={setReceivingBranchId}
             >
-              <SelectTrigger className="min-w-40">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Branch" />
               </SelectTrigger>
               <SelectContent>
@@ -288,12 +334,12 @@ export function AddPurchaseOrderDialog({
             </Select>
           </div>
 
-          <div className="space-y-2">
+          <div className="space-y-2 flex-1">
             <Label htmlFor="supplier">
               Supplier <span className="text-destructive">*</span>
             </Label>
             <Select value={supplierId} onValueChange={setSupplierId}>
-              <SelectTrigger className="min-w-40">
+              <SelectTrigger className="w-full">
                 <SelectValue placeholder="Supplier" />
               </SelectTrigger>
               <SelectContent>

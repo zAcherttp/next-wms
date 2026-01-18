@@ -26,6 +26,10 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { AddPurchaseOrderDialog } from "@/components/add-purchase-order-dialog";
+import {
+  ImportExcelButton,
+  type ResolvedImportData,
+} from "@/components/import-excel-button";
 import { PurchaseOrderDetailDialog } from "@/components/purchase-order-detail-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
@@ -86,6 +90,25 @@ export function PurchaseOrdersTable() {
   const [selectedOrderId, setSelectedOrderId] =
     React.useState<Id<"purchase_orders"> | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
+
+  // Import Excel state
+  const [importDialogOpen, setImportDialogOpen] = React.useState(false);
+  const [importData, setImportData] = React.useState<ResolvedImportData | null>(
+    null
+  );
+
+  const handleImportComplete = (data: ResolvedImportData) => {
+    setImportData(data);
+    setImportDialogOpen(true);
+  };
+
+  const handleImportDialogClose = (open: boolean) => {
+    setImportDialogOpen(open);
+    if (!open) {
+      // Clear import data when dialog closes
+      setImportData(null);
+    }
+  };
 
   const columns: ColumnDef<PurchaseOrderListItem>[] = React.useMemo(
     () => [
@@ -403,8 +426,18 @@ export function PurchaseOrdersTable() {
               Clear filters ({activeFiltersCount})
             </Button>
           )}
+          <ImportExcelButton onImportComplete={handleImportComplete} />
           <AddPurchaseOrderDialog />
         </div>
+        {/* Separate dialog for imported data - no trigger, controlled externally */}
+        <AddPurchaseOrderDialog
+          trigger={<span className="hidden" />}
+          defaultOpen={importDialogOpen}
+          onOpenChange={handleImportDialogClose}
+          initialBranchId={importData?.branchId ?? undefined}
+          initialSupplierId={importData?.supplierId ?? undefined}
+          initialProducts={importData?.products}
+        />
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table className="bg-card">

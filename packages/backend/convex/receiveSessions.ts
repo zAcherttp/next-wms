@@ -568,6 +568,7 @@ export const getReceiveSessionDetailed = query({
       purchaseOrderId: session.purchaseOrderId,
       purchaseOrderCode: purchaseOrder?.code ?? "Unknown",
       supplierName: supplier?.name ?? "Unknown",
+      supplierPhone: supplier?.phone ?? null,
       receivedAt: session.receivedAt,
       status: sessionStatus?.lookupValue ?? "Unknown",
       statusCode: sessionStatus?.lookupCode ?? "UNKNOWN",

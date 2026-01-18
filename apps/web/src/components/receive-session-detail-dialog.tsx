@@ -137,7 +137,7 @@ export function ReceiveSessionDetailDialog({
             {/* Work Session Details Card */}
             <Card className="flex py-4">
               <CardContent className="px-6 py-0">
-                <div className="grid grid-cols-3 gap-x-8 gap-y-4">
+                <div className="grid grid-cols-4 gap-x-8 gap-y-4">
                   {/* Column 1: Employee & Status */}
                   <div className="space-y-4">
                     <InfoItem
@@ -175,7 +175,19 @@ export function ReceiveSessionDetailDialog({
                     />
                   </div>
 
-                  {/* Column 3: Summary */}
+                  {/* Column 3: Supplier Info */}
+                  <div className="space-y-4">
+                    <InfoItem
+                      label="Supplier Name"
+                      value={sessionDetail.supplierName ?? "-"}
+                    />
+                    <InfoItem
+                      label="Supplier Contact"
+                      value={sessionDetail.supplierPhone ?? "-"}
+                    />
+                  </div>
+
+                  {/* Column 4: Summary */}
                   <div className="space-y-4">
                     <InfoItem
                       label="Total SKUs"
@@ -200,16 +212,16 @@ export function ReceiveSessionDetailDialog({
                 <Table className="table-fixed w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[90px] px-2">SKU</TableHead>
-                      <TableHead className="w-[120px] px-2">Name</TableHead>
+                      <TableHead className="w-[90px] px-2 text-center">SKU</TableHead>
+                      <TableHead className="w-[120px] px-2 text-center">Name</TableHead>
                       <TableHead className="w-[65px] px-2 text-center">
                         Expected
                       </TableHead>
                       <TableHead className="w-[65px] px-2 text-center">
                         Received
                       </TableHead>
-                      <TableHead className="w-[140px] px-2">Location</TableHead>
-                      <TableHead className="w-[180px] px-2">Note</TableHead>
+                      <TableHead className="w-[140px] px-2 text-center">Location</TableHead>
+                      <TableHead className="w-[180px] px-2 text-center">Note</TableHead>
                       <TableHead className="w-[90px] px-2 text-center">
                         Status
                       </TableHead>
@@ -219,10 +231,10 @@ export function ReceiveSessionDetailDialog({
                     {sessionDetail.items.length > 0 ? (
                       sessionDetail.items.map((item) => (
                         <TableRow key={item.detailId}>
-                          <TableCell className="px-2 font-medium text-blue-600 truncate">
+                          <TableCell className="px-2 text-center font-medium text-blue-600 truncate">
                             {item.skuCode}
                           </TableCell>
-                          <TableCell className="px-2 truncate">
+                          <TableCell className="px-2 text-center truncate">
                             {item.productName ?? "-"}
                           </TableCell>
                           <TableCell className="px-2 text-center">
@@ -232,12 +244,12 @@ export function ReceiveSessionDetailDialog({
                             {item.quantityReceived}
                           </TableCell>
                           <TableCell
-                            className="px-2 text-muted-foreground truncate"
+                            className="px-2 text-center text-muted-foreground truncate"
                             title={item.recommendedZone ?? undefined}
                           >
                             {item.recommendedZone ?? "-"}
                           </TableCell>
-                          <TableCell className="px-2 max-w-[180px] break-words whitespace-normal text-muted-foreground">
+                          <TableCell className="px-2 text-center max-w-[180px] break-words whitespace-normal text-muted-foreground">
                             {item.notes ?? "-"}
                           </TableCell>
                           <TableCell className="px-2 text-center">
