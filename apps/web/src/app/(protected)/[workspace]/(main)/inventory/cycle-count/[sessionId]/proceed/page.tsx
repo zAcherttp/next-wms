@@ -148,7 +148,9 @@ export default function CycleCountProceedPage() {
 
   const handleRecordClick = (item: LineItem) => {
     setSelectedItem(item);
-    setCountedAmount(item.isScanned ? item.actualQuantity : item.expectedQuantity);
+    setCountedAmount(
+      item.isScanned ? item.actualQuantity : item.expectedQuantity,
+    );
     setCountNote(item.notes ?? "");
     setIsCountDialogOpen(true);
   };
@@ -159,7 +161,7 @@ export default function CycleCountProceedPage() {
     try {
       // Check if this is a batch-based item (fallback mode - no line item created yet)
       const isBatchBased = selectedItem._id.startsWith("batch-");
-      
+
       await recordCountMutation.mutateAsync({
         lineItemId: selectedItem._id,
         actualQuantity: countedAmount,
@@ -175,9 +177,13 @@ export default function CycleCountProceedPage() {
 
       const variance = countedAmount - selectedItem.expectedQuantity;
       if (variance === 0) {
-        toast.success(`Counted ${countedAmount} units of ${selectedItem.skuCode} - Match!`);
+        toast.success(
+          `Counted ${countedAmount} units of ${selectedItem.skuCode} - Match!`,
+        );
       } else {
-        toast.warning(`Counted ${countedAmount} units of ${selectedItem.skuCode} - Variance: ${variance > 0 ? "+" : ""}${variance}`);
+        toast.warning(
+          `Counted ${countedAmount} units of ${selectedItem.skuCode} - Variance: ${variance > 0 ? "+" : ""}${variance}`,
+        );
       }
 
       handleCountDialogClose();
@@ -427,7 +433,8 @@ export default function CycleCountProceedPage() {
                     ) : (
                       zone.lineItems.map((item) => {
                         const isComplete = item.isScanned;
-                        const hasVariance = item.isScanned && item.variance !== 0;
+                        const hasVariance =
+                          item.isScanned && item.variance !== 0;
                         return (
                           <div
                             key={item._id}
@@ -438,7 +445,9 @@ export default function CycleCountProceedPage() {
                                 <p
                                   className={cn(
                                     "font-medium",
-                                    isComplete && !hasVariance && "text-green-600",
+                                    isComplete &&
+                                      !hasVariance &&
+                                      "text-green-600",
                                     hasVariance && "text-amber-600",
                                   )}
                                 >
@@ -449,7 +458,8 @@ export default function CycleCountProceedPage() {
                                 )}
                                 {hasVariance && (
                                   <span className="text-amber-600 text-xs">
-                                    ({item.variance > 0 ? "+" : ""}{item.variance})
+                                    ({item.variance > 0 ? "+" : ""}
+                                    {item.variance})
                                   </span>
                                 )}
                               </div>
@@ -464,11 +474,19 @@ export default function CycleCountProceedPage() {
                                 size="sm"
                                 className={cn(
                                   "min-w-24",
-                                  isComplete && !hasVariance && "border-green-500 text-green-600",
-                                  hasVariance && "border-amber-500 text-amber-600",
+                                  isComplete &&
+                                    !hasVariance &&
+                                    "border-green-500 text-green-600",
+                                  hasVariance &&
+                                    "border-amber-500 text-amber-600",
                                 )}
                                 onClick={() => handleRecordClick(item)}
-                                disabled={zone.statusCode?.toLowerCase() !== "in_progress" && zone.statusCode?.toLowerCase() !== "in progress"}
+                                disabled={
+                                  zone.statusCode?.toLowerCase() !==
+                                    "in_progress" &&
+                                  zone.statusCode?.toLowerCase() !==
+                                    "in progress"
+                                }
                               >
                                 {isComplete
                                   ? `Counted: ${item.actualQuantity}`
@@ -588,7 +606,8 @@ export default function CycleCountProceedPage() {
                 >
                   {countedAmount - selectedItem.expectedQuantity > 0 && "+"}
                   {countedAmount - selectedItem.expectedQuantity}
-                  {countedAmount === selectedItem.expectedQuantity && " (Match)"}
+                  {countedAmount === selectedItem.expectedQuantity &&
+                    " (Match)"}
                 </div>
               </div>
 

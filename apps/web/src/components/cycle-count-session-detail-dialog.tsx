@@ -4,7 +4,14 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
-import { ArrowRight, ArrowRightLeft, Boxes, Check, Loader2, X } from "lucide-react";
+import {
+  ArrowRight,
+  ArrowRightLeft,
+  Boxes,
+  Check,
+  Loader2,
+  X,
+} from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -220,12 +227,14 @@ export function CycleCountSessionDetailDialog({
         quantityTypeId: !!lookups?.quantityTypeId,
         defaultStatusId: !!lookups?.defaultStatusId,
       });
-      toast.error("Missing required information. Please ensure you're logged in and try again.");
+      toast.error(
+        "Missing required information. Please ensure you're logged in and try again.",
+      );
       return;
     }
 
     const items = Array.from(selectedItems.values());
-    
+
     // Find "Count Discrepancy" as the reason for cycle count adjustments
     const countDiscrepancyReason = lookups.adjustmentReasons.find(
       (r) => r.lookupCode === "COUNT_DISCREPANCY",
@@ -246,7 +255,11 @@ export function CycleCountSessionDetailDialog({
           actualQuantity: item.actualQuantity,
           varianceQuantity: item.actualQuantity - item.expectedQuantity,
           costImpact: 0,
-          reasonTypeId: reasonId || (countDiscrepancyReason?._id ?? lookups.adjustmentReasons[0]?._id ?? ""),
+          reasonTypeId:
+            reasonId ||
+            (countDiscrepancyReason?._id ??
+              lookups.adjustmentReasons[0]?._id ??
+              ""),
           customReasonNotes: comments || "Cycle count variance adjustment",
         })),
       });
@@ -277,17 +290,19 @@ export function CycleCountSessionDetailDialog({
         locationTypeId: !!lookups?.locationTypeId,
         defaultStatusId: !!lookups?.defaultStatusId,
       });
-      toast.error("Missing required information. Please ensure you're logged in and try again.");
+      toast.error(
+        "Missing required information. Please ensure you're logged in and try again.",
+      );
       return;
     }
-    
+
     if (!selectedDestinationZone) {
       toast.error("Please select a destination zone");
       return;
     }
 
     const items = Array.from(selectedItems.values());
-    
+
     // Find "Location Transfer" as the reason
     const locationTransferReason = lookups.adjustmentReasons.find(
       (r) => r.lookupCode === "LOCATION_TRANSFER",
@@ -312,7 +327,11 @@ export function CycleCountSessionDetailDialog({
           actualQuantity: 0,
           varianceQuantity: 0,
           costImpact: 0,
-          reasonTypeId: reasonId || (locationTransferReason?._id ?? lookups.adjustmentReasons[0]?._id ?? ""),
+          reasonTypeId:
+            reasonId ||
+            (locationTransferReason?._id ??
+              lookups.adjustmentReasons[0]?._id ??
+              ""),
           customReasonNotes: comments || "Cycle count location transfer",
         })),
       });
@@ -453,7 +472,11 @@ export function CycleCountSessionDetailDialog({
 
           {/* Cancel Button */}
           <div className="mt-4">
-            <Button variant="outline" onClick={() => setAdjustmentTypeDialogOpen(false)} className="w-full">
+            <Button
+              variant="outline"
+              onClick={() => setAdjustmentTypeDialogOpen(false)}
+              className="w-full"
+            >
               Cancel
             </Button>
           </div>
@@ -541,7 +564,10 @@ export function CycleCountSessionDetailDialog({
                   Total Expected
                 </span>
                 <p className="mt-1 font-semibold text-lg">
-                  {selectedItemsArray.reduce((sum, item) => sum + item.expectedQuantity, 0)}
+                  {selectedItemsArray.reduce(
+                    (sum, item) => sum + item.expectedQuantity,
+                    0,
+                  )}
                 </p>
               </div>
               <div className="rounded-md border bg-muted/50 p-3">
@@ -549,26 +575,45 @@ export function CycleCountSessionDetailDialog({
                   Total Counted
                 </span>
                 <p className="mt-1 font-semibold text-lg">
-                  {selectedItemsArray.reduce((sum, item) => sum + item.actualQuantity, 0)}
+                  {selectedItemsArray.reduce(
+                    (sum, item) => sum + item.actualQuantity,
+                    0,
+                  )}
                 </p>
               </div>
-              <div className={cn(
-                "rounded-md border p-3",
-                selectedItemsArray.reduce((sum, item) => sum + item.variance, 0) === 0
-                  ? "border-green-500/60 bg-green-500/10"
-                  : "border-amber-500/60 bg-amber-500/10"
-              )}>
+              <div
+                className={cn(
+                  "rounded-md border p-3",
+                  selectedItemsArray.reduce(
+                    (sum, item) => sum + item.variance,
+                    0,
+                  ) === 0
+                    ? "border-green-500/60 bg-green-500/10"
+                    : "border-amber-500/60 bg-amber-500/10",
+                )}
+              >
                 <span className="font-medium text-muted-foreground text-xs uppercase">
                   Total Variance
                 </span>
-                <p className={cn(
-                  "mt-1 font-semibold text-lg",
-                  selectedItemsArray.reduce((sum, item) => sum + item.variance, 0) === 0
-                    ? "text-green-600"
-                    : "text-amber-600"
-                )}>
-                  {selectedItemsArray.reduce((sum, item) => sum + item.variance, 0) > 0 && "+"}
-                  {selectedItemsArray.reduce((sum, item) => sum + item.variance, 0)}
+                <p
+                  className={cn(
+                    "mt-1 font-semibold text-lg",
+                    selectedItemsArray.reduce(
+                      (sum, item) => sum + item.variance,
+                      0,
+                    ) === 0
+                      ? "text-green-600"
+                      : "text-amber-600",
+                  )}
+                >
+                  {selectedItemsArray.reduce(
+                    (sum, item) => sum + item.variance,
+                    0,
+                  ) > 0 && "+"}
+                  {selectedItemsArray.reduce(
+                    (sum, item) => sum + item.variance,
+                    0,
+                  )}
                 </p>
               </div>
             </div>
@@ -661,8 +706,12 @@ export function CycleCountSessionDetailDialog({
               <Field>
                 <FieldLabel>From Zone (Source)</FieldLabel>
                 <div className="rounded-md border bg-muted/50 px-3 py-2 text-sm">
-                  {selectedItemsArray.length > 0 
-                    ? [...new Set(selectedItemsArray.map(item => item.zoneName))].join(", ")
+                  {selectedItemsArray.length > 0
+                    ? [
+                        ...new Set(
+                          selectedItemsArray.map((item) => item.zoneName),
+                        ),
+                      ].join(", ")
                     : "Multiple zones"}
                 </div>
               </Field>
@@ -732,13 +781,18 @@ export function CycleCountSessionDetailDialog({
                         <TableCell>{item.zoneName}</TableCell>
                         <TableCell>
                           {selectedDestinationZone ? (
-                            <Badge variant="outline" className="border-green-500/60 bg-green-500/10 text-green-600">
+                            <Badge
+                              variant="outline"
+                              className="border-green-500/60 bg-green-500/10 text-green-600"
+                            >
                               {zones?.find(
                                 (z) => z._id === selectedDestinationZone,
                               )?.name ?? "—"}
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground">Select zone...</span>
+                            <span className="text-muted-foreground">
+                              Select zone...
+                            </span>
                           )}
                         </TableCell>
                         <TableCell className="text-center font-medium">
@@ -758,7 +812,12 @@ export function CycleCountSessionDetailDialog({
                   Total Items to Transfer
                 </span>
                 <span className="font-semibold text-primary">
-                  {selectedItems.size} item(s) • {selectedItemsArray.reduce((sum, item) => sum + item.expectedQuantity, 0)} units
+                  {selectedItems.size} item(s) •{" "}
+                  {selectedItemsArray.reduce(
+                    (sum, item) => sum + item.expectedQuantity,
+                    0,
+                  )}{" "}
+                  units
                 </span>
               </div>
             </div>
@@ -810,7 +869,9 @@ export function CycleCountSessionDetailDialog({
             <Button
               onClick={handleLocationTransferSubmit}
               disabled={
-                !selectedDestinationZone || !reasonId || createAdjustmentMutation.isPending
+                !selectedDestinationZone ||
+                !reasonId ||
+                createAdjustmentMutation.isPending
               }
               className="flex-1"
             >

@@ -133,7 +133,16 @@ export function QuantityAdjustmentDialog({
         user: !!user?._id,
       });
     }
-  }, [open, zones, isLoadingZones, lookups, isLoadingLookups, organizationId, currentBranch?._id, user?._id]);
+  }, [
+    open,
+    zones,
+    isLoadingZones,
+    lookups,
+    isLoadingLookups,
+    organizationId,
+    currentBranch?._id,
+    user?._id,
+  ]);
 
   // Initialize form when dialog opens with initial data
   React.useEffect(() => {
@@ -177,7 +186,9 @@ export function QuantityAdjustmentDialog({
         quantityTypeId: !!lookups?.quantityTypeId,
         defaultStatusId: !!lookups?.defaultStatusId,
       });
-      toast.error("Missing required information. Please ensure you're logged in and try again.");
+      toast.error(
+        "Missing required information. Please ensure you're logged in and try again.",
+      );
       return;
     }
 

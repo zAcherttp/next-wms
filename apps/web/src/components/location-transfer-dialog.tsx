@@ -120,7 +120,14 @@ export function LocationTransferDialog({
         organizationId: !!organizationId,
       });
     }
-  }, [open, zones, isLoadingZones, fromZone, currentBranch?._id, organizationId]);
+  }, [
+    open,
+    zones,
+    isLoadingZones,
+    fromZone,
+    currentBranch?._id,
+    organizationId,
+  ]);
 
   // Create adjustment request mutation - extract hook to top level
   const createAdjustmentFn = useConvexMutation(
@@ -182,7 +189,9 @@ export function LocationTransferDialog({
         locationTypeId: !!lookups?.locationTypeId,
         defaultStatusId: !!lookups?.defaultStatusId,
       });
-      toast.error("Missing required information. Please ensure you're logged in and try again.");
+      toast.error(
+        "Missing required information. Please ensure you're logged in and try again.",
+      );
       return;
     }
 
