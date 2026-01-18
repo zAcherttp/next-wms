@@ -351,7 +351,7 @@ export function AttributeField({
           onValueChange={onChange}
           disabled={disabled}
         >
-          <SelectTrigger id={key}>
+          <SelectTrigger id={key} className="w-full">
             <SelectValue placeholder="Select..." />
           </SelectTrigger>
           <SelectContent>

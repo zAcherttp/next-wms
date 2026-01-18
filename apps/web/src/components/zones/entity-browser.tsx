@@ -6,14 +6,17 @@ import {
   Layers,
   LayoutGrid,
   LogIn,
+  X,
 } from "lucide-react";
 import type React from "react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import {
   type TreeDataItem,
   type TreeRenderItemParams,
   TreeView,
+  type TreeViewRef,
 } from "@/components/tree-view";
+import { Button } from "@/components/ui/button";
 import {
   ContextMenu,
   ContextMenuContent,
@@ -59,11 +62,15 @@ export function EntityBrowser() {
   // State for right-clicked item context
   const [contextItem, setContextItem] = useState<StorageEntity | null>(null);
 
+  // TreeView ref
+  const treeViewRef = useRef<TreeViewRef>(null);
+
   // Store state
   const entities = useLayoutStore((s) => s.entities);
   const selectedEntityId = useLayoutStore((s) => s.selectedEntityId);
   const selectEntity = useLayoutStore((s) => s.selectEntity);
   const setGhostEntity = useLayoutStore((s) => s.setGhostEntity);
+  const clearSelection = useLayoutStore((s) => s.clearSelection);
 
   // Build tree data from entities - one tree per floor
   const { floorTrees } = useMemo(() => {
@@ -150,6 +157,12 @@ export function EntityBrowser() {
     [selectEntity],
   );
 
+  // Clear selection handler
+  const handleClearSelection = useCallback(() => {
+    treeViewRef.current?.clearSelection();
+    clearSelection();
+  }, [clearSelection]);
+
   // Get allowed child types based on entity type
   const getAllowedChildTypes = useCallback(
     (entity: StorageEntity | null): BlockType[] => {
@@ -225,8 +238,14 @@ export function EntityBrowser() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="border-b px-3 py-2">
-        <h3 className="font-semibold text-sm">Entity Browser</h3>
+      <div className="flex items-center justify-between border-b px-3 py-2">
+        <h3 className="h-8 font-semibold text-sm leading-8">Entity Browser</h3>
+        {selectedEntityId && (
+          <Button size={"sm"} onClick={handleClearSelection}>
+            <X className="h-4 w-4" />
+            Clear selection
+          </Button>
+        )}
       </div>
 
       <Separator />
@@ -256,6 +275,8 @@ export function EntityBrowser() {
               </div>
             ) : (
               <TreeView
+                ref={treeViewRef}
+                // key={selectedEntityId ?? "no-selection"}
                 data={floorTrees}
                 initialSelectedItemId={selectedEntityId || undefined}
                 onSelectChange={handleTreeSelect}
@@ -282,9 +303,7 @@ export function EntityBrowser() {
               );
             })
           ) : (
-            <ContextMenuItem disabled>
-              No items can be created here
-            </ContextMenuItem>
+            <ContextMenuItem disabled>No actions available</ContextMenuItem>
           )}
         </ContextMenuContent>
       </ContextMenu>

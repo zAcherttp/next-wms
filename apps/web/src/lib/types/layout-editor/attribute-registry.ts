@@ -40,7 +40,6 @@ export const BLOCK_TYPES = [
   "bin",
   "obstacle",
   "entrypoint",
-  "doorpoint",
 ] as const;
 
 export type BlockType = (typeof BLOCK_TYPES)[number];
@@ -75,15 +74,14 @@ export const BLOCK_SCHEMAS = {
   }),
 
   shelf: z.object({
-    levelIndex: z.number().int().min(0),
-    binCount: z.number().int().min(1),
-    heightFromGround: z.number().min(0).optional(),
+    binCount: z.number().int().min(1).max(8),
   }),
 
   bin: z.object({
-    capacity: z.number().positive(),
-    usagePercent: z.number().min(0).max(100),
-    isFull: z.boolean(),
+    calculatedVolume: z.number().min(0).optional(),
+    capacity: z.number().min(0).optional(),
+    usagePercent: z.number().min(0).max(100).default(0),
+    isFull: z.boolean().default(false),
   }),
 
   obstacle: z.object({
@@ -212,21 +210,14 @@ export const BLOCK_UI_SCHEMAS: Record<BlockType, BlockUISchema> = {
     icon: "AlignHorizontalDistributeCenter",
     path: "floor.rack.shelf",
     attributes: [
-      { key: "levelIndex", label: "Level", type: "number", min: 0, step: 1 },
       {
         key: "binCount",
         label: "Bins",
         type: "number",
         min: 1,
-        max: 20,
+        max: 8,
         step: 1,
-      },
-      {
-        key: "heightFromGround",
-        label: "Height",
-        type: "number",
-        min: 0,
-        unit: "meters",
+        required: true,
       },
     ],
   },
@@ -237,6 +228,13 @@ export const BLOCK_UI_SCHEMAS: Record<BlockType, BlockUISchema> = {
     icon: "Box",
     path: "floor.rack.shelf.bin",
     attributes: [
+      {
+        key: "calculatedVolume",
+        label: "Volume",
+        type: "number",
+        unit: "m³",
+        description: "Auto-calculated from rack dimensions",
+      },
       {
         key: "capacity",
         label: "Capacity",
@@ -266,7 +264,18 @@ export const BLOCK_UI_SCHEMAS: Record<BlockType, BlockUISchema> = {
       { key: "rotation", label: "Rotation", type: "rotation" },
       { key: "dimensions", label: "Size", type: "dimensions", required: true },
       { key: "label", label: "Label", type: "string" },
-      { key: "obstacleType", label: "Type", type: "string", required: true },
+      {
+        key: "obstacleType",
+        label: "Type",
+        type: "select",
+        required: true,
+        options: [
+          { value: "pillar", label: "Pillar" },
+          { value: "wall", label: "Wall" },
+          { value: "equipment", label: "Equipment" },
+          { value: "other", label: "Other" },
+        ],
+      },
     ],
   },
 
@@ -341,8 +350,8 @@ export function getDefaultAttributes(
       shelfCount: 4,
       storageType: "dry",
     },
-    shelf: { levelIndex: 0, binCount: 4 },
-    bin: { capacity: 100, usagePercent: 0, isFull: false },
+    shelf: { binCount: 4 },
+    bin: { calculatedVolume: 0, capacity: 0, usagePercent: 0, isFull: false },
     obstacle: {
       position: { x: 0, y: 0, z: 0 },
       rotation: { x: 0, y: 0, z: 0 },

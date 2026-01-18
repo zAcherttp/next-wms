@@ -435,7 +435,7 @@ function getRacksFromStore(
     const attrs = entity.zoneAttributes;
     // Skip entities without required position/dimensions
     if (!attrs?.position || !attrs?.dimensions) continue;
-    
+
     // Cast to Rack type - name is stored in entity, not in Rack interface
     racks.set(tempId, {
       _id: tempId,
@@ -469,7 +469,7 @@ function getObstaclesFromStore(
     const attrs = entity.zoneAttributes;
     // Skip entities without required position/dimensions
     if (!attrs?.position || !attrs?.dimensions) continue;
-    
+
     // Cast to Obstacle type - label is the correct property, not name
     obstacles.set(tempId, {
       _id: tempId,
@@ -517,10 +517,11 @@ export function validatePlacement(
     }
     // Use origin (0,0,0) if no position specified
     const floorPosition = position ?? { x: 0, y: 0, z: 0 };
-    // Floor uses width/length, dimensions.depth is length
+    // Floor uses width/length (fallback to depth for compatibility)
+    const floorLength = dimensions.length ?? dimensions.depth ?? 0;
     const overlapCheck = checkZoneOverlap(
       floorPosition,
-      { width: dimensions.width, length: dimensions.depth },
+      { width: dimensions.width, length: floorLength },
       tempId,
     );
     if (overlapCheck.hasOverlap) {
@@ -536,6 +537,19 @@ export function validatePlacement(
         reason: `Zone overlaps with "${overlapCheck.overlappingZoneName}"`,
       };
     }
+    logCollisionCheckInfo(
+      parentId?.toString() || "null",
+      tempId,
+      storageBlockType,
+      true,
+    );
+    return { valid: true };
+  }
+
+  // Entrypoint/doorpoint/shelf/bin - skip collision/bounds check entirely
+  // Shelf and bin are purely data containers rendered by parent rack
+  const skipValidationTypes = ["entrypoint", "doorpoint", "shelf", "bin"];
+  if (skipValidationTypes.includes(storageBlockType)) {
     logCollisionCheckInfo(
       parentId?.toString() || "null",
       tempId,

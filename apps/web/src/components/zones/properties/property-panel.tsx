@@ -8,7 +8,8 @@
  * 2. Committed entities: Update attributes in place
  */
 
-import { AlertTriangle, Loader2 } from "lucide-react";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { AlertTriangle, Loader2, Minus, Plus, Trash2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -22,6 +23,7 @@ import {
   BLOCK_SCHEMAS,
   BLOCK_UI_SCHEMAS,
   type BlockType,
+  getDefaultAttributes,
 } from "@/lib/types/layout-editor/attribute-registry";
 import { validatePlacement } from "@/lib/utils/collision";
 import type { StorageEntity } from "@/store/layout-editor-store";
@@ -45,8 +47,148 @@ interface ValidationError {
   message: string;
 }
 
+/**
+ * ChildCountInput - Reusable count display with +/- buttons for managing child entities
+ * Used for shelves in racks and bins in shelves
+ * Shows actual count from store, not from attribute
+ * Business logic: - removes items without cargo first, disabled if all have cargo
+ */
+function ChildCountInput({
+  parentId,
+  parentRealId,
+  childType,
+  label,
+  minCount,
+  maxCount,
+  disabled,
+}: {
+  parentId: string;
+  parentRealId: Id<"storage_zones"> | undefined;
+  childType: "shelf" | "bin";
+  label: string;
+  minCount: number;
+  maxCount: number;
+  disabled?: boolean;
+}) {
+  const addEntity = useLayoutStore((s) => s.addEntity);
+  const removeThisEntity = useLayoutStore((s) => s.removeEntity);
+  const getChildren = useLayoutStore((s) => s.getChildren);
+
+  // Get actual children from store
+  const children = useMemo(() => {
+    return getChildren(parentRealId ?? parentId, childType);
+  }, [parentId, parentRealId, childType, getChildren]);
+
+  const currentCount = children.length;
+
+  // Check if child has cargo (for bins: usagePercent > 0 or isFull)
+  const hasCargoCheck = useCallback(
+    (entity: { zoneAttributes: Record<string, unknown> }) => {
+      if (childType === "bin") {
+        const attrs = entity.zoneAttributes;
+        return attrs.isFull === true || (attrs.usagePercent as number) > 0;
+      }
+      // For shelves, check if any of their bins have cargo
+      if (childType === "shelf") {
+        const bins = getChildren(
+          (entity as { _id?: Id<"storage_zones">; tempId: string })._id ??
+            (entity as { tempId: string }).tempId,
+          "bin",
+        );
+        return bins.some(
+          (bin) =>
+            bin.zoneAttributes.isFull === true ||
+            (bin.zoneAttributes.usagePercent as number) > 0,
+        );
+      }
+      return false;
+    },
+    [childType, getChildren],
+  );
+
+  // Check if ALL children have cargo (disable - button)
+  const allHaveCargo = useMemo(() => {
+    if (currentCount === 0) return false;
+    return children.every(hasCargoCheck);
+  }, [children, currentCount, hasCargoCheck]);
+
+  const handleAdd = useCallback(() => {
+    if (!parentRealId) {
+      toast.warning(
+        `Save the ${childType === "shelf" ? "rack" : "shelf"} first`,
+      );
+      return;
+    }
+    const attrs = getDefaultAttributes(childType);
+    addEntity(childType, parentRealId, `${label} ${currentCount + 1}`, attrs);
+    toast.success(`${label} added`);
+  }, [parentRealId, childType, label, currentCount, addEntity]);
+
+  const handleRemove = useCallback(() => {
+    if (!parentRealId || currentCount === 0) return;
+
+    // Find a child without cargo to remove (prioritize empty ones)
+    const childWithoutCargo = children.find((child) => !hasCargoCheck(child));
+
+    if (!childWithoutCargo) {
+      toast.warning(`Cannot remove ${label.toLowerCase()} with stored items`);
+      return;
+    }
+
+    removeThisEntity(childWithoutCargo.tempId);
+    toast.success(`${label} removed`);
+  }, [
+    parentRealId,
+    children,
+    currentCount,
+    hasCargoCheck,
+    label,
+    removeThisEntity,
+  ]);
+
+  const isMinReached = currentCount <= minCount;
+  const isMaxReached = currentCount >= maxCount;
+  const canRemove = !disabled && !isMinReached && !allHaveCargo;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="font-medium text-sm">{label}s</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleRemove}
+          disabled={!canRemove}
+        >
+          <Minus className="h-4 w-4" />
+        </Button>
+        <div className="flex-1 text-center">
+          <span className="font-semibold text-lg">{currentCount}</span>
+        </div>
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-8 w-8"
+          onClick={handleAdd}
+          disabled={disabled || isMaxReached}
+        >
+          <Plus className="h-4 w-4" />
+        </Button>
+      </div>
+      {allHaveCargo && currentCount > 0 && (
+        <p className="text-muted-foreground text-xs">
+          All {label.toLowerCase()}s have cargo
+        </p>
+      )}
+    </div>
+  );
+}
+
 // ============================================================================
-// Component
+// Main Component
 // ============================================================================
 
 export function SchemaPropertyPanel({
@@ -81,6 +223,8 @@ export function SchemaPropertyPanel({
   const callCommitEntity = useLayoutStore((s) => s.callCommitEntity);
   const updateEntity = useLayoutStore((s) => s.updateEntity);
   const clearSelection = useLayoutStore((s) => s.clearSelection);
+  const getChildren = useLayoutStore((s) => s.getChildren);
+  const removeEntity = useLayoutStore((s) => s.removeEntity);
 
   // Reset draft when entity changes
   useEffect(() => {
@@ -308,16 +452,60 @@ export function SchemaPropertyPanel({
             </Alert>
           )}
 
-          {uiSchema.attributes.map((attrConfig) => (
-            <AttributeField
-              key={attrConfig.key}
-              config={attrConfig}
-              value={draftAttributes[attrConfig.key]}
-              onChange={(value) => handleChange(attrConfig.key, value)}
+          {uiSchema.attributes
+            .filter((attrConfig) => {
+              // For racks, handle shelfCount separately with ChildCountInput
+              if (
+                entity.storageBlockType === "rack" &&
+                attrConfig.key === "shelfCount"
+              ) {
+                return false;
+              }
+              // For shelves, handle binCount separately with ChildCountInput
+              if (
+                entity.storageBlockType === "shelf" &&
+                attrConfig.key === "binCount"
+              ) {
+                return false;
+              }
+              return true;
+            })
+            .map((attrConfig) => (
+              <AttributeField
+                key={attrConfig.key}
+                config={attrConfig}
+                value={draftAttributes[attrConfig.key]}
+                onChange={(value) => handleChange(attrConfig.key, value)}
+                disabled={readOnly || isCommitting}
+                error={getFieldError(attrConfig.key)}
+              />
+            ))}
+
+          {/* Shelf count input for racks */}
+          {entity.storageBlockType === "rack" && (
+            <ChildCountInput
+              parentId={entity.tempId}
+              parentRealId={entity._id}
+              childType="shelf"
+              label="Shelf"
+              minCount={0}
+              maxCount={20}
               disabled={readOnly || isCommitting}
-              error={getFieldError(attrConfig.key)}
             />
-          ))}
+          )}
+
+          {/* Bin count input for shelves */}
+          {entity.storageBlockType === "shelf" && (
+            <ChildCountInput
+              parentId={entity.tempId}
+              parentRealId={entity._id}
+              childType="bin"
+              label="Bin"
+              minCount={0}
+              maxCount={8}
+              disabled={readOnly || isCommitting}
+            />
+          )}
         </div>
       </ScrollArea>
 
@@ -410,6 +598,47 @@ export function SchemaPropertyPanel({
               Retry
             </Button>
           </div>
+        </div>
+      )}
+
+      {/* Delete Button - For committed entities only */}
+      {entity.status === "committed" && !readOnly && (
+        <div className="border-t p-4">
+          <Button
+            variant="destructive"
+            size="sm"
+            className="w-full"
+            onClick={() => {
+              // Check for children
+              const children = getChildren(entity._id ?? entity.tempId);
+              if (children.length > 0) {
+                toast.warning(
+                  "Cannot delete entity with children. Delete children first.",
+                );
+                return;
+              }
+
+              // Check for storage (bins only)
+              if (entity.storageBlockType === "bin") {
+                const attrs = entity.zoneAttributes;
+                if (
+                  attrs.isFull === true ||
+                  (attrs.usagePercent as number) > 0
+                ) {
+                  toast.warning("Cannot delete bin with stored items.");
+                  return;
+                }
+              }
+
+              // Proceed with delete
+              removeEntity(entity.tempId);
+              clearSelection();
+              toast.success("Entity deleted");
+            }}
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete {uiSchema.displayName}
+          </Button>
         </div>
       )}
     </div>

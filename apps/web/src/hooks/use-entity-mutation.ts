@@ -10,11 +10,9 @@ import { useCallback } from "react";
 import { toast } from "sonner";
 import type { BlockType } from "@/lib/types/layout-editor/attribute-registry";
 import { validateAttributes } from "@/lib/types/layout-editor/attribute-registry";
-import {
-  CollisionDetector,
-  checkOBBCollision,
-  createOBB2D,
-} from "@/lib/utils/collision";
+import { checkZoneOverlap } from "@/lib/utils/collision";
+import { getCollisionService } from "@/lib/utils/collision-service";
+import { logDebug } from "@/store/editor-console-store";
 import { useLayoutStore } from "@/store/layout-editor-store";
 
 // ============================================================================
@@ -102,6 +100,20 @@ function validateFloorResize(
     }
   }
 
+  // Check for overlap with other floors
+  const floorPos = floor.zoneAttributes.position as Vec3 | undefined;
+  const overlapCheck = checkZoneOverlap(
+    floorPos ?? { x: 0, y: 0, z: 0 },
+    { width: newWidth, length: newLength },
+    floorTempId,
+  );
+  if (overlapCheck.hasOverlap) {
+    return {
+      valid: false,
+      reason: `Cannot resize: would overlap with "${overlapCheck.overlappingZoneName}"`,
+    };
+  }
+
   return { valid: true };
 }
 
@@ -176,7 +188,10 @@ function findClosestFloor(
   entityDimensions: Dimensions,
   entityRotationY: number,
   excludeFloorTempId?: string,
-): { floorTempId: string; floorRealId: Id<"storage_zones"> | undefined } | null {
+): {
+  floorTempId: string;
+  floorRealId: Id<"storage_zones"> | undefined;
+} | null {
   const store = useLayoutStore.getState();
 
   // Get entity center position
@@ -328,27 +343,21 @@ function clampToFloorBounds(
 
 /**
  * Check collision for proposed position/rotation/dimensions
- * With global positioning, all positions are already in world coordinates
+ * Uses CollisionService with spatial grid for O(1) nearby entity lookup
  */
 function checkCollisionForUpdate(
-  entityId: string, // tempId
+  entityId: string,
   currentAttrs: Record<string, unknown>,
   updates: Record<string, unknown>,
   blockType: BlockType,
-  _parentId?: Id<"storage_zones"> | string | null, // Kept for API compat
+  parentId?: Id<"storage_zones"> | string | null,
 ): { hasCollision: boolean; reason?: string } {
   // Only check collision for racks and obstacles
   if (blockType !== "rack" && blockType !== "obstacle") {
     return { hasCollision: false };
   }
 
-  const detector = CollisionDetector.getInstance();
-  if (!detector) {
-    console.warn("[useEntityMutation] CollisionDetector not initialized");
-    return { hasCollision: false };
-  }
-
-  // Merge current with updates - positions are now global
+  // Merge current with updates
   const newPosition =
     (updates.position as Vec3) ?? (currentAttrs.position as Vec3);
   const newRotation = (updates.rotation as Vec3) ??
@@ -357,52 +366,24 @@ function checkCollisionForUpdate(
     (updates.dimensions as Dimensions) ??
     (currentAttrs.dimensions as Dimensions);
 
-  if (!newPosition || !newDimensions) {
+  if (!newPosition || !newDimensions || !parentId) {
     return { hasCollision: false };
   }
 
-  // Create OBB for proposed position (already global coords)
-  const proposedOBB = createOBB2D(
+  // Use CollisionService for optimized spatial grid lookup
+  const collisionService = getCollisionService();
+  const result = collisionService.checkCollision(
+    entityId,
     newPosition,
     newDimensions,
     newRotation.y ?? 0,
+    parentId as string,
   );
 
-  // Get all entities and check against them
-  const entities = useLayoutStore.getState().entities;
-
-  for (const [tempId, entity] of entities) {
-    // Skip self and deleted entities
-    if (tempId === entityId || entity.isDeleted) continue;
-
-    // Only check collidable entity types
-    if (
-      entity.storageBlockType !== "rack" &&
-      entity.storageBlockType !== "obstacle"
-    )
-      continue;
-
-    const attrs = entity.zoneAttributes;
-    const pos = attrs.position as Vec3 | undefined;
-    const dims = attrs.dimensions as Dimensions | undefined;
-    const rot = attrs.rotation as Vec3 | undefined;
-
-    if (!pos || !dims) continue;
-
-    // Positions are now global - use directly
-    const otherOBB = createOBB2D(pos, dims, rot?.y ?? 0);
-
-    if (checkOBBCollision(proposedOBB, otherOBB)) {
-      const name =
-        (attrs.name as string) ?? entity.name ?? entity.storageBlockType;
-      return {
-        hasCollision: true,
-        reason: `Collision with ${name}`,
-      };
-    }
-  }
-
-  return { hasCollision: false };
+  return {
+    hasCollision: result.hasCollision,
+    reason: result.reason,
+  };
 }
 
 // ============================================================================
@@ -431,11 +412,21 @@ export function useEntityMutation() {
     ): Promise<CommitResult> => {
       const { skipCollision = false, showToast = true } = options;
 
+      logDebug(
+        `commitUpdate called: ${id}, updates=${JSON.stringify(Object.keys(updates))}, skipCollision=${skipCollision}`,
+        "collision",
+      );
+
       // Get current entity
       const entity = getEntity(id);
       if (!entity) {
         return { success: false, error: "Entity not found" };
       }
+
+      logDebug(
+        `Entity found: ${entity.name} (${entity.storageBlockType})`,
+        "collision",
+      );
 
       // 1. VALIDATE - Merge and validate attributes
       const mergedAttrs = { ...entity.zoneAttributes, ...updates };
@@ -468,44 +459,76 @@ export function useEntityMutation() {
         }
       }
 
-      // 3. FLOOR TRANSFER & 4-CORNER BOUNDS CHECK - For rack/obstacle position changes
+      // 3. FLOOR TRANSFER & 4-CORNER BOUNDS CHECK - For rack/obstacle/entrypoint/doorpoint position changes
       let finalUpdates = { ...updates };
       let newParentId = entity.parentId;
-      
+
+      const typesWithFloorTransfer = [
+        "rack",
+        "obstacle",
+        "entrypoint",
+        "doorpoint",
+      ];
       if (
-        (entity.storageBlockType === "rack" || entity.storageBlockType === "obstacle") &&
+        typesWithFloorTransfer.includes(entity.storageBlockType) &&
         "position" in updates &&
         !skipCollision
       ) {
         const newPosition = updates.position as Vec3;
-        const dims = (updates.dimensions ?? entity.zoneAttributes.dimensions) as Dimensions;
-        const rotY = ((updates.rotation ?? entity.zoneAttributes.rotation) as Vec3 | undefined)?.y ?? 0;
+        // For point entities (entrypoint/doorpoint), use minimal dimensions for floor checks
+        const isPointEntity =
+          entity.storageBlockType === "entrypoint" ||
+          entity.storageBlockType === "doorpoint";
+        const dims = isPointEntity
+          ? { width: 0.1, height: 0.1, depth: 0.1, length: 0.1 }
+          : ((updates.dimensions ??
+              entity.zoneAttributes.dimensions) as Dimensions);
+        const rotY =
+          (
+            (updates.rotation ?? entity.zoneAttributes.rotation) as
+              | Vec3
+              | undefined
+          )?.y ?? 0;
 
         // Get current parent floor
         const store = useLayoutStore.getState();
         const currentFloor = entity.parentId
-          ? store.getEntityByRealId(entity.parentId) ?? store.getEntity(entity.parentId as string)
+          ? (store.getEntityByRealId(entity.parentId) ??
+            store.getEntity(entity.parentId as string))
           : null;
-        
+
         // Check if entity is fully within current floor
         let isWithinCurrentFloor = false;
         if (currentFloor?.storageBlockType === "floor") {
           const floorPos = currentFloor.zoneAttributes.position as Vec3;
-          const floorDims = currentFloor.zoneAttributes.dimensions as { width: number; length: number };
-          isWithinCurrentFloor = isFullyWithinFloor(newPosition, dims, rotY, floorPos, floorDims);
+          const floorDims = currentFloor.zoneAttributes.dimensions as {
+            width: number;
+            length: number;
+          };
+          isWithinCurrentFloor = isFullyWithinFloor(
+            newPosition,
+            dims,
+            rotY,
+            floorPos,
+            floorDims,
+          );
         }
 
         if (!isWithinCurrentFloor) {
           // Entity moved outside current floor - find closest floor
           const closestFloor = findClosestFloor(newPosition, dims, rotY);
-          
+
           if (closestFloor) {
             // Get the floor entity
             const targetFloor = store.getEntity(closestFloor.floorTempId);
             if (targetFloor) {
-              const targetFloorPos = targetFloor.zoneAttributes.position as Vec3;
-              const targetFloorDims = targetFloor.zoneAttributes.dimensions as { width: number; length: number };
-              
+              const targetFloorPos = targetFloor.zoneAttributes
+                .position as Vec3;
+              const targetFloorDims = targetFloor.zoneAttributes.dimensions as {
+                width: number;
+                length: number;
+              };
+
               // Clamp position to target floor bounds using 4-corner check
               const clampedPosition = clampToFloorBounds(
                 newPosition,
@@ -514,31 +537,40 @@ export function useEntityMutation() {
                 targetFloorPos,
                 targetFloorDims,
               );
-              
-              // Update position and parent
               finalUpdates.position = clampedPosition;
-              
+
               // Use floor's _id (real Convex ID) - only set if floor has been saved
               // If floor is a draft (no _id), keep current parent until floor is saved
               if (targetFloor._id) {
                 newParentId = targetFloor._id;
-                
+
                 // Trigger re-parent if floor changed
                 if (entity.parentId !== newParentId) {
-                  finalUpdates = { ...finalUpdates, __newParentId: newParentId };
+                  finalUpdates = {
+                    ...finalUpdates,
+                    __newParentId: newParentId,
+                  };
                 }
               }
             }
           } else {
             // No valid floor found - reject the move
-            if (showToast) toast.error("Entity must be placed within a floor zone");
+            if (showToast)
+              toast.error("Entity must be placed within a floor zone");
             return { success: false, error: "No valid floor zone found" };
           }
         }
       }
 
       // 4. COLLISION CHECK - For geometry changes
-      if (hasGeometryChange(finalUpdates) && !skipCollision) {
+      const hasGeoChange = hasGeometryChange(finalUpdates);
+      logDebug(
+        `Collision check condition: hasGeometryChange=${hasGeoChange}, skipCollision=${skipCollision}, type=${entity.storageBlockType}`,
+        "collision",
+      );
+
+      if (hasGeoChange && !skipCollision) {
+        logDebug(`Entering collision check for ${entity.name}`, "collision");
         const collision = checkCollisionForUpdate(
           id,
           entity.zoneAttributes,
@@ -556,18 +588,26 @@ export function useEntityMutation() {
 
       // 5. OPTIMISTIC UPDATE - Update local state immediately
       // Remove internal __newParentId marker before updating
-      const { __newParentId, ...cleanUpdates } = finalUpdates as Record<string, unknown> & { __newParentId?: unknown };
+      const { __newParentId, ...cleanUpdates } = finalUpdates as Record<
+        string,
+        unknown
+      > & { __newParentId?: unknown };
       updateEntity(id, cleanUpdates);
-      
+
       // Handle parent change for cross-floor transfers
       if (__newParentId && __newParentId !== entity.parentId) {
         // Update parentId in the store (this needs to be handled by the store)
         // For now, include it in the updates sent to Convex
-        console.log(`[commitUpdate] Floor transfer: ${entity.parentId} -> ${__newParentId}`);
+        console.log(
+          `[commitUpdate] Floor transfer: ${entity.parentId} -> ${__newParentId}`,
+        );
       }
 
       // Merge with original for Convex update
-      const mergedAttrsForCommit = { ...entity.zoneAttributes, ...cleanUpdates };
+      const mergedAttrsForCommit = {
+        ...entity.zoneAttributes,
+        ...cleanUpdates,
+      };
 
       // 6. COMMIT - Sync to Convex (only if entity has a real _id)
       if (!entity._id) {
@@ -585,7 +625,9 @@ export function useEntityMutation() {
           zoneAttributes: mergedAttrsForCommit,
           name: entityName,
           // Include new parentId if floor transfer occurred
-          ...(__newParentId && { parentId: __newParentId as Id<"storage_zones"> }),
+          ...(__newParentId && {
+            parentId: __newParentId as Id<"storage_zones">,
+          }),
         });
         return { success: true };
       } catch (err) {

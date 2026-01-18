@@ -55,6 +55,9 @@ export interface WarehouseEditorProps {
 
   /** Read-only mode */
   readOnly?: boolean;
+
+  /** Show debug console panel (left panel) */
+  showDebugPanel?: boolean;
 }
 
 /**
@@ -85,6 +88,7 @@ export const WarehouseEditor = forwardRef<
       showEntityBrowser = true,
       showPropertiesPanel = true,
       readOnly = false,
+      showDebugPanel = false,
     },
     ref,
   ) => {
@@ -290,11 +294,15 @@ export const WarehouseEditor = forwardRef<
         <ErrorBoundary onError={onError}>
           <ResizablePanelGroup direction="horizontal">
             {/* Left Sidebar: Console Log */}
-            <ResizablePanel defaultSize={35} minSize={10} maxSize={35}>
-              <EditorConsole />
-            </ResizablePanel>
+            {showDebugPanel && (
+              <>
+                <ResizablePanel defaultSize={35} minSize={10} maxSize={35}>
+                  <EditorConsole />
+                </ResizablePanel>
 
-            <ResizableHandle withHandle />
+                <ResizableHandle withHandle />
+              </>
+            )}
 
             {/* Main 3D Canvas */}
             <ResizablePanel defaultSize={55} minSize={40}>

@@ -28,7 +28,7 @@ export const ZoneGrid: React.FC = () => {
   if (!visible) return null;
 
   const config = {
-    cellSize: 0.2,
+    cellSize: 0.5,
     cellThickness: 0.5,
     cellColor: color,
     sectionSize: 3,

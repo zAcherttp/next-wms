@@ -36,6 +36,11 @@ type TreeRenderItemParams = {
   hasChildren: boolean;
 };
 
+interface TreeViewRef {
+  clearSelection: () => void;
+  element: HTMLDivElement | null;
+}
+
 type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   data: TreeDataItem[] | TreeDataItem;
   initialSelectedItemId?: string;
@@ -46,7 +51,7 @@ type TreeProps = React.HTMLAttributes<HTMLDivElement> & {
   renderItem?: (params: TreeRenderItemParams) => React.ReactNode;
 };
 
-const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
+const TreeView = React.forwardRef<TreeViewRef, TreeProps>(
   (
     {
       data,
@@ -61,6 +66,7 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
     },
     ref,
   ) => {
+    const divRef = React.useRef<HTMLDivElement>(null);
     const [selectedItemId, setSelectedItemId] = React.useState<
       string | undefined
     >(initialSelectedItemId);
@@ -73,6 +79,22 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
         }
       },
       [onSelectChange],
+    );
+
+    const clearSelection = React.useCallback(() => {
+      setSelectedItemId(undefined);
+      if (onSelectChange) {
+        onSelectChange(undefined);
+      }
+    }, [onSelectChange]);
+
+    React.useImperativeHandle(
+      ref,
+      () => ({
+        clearSelection,
+        element: divRef.current,
+      }),
+      [clearSelection],
     );
 
     const expandedItemIds = React.useMemo(() => {
@@ -106,10 +128,12 @@ const TreeView = React.forwardRef<HTMLDivElement, TreeProps>(
     }, [data, expandAll, initialSelectedItemId]);
 
     return (
-      <div className={cn("relative overflow-hidden py-2 pr-4", className)}>
+      <div
+        ref={divRef}
+        className={cn("relative overflow-hidden py-2 pr-4", className)}
+      >
         <TreeItem
           data={data}
-          ref={ref}
           selectedItemId={selectedItemId}
           handleSelectChange={handleSelectChange}
           expandedItemIds={expandedItemIds}
@@ -439,6 +463,7 @@ export {
   TreeView,
   type TreeDataItem,
   type TreeRenderItemParams,
+  type TreeViewRef,
   AccordionTrigger,
   AccordionContent,
   TreeLeaf,

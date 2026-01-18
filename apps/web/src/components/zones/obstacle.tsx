@@ -7,7 +7,6 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import type { Group } from "three";
 import { useDebugContext } from "@/components/zones/canvas-3d";
 import { useEntityMutation } from "@/hooks/use-entity-mutation";
-import { darkenHex } from "@/lib/utils";
 import { ROTATION_SNAP, TRANSLATION_SNAP } from "@/lib/utils/constants";
 import { useLayoutStore } from "@/store/layout-editor-store";
 
@@ -140,10 +139,10 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
   );
 
   // Store original position when transform starts
-  // const handleTransformStart = useCallback(() => {
-  //   originalPositionRef.current = position;
-  //   originalRotationRef.current = rotation;
-  // }, [position, rotation]);
+  const handleTransformStart = useCallback(() => {
+    originalPositionRef.current = position;
+    originalRotationRef.current = rotation;
+  }, [position, rotation]);
 
   if (!entity || entity.isDeleted) return null;
 
@@ -151,7 +150,6 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
   const showRotateControls = isSelected && transformMode === "rotate";
 
   const color = OBSTACLE_COLORS[obstacleType] ?? OBSTACLE_COLORS.other;
-  const outlineColor = darkenHex(color, 0.3);
 
   const handleClick = (
     e: React.MouseEvent | { stopPropagation: () => void },
@@ -175,11 +173,7 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
         >
           <meshStandardMaterial color={color} />
           {isSelected && (
-            <Outlines
-              thickness={0.08}
-              color={outlineColor}
-              screenspace={true}
-            />
+            <Outlines thickness={0.1} color="#00ffff" screenspace={true} />
           )}
         </Box>
       </group>
@@ -190,6 +184,7 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
           space="world"
           translationSnap={TRANSLATION_SNAP}
           showY={false}
+          onMouseDown={handleTransformStart}
           onMouseUp={() => {
             if (groupRef.current) {
               const pos = groupRef.current.position;
@@ -208,6 +203,7 @@ export const Obstacle: React.FC<{ obstacleId: string }> = ({ obstacleId }) => {
           rotationSnap={ROTATION_SNAP}
           showX={false}
           showZ={false}
+          onMouseDown={handleTransformStart}
           onMouseUp={() => {
             if (groupRef.current) {
               const rot = groupRef.current.rotation;

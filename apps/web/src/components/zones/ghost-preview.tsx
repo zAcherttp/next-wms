@@ -137,7 +137,51 @@ export const GhostPreview: React.FC = () => {
       z: number;
     };
 
-    // Find closest floor and update parent
+    // Floor entities don't need a parent floor - they ARE floors
+    if (ghostEntity.storageBlockType === "floor") {
+      // For floors, just validate placement (zone overlap check)
+      const validation = validatePlacement(
+        ghostEntity.tempId,
+        ghostEntity.storageBlockType,
+        ghostEntity.zoneAttributes,
+        null,
+      );
+      if (!validation.valid) {
+        toast.warning(
+          validation.reason ?? "Cannot place here - overlaps existing zone",
+        );
+        return;
+      }
+      // Confirm floor placement
+      const tempId = confirmGhost();
+      if (tempId) {
+        selectEntity(tempId);
+      }
+      return;
+    }
+
+    // Entrypoint/doorpoint - skip collision check, just find parent floor
+    if (
+      ghostEntity.storageBlockType === "entrypoint" ||
+      ghostEntity.storageBlockType === "doorpoint"
+    ) {
+      const closestFloor = findClosestFloor(position);
+      if (!closestFloor) {
+        toast.warning("No floor zone found for placement");
+        return;
+      }
+      // Update parent and confirm
+      if (closestFloor.realId) {
+        updateGhostAttributes({ parentId: closestFloor.realId });
+      }
+      const tempId = confirmGhost();
+      if (tempId) {
+        selectEntity(tempId);
+      }
+      return;
+    }
+
+    // Find closest floor and update parent (for non-floor entities)
     const closestFloor = findClosestFloor(position);
     if (!closestFloor) {
       toast.warning("No floor zone found for placement");
@@ -145,14 +189,12 @@ export const GhostPreview: React.FC = () => {
     }
 
     // Validate placement with collision check (using global positions)
-    const validation = validatePlacement({
-      tempId: ghostEntity.tempId,
-      storageBlockType: ghostEntity.storageBlockType,
-      parentId: closestFloor.realId ?? null,
-      position,
-      dimensions,
-      rotation,
-    });
+    const validation = validatePlacement(
+      ghostEntity.tempId,
+      ghostEntity.storageBlockType,
+      { position, dimensions, rotation },
+      closestFloor.realId ?? null,
+    );
 
     if (!validation.valid) {
       toast.warning(
@@ -259,35 +301,45 @@ export const GhostPreview: React.FC = () => {
   };
   const color = blockColors[ghostEntity.storageBlockType] ?? "#3b82f6";
 
-  // Handle floor specifically - uses width/length and custom height for thickness
+  // Handle floor specifically - uses Plane with Wireframe like Zone component
   if (ghostEntity.storageBlockType === "floor") {
     const width = dimensions?.width ?? 50;
     const length = dimensions?.length ?? dimensions?.depth ?? 50;
-    const height = (ghostEntity.zoneAttributes.height as number) ?? 0.2;
+    const pos = position ?? { x: 0, y: 0, z: 0 };
 
     return (
-      <group position={[width / 2, height / 2, length / 2]}>
-        <mesh>
-          <boxGeometry args={[width, height, length]} />
+      // Position at ghost location, then offset to center the plane
+      <group position={[pos.x, 0.1, pos.z]}>
+        <mesh
+          position={[width / 2, 0, length / 2]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <planeGeometry args={[width, length]} />
           <meshStandardMaterial
             color={color}
             transparent
             opacity={0.4}
+            side={THREE.DoubleSide}
             depthWrite={false}
           />
         </mesh>
-        <lineSegments>
-          <edgesGeometry
-            args={[new THREE.BoxGeometry(width, height, length)]}
-          />
+        {/* Wireframe outline */}
+        <lineSegments
+          position={[width / 2, 0, length / 2]}
+          rotation={[-Math.PI / 2, 0, 0]}
+        >
+          <edgesGeometry args={[new THREE.PlaneGeometry(width, length)]} />
           <lineBasicMaterial color={color} linewidth={2} />
         </lineSegments>
       </group>
     );
   }
 
-  // Handle entrypoint - render as cylinder (4m tall, 2m diameter)
-  if (ghostEntity.storageBlockType === "entrypoint") {
+  // Handle entrypoint/doorpoint - transparent cylinder only (no wireframe)
+  if (
+    ghostEntity.storageBlockType === "entrypoint" ||
+    ghostEntity.storageBlockType === "doorpoint"
+  ) {
     const radius = 1; // 2m diameter = 1m radius
     const height = 4; // 4m tall
     const pos = position ?? { x: 0, y: 0, z: 0 };
@@ -303,12 +355,6 @@ export const GhostPreview: React.FC = () => {
             depthWrite={false}
           />
         </mesh>
-        <lineSegments>
-          <edgesGeometry
-            args={[new THREE.CylinderGeometry(radius, radius, height, 16)]}
-          />
-          <lineBasicMaterial color={color} linewidth={2} />
-        </lineSegments>
       </group>
     );
   }

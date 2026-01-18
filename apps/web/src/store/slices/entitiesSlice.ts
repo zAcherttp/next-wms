@@ -235,7 +235,8 @@ export const createEntitiesSlice: StateCreator<
       if (state.ghostEntity) {
         // Handle parentId separately since it's at entity level, not in zoneAttributes
         if ("parentId" in attrs) {
-          state.ghostEntity.parentId = attrs.parentId as Id<"storage_zones"> | null;
+          state.ghostEntity.parentId =
+            attrs.parentId as Id<"storage_zones"> | null;
           // Remove from attrs so it's not duplicated in zoneAttributes
           const { parentId: _, ...restAttrs } = attrs;
           state.ghostEntity.zoneAttributes = {

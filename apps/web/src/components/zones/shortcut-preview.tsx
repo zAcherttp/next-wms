@@ -16,9 +16,32 @@ export const ShortcutPreview: React.FC = () => {
   const selectedEntityId = useLayoutStore((state) => state.selectedEntityId);
   const transformMode = useLayoutStore((state) => state.transformMode);
   const isTransformActive = useLayoutStore((state) => state.isTransformActive);
+  const ghostEntity = useLayoutStore((state) => state.ghostEntity);
 
   const shortcuts = useMemo((): ShortcutItem[] => {
     const hasSelection = !!selectedEntityId;
+    const hasGhost = !!ghostEntity;
+
+    // Ghost placement mode - show placement shortcuts
+    if (hasGhost) {
+      return [
+        {
+          keys: ["LMB"],
+          label: "Place",
+          available: true,
+        },
+        {
+          keys: ["Enter"],
+          label: "Confirm",
+          available: true,
+        },
+        {
+          keys: ["ESC"],
+          label: "Cancel",
+          available: true,
+        },
+      ];
+    }
 
     // Determine LMB label based on context
     let lmbLabel = "Orbit";
@@ -73,7 +96,7 @@ export const ShortcutPreview: React.FC = () => {
         available: true,
       },
     ];
-  }, [selectedEntityId, transformMode, isTransformActive]);
+  }, [selectedEntityId, transformMode, isTransformActive, ghostEntity]);
 
   // Filter to only show available shortcuts
   const availableShortcuts = shortcuts.filter((s) => s.available);

@@ -1,11 +1,13 @@
 // CollisionDebugOverlay Component
 // Shows fading wireframe boxes when collisions are detected for debugging
 
-import { Box } from "@react-three/drei";
+import { Box, Line } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import * as THREE from "three";
 import type { OBB2D } from "@/lib/types/layout-editor";
 import { setCollisionDebugCallback } from "@/lib/utils/collision";
+import { useLayoutStore } from "@/store/layout-editor-store";
 
 // ============================================================================
 // Collision Debug Store (simple module-level state)
@@ -200,6 +202,119 @@ export function CollisionDebugOverlay({
     <>
       {entries.map((entry) => (
         <CollisionDebugEntryView key={entry.id} entry={entry} />
+      ))}
+    </>
+  );
+}
+
+// ============================================================================
+// Spatial Grid Overlay - Shows spatial partitioning grid
+// ============================================================================
+
+import {
+  type GridCell,
+  getCollisionService,
+  resetCollisionService,
+} from "@/lib/utils/collision-service";
+
+function GridCellMesh({
+  cell,
+  cellSize,
+}: {
+  cell: GridCell;
+  cellSize: number;
+}) {
+  // Color based on entity count: green=empty, yellow=1-2, red=3+
+  const color = useMemo(() => {
+    if (cell.entityCount >= 3) return "#EF4444"; // red
+    if (cell.entityCount >= 1) return "#F59E0B"; // yellow
+    return "#22C55E"; // green
+  }, [cell.entityCount]);
+
+  // Build wireframe box points using Line (no diagonals)
+  const halfSize = cellSize / 2;
+  const y = 0.5; // above ground
+  const cx = cell.x + halfSize;
+  const cz = cell.z + halfSize;
+
+  // Four corners of the cell
+  const points: [number, number, number][] = [
+    [cx - halfSize, y, cz - halfSize],
+    [cx + halfSize, y, cz - halfSize],
+    [cx + halfSize, y, cz + halfSize],
+    [cx - halfSize, y, cz + halfSize],
+    [cx - halfSize, y, cz - halfSize], // Close the loop
+  ];
+
+  return (
+    <group>
+      {/* Wireframe box outline using Line */}
+      <Line
+        points={points}
+        color={color}
+        lineWidth={1.5}
+        opacity={0.8}
+        transparent
+      />
+      {/* Fill plane */}
+      <mesh position={[cx, y, cz]} rotation={[-Math.PI / 2, 0, 0]}>
+        <planeGeometry args={[cellSize * 0.95, cellSize * 0.95]} />
+        <meshBasicMaterial
+          color={color}
+          transparent
+          opacity={cell.entityCount > 0 ? 0.2 : 0.05}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+interface SpatialGridOverlayProps {
+  enabled?: boolean;
+  cellSize?: number;
+}
+
+export function SpatialGridOverlay({
+  enabled = false,
+  cellSize = 5,
+}: SpatialGridOverlayProps) {
+  const [cells, setCells] = useState<GridCell[]>([]);
+
+  // Subscribe to entity changes to trigger re-render
+  const entities = useLayoutStore((s) => s.entities);
+
+  // Update cells when enabled or entities change
+  // biome-ignore lint/correctness/useExhaustiveDependencies: service.getAllGridCells() does use entities internally
+  useEffect(() => {
+    if (!enabled) {
+      setCells([]);
+      return;
+    }
+
+    const updateCells = () => {
+      // Reset and reinitialize to pick up entity changes
+      resetCollisionService();
+      const service = getCollisionService();
+      service.initialize();
+
+      const allCells = service.getAllGridCells();
+      const flatCells: GridCell[] = [];
+      for (const [, gridCells] of allCells) {
+        flatCells.push(...gridCells);
+      }
+      setCells(flatCells);
+    };
+
+    updateCells();
+  }, [enabled, entities]);
+
+  if (!enabled || cells.length === 0) return null;
+
+  return (
+    <>
+      {cells.map((cell) => (
+        <GridCellMesh key={cell.key} cell={cell} cellSize={cellSize} />
       ))}
     </>
   );

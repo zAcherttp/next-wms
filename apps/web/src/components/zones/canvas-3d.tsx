@@ -20,16 +20,22 @@ import * as THREE from "three";
 
 interface DebugContextValue {
   showCollisionBounds: boolean;
+  showSpatialGrid: boolean;
 }
 
 const DebugContext = createContext<DebugContextValue>({
   showCollisionBounds: false,
+  showSpatialGrid: false,
 });
 
 export const useDebugContext = () => useContext(DebugContext);
 
-import { CollisionDebugOverlay } from "@/components/zones/debug/collision-overlay";
+import {
+  CollisionDebugOverlay,
+  SpatialGridOverlay,
+} from "@/components/zones/debug/collision-overlay";
 import { CameraTargetHelper } from "@/components/zones/debug/helper";
+import { Entrypoint } from "@/components/zones/entrypoint";
 import { GhostPreview } from "@/components/zones/ghost-preview";
 import { Obstacle } from "@/components/zones/obstacle";
 import { Rack } from "@/components/zones/rack";
@@ -106,11 +112,22 @@ function SceneContent() {
       );
   }, [entities, entitiesByType]);
 
+  const entrypointEntities = useMemo(() => {
+    const entrypointIds = entitiesByType.get("entrypoint");
+    if (!entrypointIds) return [];
+    return Array.from(entrypointIds)
+      .map((id) => entities.get(id))
+      .filter(
+        (e): e is NonNullable<typeof e> => e !== undefined && !e.isDeleted,
+      );
+  }, [entities, entitiesByType]);
+
   // debug leva tools
   const {
     showCameraOrbitTarget,
     showCameraOrbitBoundary,
     showCollisionBounds,
+    showSpatialGrid,
   } = useControls({
     showCameraOrbitTarget: {
       label: "Show Camera Orbit Target",
@@ -122,6 +139,10 @@ function SceneContent() {
     },
     showCollisionBounds: {
       label: "Show Collision Bounds",
+      value: false,
+    },
+    showSpatialGrid: {
+      label: "Show Spatial Grid",
       value: false,
     },
   });
@@ -254,8 +275,8 @@ function SceneContent() {
   const enableShadows = editorConfig.performance?.enableShadows ?? true;
 
   const debugContextValue = useMemo(
-    () => ({ showCollisionBounds }),
-    [showCollisionBounds],
+    () => ({ showCollisionBounds, showSpatialGrid }),
+    [showCollisionBounds, showSpatialGrid],
   );
 
   return (
@@ -296,6 +317,11 @@ function SceneContent() {
       {/* Obstacle entities - rendered at canvas root with global positions */}
       {obstacleEntities.map((obstacle) => (
         <Obstacle key={obstacle.tempId} obstacleId={obstacle.tempId} />
+      ))}
+
+      {/* Entrypoint entities - rendered at canvas root with global positions */}
+      {entrypointEntities.map((entrypoint) => (
+        <Entrypoint key={entrypoint.tempId} entrypointId={entrypoint.tempId} />
       ))}
 
       {/* Camera controls with constraints */}
@@ -350,6 +376,9 @@ function SceneContent() {
 
       {/* Collision debug visualization - shows fading boxes on collision */}
       <CollisionDebugOverlay enabled={showCollisionBounds} />
+
+      {/* Spatial grid visualization - shows collision grid cells */}
+      <SpatialGridOverlay enabled={showSpatialGrid} />
     </DebugContext.Provider>
   );
 }
@@ -375,7 +404,7 @@ export const Canvas3D: React.FC = () => {
 
   return (
     <div className="relative box-border h-full min-h-0 w-full overflow-hidden">
-      <Leva hidden />
+      <Leva hidden={false} />
       <Canvas
         shadows={enableShadows}
         dpr={pixelRatio}

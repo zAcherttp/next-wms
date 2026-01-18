@@ -83,7 +83,7 @@ export function EditorPage() {
         value={progress}
         className={`h-1 transition-all duration-300 ${progress === 0 ? "opacity-0" : "opacity-100"}`}
       />
-      <WarehouseEditor />
+      <WarehouseEditor showDebugPanel={false} />
     </div>
   );
 }
