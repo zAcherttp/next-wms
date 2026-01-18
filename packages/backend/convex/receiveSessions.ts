@@ -137,8 +137,24 @@ async function generateSupplierBatchNumber(
   const date = new Date(now);
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
 
-  const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0).getTime();
-  const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).getTime();
+  const startOfDay = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0,
+    0,
+    0,
+    0,
+  ).getTime();
+  const endOfDay = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    23,
+    59,
+    59,
+    999,
+  ).getTime();
 
   const todayBatches = await ctx.db
     .query("inventory_batches")
@@ -167,8 +183,24 @@ async function generateInternalBatchNumber(
   const date = new Date(now);
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
 
-  const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0).getTime();
-  const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).getTime();
+  const startOfDay = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0,
+    0,
+    0,
+    0,
+  ).getTime();
+  const endOfDay = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    23,
+    59,
+    59,
+    999,
+  ).getTime();
 
   const todayBatches = await ctx.db
     .query("inventory_batches")
@@ -197,8 +229,24 @@ async function generateReturnRequestCode(
   const date = new Date(now);
   const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
 
-  const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0).getTime();
-  const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).getTime();
+  const startOfDay = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    0,
+    0,
+    0,
+    0,
+  ).getTime();
+  const endOfDay = new Date(
+    date.getFullYear(),
+    date.getMonth(),
+    date.getDate(),
+    23,
+    59,
+    59,
+    999,
+  ).getTime();
 
   const todayReturns = await ctx.db
     .query("return_requests")
@@ -1084,6 +1132,7 @@ export const createReturnFromReceiveSession = mutation({
       reasonTypeId: args.reasonTypeId,
       customReasonNotes: args.customReasonNotes,
       expectedCreditAmount,
+      receiveSessionDetailId: args.receiveSessionDetailId,
     });
 
     // Update the receive session detail status to indicate return requested
@@ -1174,11 +1223,11 @@ export const updateReceiveSessionStatus = mutation({
  * Updates each item's status based on received vs expected:
  * - COMPLETE if record >= expected
  * - RETURN_REQUESTED items stay as is
- * 
+ *
  * Additionally:
  * - Creates ONE return request for all RETURN_REQUESTED items
  * - Creates inventory batches for COMPLETE items
- * 
+ *
  * Marks session and work session as complete
  */
 export const completeReceiveSession = mutation({
@@ -1250,9 +1299,10 @@ export const completeReceiveSession = mutation({
     const completeItems: typeof details = [];
 
     for (const detail of details) {
-      const isReturnRequested = returnRequestedStatusId && 
+      const isReturnRequested =
+        returnRequestedStatusId &&
         detail.receiveSessionItemStatusTypeId === returnRequestedStatusId;
-      
+
       if (isReturnRequested) {
         returnRequestedItems.push(detail);
       } else if (detail.quantityReceived >= detail.quantityExpected) {
@@ -1270,7 +1320,10 @@ export const completeReceiveSession = mutation({
     let returnRequestId: any = null;
     if (returnRequestedItems.length > 0 && args.verifiedByUserId) {
       // Generate return request code
-      const requestCode = await generateReturnRequestCode(ctx, session.branchId);
+      const requestCode = await generateReturnRequestCode(
+        ctx,
+        session.branchId,
+      );
 
       // Create return request header
       returnRequestId = await ctx.db.insert("return_requests", {
@@ -1300,6 +1353,7 @@ export const completeReceiveSession = mutation({
           reasonTypeId: (item.returnTypeId || pendingReturnStatusId) as any,
           customReasonNotes: item.notes || undefined,
           expectedCreditAmount,
+          receiveSessionDetailId: item._id,
         });
       }
     }
@@ -1312,13 +1366,21 @@ export const completeReceiveSession = mutation({
       // Check if item has a recommended zone
       if (!item.recommendedZoneId) {
         // Skip items without a zone - this shouldn't happen if PO was created correctly
-        console.warn(`Item ${item._id} has no recommendedZoneId, skipping batch creation`);
+        console.warn(
+          `Item ${item._id} has no recommendedZoneId, skipping batch creation`,
+        );
         continue;
       }
 
       // Generate batch numbers
-      const supplierBatchNumber = await generateSupplierBatchNumber(ctx, session.branchId);
-      const internalBatchNumber = await generateInternalBatchNumber(ctx, session.branchId);
+      const supplierBatchNumber = await generateSupplierBatchNumber(
+        ctx,
+        session.branchId,
+      );
+      const internalBatchNumber = await generateInternalBatchNumber(
+        ctx,
+        session.branchId,
+      );
 
       // Create inventory batch
       const batchId = await ctx.db.insert("inventory_batches", {
@@ -1347,7 +1409,8 @@ export const completeReceiveSession = mutation({
     // UPDATE SESSION STATUS
     // ================================================================
     const allHandled = details.every((d) => {
-      const isReturnRequested = returnRequestedStatusId && 
+      const isReturnRequested =
+        returnRequestedStatusId &&
         d.receiveSessionItemStatusTypeId === returnRequestedStatusId;
       const isComplete = d.quantityReceived >= d.quantityExpected;
       return isReturnRequested || isComplete;
@@ -1448,7 +1511,7 @@ export const setItemReturnRequested = mutation({
       "ReceiveSessionItemStatus",
       "RETURN_REQUESTED",
       "Return Requested",
-      "Return has been requested for this item"
+      "Return has been requested for this item",
     );
 
     // Update the item status, returnTypeId, and notes
@@ -1488,7 +1551,7 @@ export const saveReceiveSessionState = mutation({
     const details = await ctx.db
       .query("receive_sessions_details")
       .withIndex("receiveSessionId", (q) =>
-        q.eq("receiveSessionId", args.receiveSessionId)
+        q.eq("receiveSessionId", args.receiveSessionId),
       )
       .collect();
 
@@ -1496,12 +1559,12 @@ export const saveReceiveSessionState = mutation({
     const returnRequestedStatus = await getSystemLookup(
       ctx,
       "ReceiveSessionItemStatus",
-      "RETURN_REQUESTED"
+      "RETURN_REQUESTED",
     );
     const completeItemStatus = await getSystemLookup(
       ctx,
       "ReceiveSessionItemStatus",
-      "COMPLETE"
+      "COMPLETE",
     );
 
     // Analyze item statuses
@@ -1546,7 +1609,7 @@ export const saveReceiveSessionState = mutation({
       "ReceiveSessionStatus",
       sessionStatusCode,
       sessionStatusCode === "IN_PROGRESS" ? "In Progress" : "Pending",
-      `Receive session is ${sessionStatusCode.toLowerCase().replace("_", " ")}`
+      `Receive session is ${sessionStatusCode.toLowerCase().replace("_", " ")}`,
     );
 
     // Update session status

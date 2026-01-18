@@ -467,11 +467,14 @@ export const createReturnRequest = mutation({
  * approveReturnRequest
  *
  * Purpose: Approves a return request by updating its status to APPROVED
+ *          and updates linked receive session items to RETURNED status
  *
  * Process:
  * 1. Validates the return request exists
  * 2. Fetches the APPROVED status lookup
  * 3. Updates the return request status
+ * 4. Gets all return request details
+ * 5. Updates linked receive session item statuses to RETURNED
  *
  * Access: Restricted to authorized users with permission to approve returns
  * Typical users: Warehouse managers, inventory supervisors
@@ -487,7 +490,7 @@ export const approveReturnRequest = mutation({
       throw new Error("Return request not found or has been deleted");
     }
 
-    // Step 2: Get the APPROVED status lookup
+    // Step 2: Get the APPROVED status lookup for return request
     const approvedStatus = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
@@ -504,19 +507,64 @@ export const approveReturnRequest = mutation({
       returnStatusTypeId: approvedStatus._id,
     });
 
+    // Step 4: Get all return request details
+    const details = await ctx.db
+      .query("return_request_details")
+      .withIndex("returnRequestId", (q) =>
+        q.eq("returnRequestId", args.returnRequestId)
+      )
+      .collect();
+
+    // Step 5: Get or create RETURNED status for receive session items
+    let returnedItemStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ReceiveSessionItemStatus").eq("lookupCode", "RETURNED")
+      )
+      .first();
+
+    // Create RETURNED status if it doesn't exist
+    if (!returnedItemStatus) {
+      const newStatusId = await ctx.db.insert("system_lookups", {
+        lookupType: "ReceiveSessionItemStatus",
+        lookupCode: "RETURNED",
+        lookupValue: "Returned",
+        description: "Item has been returned to supplier",
+        sortOrder: 5,
+      });
+      returnedItemStatus = await ctx.db.get(newStatusId);
+    }
+
+    // Step 6: Update each linked receive session item status to RETURNED
+    for (const detail of details) {
+      if (detail.receiveSessionDetailId) {
+        const receiveDetail = await ctx.db.get(detail.receiveSessionDetailId);
+        if (receiveDetail) {
+          await ctx.db.patch(detail.receiveSessionDetailId, {
+            receiveSessionItemStatusTypeId: returnedItemStatus!._id,
+          });
+        }
+      }
+    }
+
     return args.returnRequestId;
   },
 });
 
+
 /**
  * rejectReturnRequest
  *
- * Purpose: Rejects a return request by updating its status to REJECTED
+ * Purpose: Rejects a return request by updating its status to REJECTED.
+ *          Updates linked receive session items to COMPLETE status and creates inventory batches.
  *
  * Process:
  * 1. Validates the return request exists
  * 2. Fetches the REJECTED status lookup
  * 3. Updates the return request status
+ * 4. Gets all return request details with linked receive session items
+ * 5. Updates linked receive session item statuses to COMPLETE
+ * 6. Creates inventory batches for rejected (accepted into inventory) items
  *
  * Access: Restricted to authorized users with permission to reject returns
  * Typical users: Warehouse managers, inventory supervisors
@@ -550,6 +598,121 @@ export const rejectReturnRequest = mutation({
       returnStatusTypeId: rejectedStatus._id,
     });
 
-    return args.returnRequestId;
+    // Step 4: Get all return request details
+    const details = await ctx.db
+      .query("return_request_details")
+      .withIndex("returnRequestId", (q) =>
+        q.eq("returnRequestId", args.returnRequestId)
+      )
+      .collect();
+
+    // Step 5: Get COMPLETE status for receive session items
+    let completeItemStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ReceiveSessionItemStatus").eq("lookupCode", "COMPLETE")
+      )
+      .first();
+
+    if (!completeItemStatus) {
+      const newStatusId = await ctx.db.insert("system_lookups", {
+        lookupType: "ReceiveSessionItemStatus",
+        lookupCode: "COMPLETE",
+        lookupValue: "Complete",
+        description: "Item has been fully received",
+        sortOrder: 3,
+      });
+      completeItemStatus = await ctx.db.get(newStatusId);
+    }
+
+    // Get ACTIVE batch status for inventory batches
+    let activeBatchStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "BatchStatus").eq("lookupCode", "ACTIVE")
+      )
+      .first();
+
+    if (!activeBatchStatus) {
+      const newStatusId = await ctx.db.insert("system_lookups", {
+        lookupType: "BatchStatus",
+        lookupCode: "ACTIVE",
+        lookupValue: "Active",
+        description: "Batch is active and available",
+        sortOrder: 1,
+      });
+      activeBatchStatus = await ctx.db.get(newStatusId);
+    }
+
+    // Step 6: Update each linked receive session item and create inventory batches
+    const createdBatches: any[] = [];
+    
+    for (const detail of details) {
+      if (detail.receiveSessionDetailId) {
+        const receiveDetail = await ctx.db.get(detail.receiveSessionDetailId);
+        if (receiveDetail) {
+          // Update the receive session item status to COMPLETE
+          await ctx.db.patch(detail.receiveSessionDetailId, {
+            receiveSessionItemStatusTypeId: completeItemStatus!._id,
+          });
+
+          // Get receive session for branch info
+          const receiveSession = await ctx.db.get(receiveDetail.receiveSessionId);
+          if (receiveSession && receiveDetail.recommendedZoneId) {
+            // Get branch for organization info
+            const branch = await ctx.db.get(receiveSession.branchId);
+            if (branch) {
+              // Generate batch numbers
+              const now = Date.now();
+              const date = new Date(now);
+              const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
+              
+              const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0).getTime();
+              const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).getTime();
+              
+              const todayBatches = await ctx.db
+                .query("inventory_batches")
+                .withIndex("branchId", (q) => q.eq("branchId", receiveSession.branchId))
+                .filter((q) =>
+                  q.and(
+                    q.gte(q.field("receivedAt"), startOfDay),
+                    q.lte(q.field("receivedAt"), endOfDay),
+                  ),
+                )
+                .collect();
+
+              const sequence = (todayBatches.length + 1).toString().padStart(3, "0");
+              const supplierBatchNumber = `SB-${dateStr}-${sequence}`;
+              const internalBatchNumber = `IB-${dateStr}-${sequence}`;
+
+              // Create inventory batch with the quantity from return request
+              const batchId = await ctx.db.insert("inventory_batches", {
+                organizationId: branch.organizationId,
+                skuId: receiveDetail.skuId,
+                zoneId: receiveDetail.recommendedZoneId,
+                quantity: detail.quantityToReturn, // Use the return quantity as inventory
+                branchId: receiveSession.branchId,
+                supplierBatchNumber,
+                internalBatchNumber,
+                receivedAt: Date.now(),
+                batchStatusTypeId: activeBatchStatus!._id,
+                isDeleted: false,
+              });
+
+              createdBatches.push({
+                batchId,
+                skuId: receiveDetail.skuId,
+                quantity: detail.quantityToReturn,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    return {
+      returnRequestId: args.returnRequestId,
+      batchesCreated: createdBatches.length,
+    };
   },
 });

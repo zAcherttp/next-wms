@@ -36,6 +36,8 @@ const getItemStatusBadgeStyle = (status: string) => {
       return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60";
     case "return_requested":
       return "bg-red-500/10 text-red-600 border-red-500/60";
+    case "returned":
+      return "bg-purple-500/10 text-purple-600 border-purple-500/60";
     default:
       return "bg-gray-500/10 text-gray-600 border-gray-500/60";
   }
@@ -116,7 +118,7 @@ export function ReceiveSessionDetailDialog({
           </span>
         )}
       </DialogTrigger>
-      <DialogContent className="w-full sm:max-w-4xl">
+      <DialogContent className="w-full sm:max-w-6xl">
         <DialogTitle className="sr-only">Receive Session Details</DialogTitle>
         {isPending || !sessionDetail ? (
           <div className="space-y-4">
@@ -194,40 +196,51 @@ export function ReceiveSessionDetailDialog({
                 Items
               </h3>
 
-              <div className="rounded-md border">
-                <Table>
+              <div className="rounded-md border overflow-x-auto">
+                <Table className="table-fixed w-full">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-25">SKU</TableHead>
-                      <TableHead className="w-37.5">Name</TableHead>
-                      <TableHead className="w-20 text-center">
+                      <TableHead className="w-[90px] px-2">SKU</TableHead>
+                      <TableHead className="w-[120px] px-2">Name</TableHead>
+                      <TableHead className="w-[65px] px-2 text-center">
                         Expected
                       </TableHead>
-                      <TableHead className="w-20 text-center">
+                      <TableHead className="w-[65px] px-2 text-center">
                         Received
                       </TableHead>
-                      <TableHead>Note</TableHead>
-                      <TableHead className="w-28 text-center">Status</TableHead>
+                      <TableHead className="w-[140px] px-2">Location</TableHead>
+                      <TableHead className="w-[180px] px-2">Note</TableHead>
+                      <TableHead className="w-[90px] px-2 text-center">
+                        Status
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {sessionDetail.items.length > 0 ? (
                       sessionDetail.items.map((item) => (
                         <TableRow key={item.detailId}>
-                          <TableCell className="font-medium text-blue-600">
+                          <TableCell className="px-2 font-medium text-blue-600 truncate">
                             {item.skuCode}
                           </TableCell>
-                          <TableCell>{item.productName ?? "-"}</TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="px-2 truncate">
+                            {item.productName ?? "-"}
+                          </TableCell>
+                          <TableCell className="px-2 text-center">
                             {item.quantityExpected}
                           </TableCell>
-                          <TableCell className="text-center font-medium text-blue-600">
+                          <TableCell className="px-2 text-center font-medium text-blue-600">
                             {item.quantityReceived}
                           </TableCell>
-                          <TableCell className="text-muted-foreground">
+                          <TableCell
+                            className="px-2 text-muted-foreground truncate"
+                            title={item.recommendedZone ?? undefined}
+                          >
+                            {item.recommendedZone ?? "-"}
+                          </TableCell>
+                          <TableCell className="px-2 max-w-[180px] break-words whitespace-normal text-muted-foreground">
                             {item.notes ?? "-"}
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="px-2 text-center">
                             <Badge
                               variant="outline"
                               className={cn(
@@ -242,7 +255,7 @@ export function ReceiveSessionDetailDialog({
                       ))
                     ) : (
                       <TableRow>
-                        <TableCell colSpan={6} className="text-center">
+                        <TableCell colSpan={7} className="text-center">
                           No items found
                         </TableCell>
                       </TableRow>

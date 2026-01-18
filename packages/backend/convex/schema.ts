@@ -615,11 +615,13 @@ export default defineSchema({
     reasonTypeId: v.string(),
     customReasonNotes: v.optional(v.string()),
     expectedCreditAmount: v.optional(v.number()),
+    receiveSessionDetailId: v.optional(v.id("receive_sessions_details")),
   })
     .index("returnRequestId", ["returnRequestId"])
     .index("batchId", ["batchId"])
     .index("skuId", ["skuId"])
-    .index("reasonTypeId", ["reasonTypeId"]),
+    .index("reasonTypeId", ["reasonTypeId"])
+    .index("receiveSessionDetailId", ["receiveSessionDetailId"]),
 
   // ================================================================
   // INTERNAL TRANSFERS

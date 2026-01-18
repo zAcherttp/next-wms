@@ -79,7 +79,8 @@
     "vaul": "^1.1.2",
     "zod": "catalog:",
     "zundo": "^2.3.0",
-    "zustand": "^5.0.10"
+    "zustand": "^5.0.10",
+    "three": "^0.159.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
