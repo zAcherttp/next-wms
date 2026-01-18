@@ -1,11 +1,12 @@
 "use client";
 
-import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { Plus } from "lucide-react";
 import { useState } from "react";
+import { toast } from "sonner";
 import { LocationTransferDialog } from "@/components/location-transfer-dialog";
 import { NewAdjustmentRequestDialog } from "@/components/new-adjustment-request-dialog";
 import { QuantityAdjustmentDialog } from "@/components/quantity-adjustment-dialog";
@@ -33,8 +34,9 @@ function StatCard({ title, value, bgColor, textColor }: StatCardProps) {
 }
 
 export default function Page() {
-  const { organizationId } = useCurrentUser();
+  const { organizationId, userId } = useCurrentUser();
   const { currentBranch } = useBranches({ organizationId });
+  const queryClient = useQueryClient();
 
   // Fetch real stats data from Convex
   const { data: stats } = useQuery({
@@ -63,6 +65,47 @@ export default function Page() {
   const [isQuantityDialogOpen, setIsQuantityDialogOpen] = useState(false);
   const [isLocationDialogOpen, setIsLocationDialogOpen] = useState(false);
 
+  // Mutations
+  const approveMutation = useMutation({
+    mutationFn: useConvexMutation(api.cycleCount.approveAdjustmentRequest),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["cycleCount.getQuantityAdjustmentsForTable"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["cycleCount.getLocationAdjustmentsForTable"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["cycleCount.getAdjustmentStats"],
+      });
+      toast.success("Adjustment request approved successfully");
+    },
+    onError: (error) => {
+      console.error("Failed to approve adjustment:", error);
+      toast.error("Failed to approve adjustment request");
+    },
+  });
+
+  const rejectMutation = useMutation({
+    mutationFn: useConvexMutation(api.cycleCount.rejectAdjustmentRequest),
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["cycleCount.getQuantityAdjustmentsForTable"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["cycleCount.getLocationAdjustmentsForTable"],
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["cycleCount.getAdjustmentStats"],
+      });
+      toast.success("Adjustment request rejected");
+    },
+    onError: (error) => {
+      console.error("Failed to reject adjustment:", error);
+      toast.error("Failed to reject adjustment request");
+    },
+  });
+
   const handleSelectAdjustmentType = (type: "quantity" | "location") => {
     if (type === "quantity") {
       setIsQuantityDialogOpen(true);
@@ -71,15 +114,28 @@ export default function Page() {
     }
   };
 
-  // const handleApprove = (id: string) => {
-  // console.log("Approve adjustment:", id);
-  // TODO: Implement approve logic
-  // };
+  const handleApprove = async (id: string) => {
+    try {
+      await approveMutation.mutateAsync({
+        adjustmentRequestId: id as Id<"adjustment_requests">,
+        approvedByUserId: userId,
+      });
+    } catch (error) {
+      // Error already handled in mutation
+    }
+  };
 
-  // const handleReject = (id: string) => {
-  // console.log("Reject adjustment:", id);
-  // TODO: Implement reject logic
-  // };
+  const handleReject = async (id: string) => {
+    try {
+      await rejectMutation.mutateAsync({
+        adjustmentRequestId: id as Id<"adjustment_requests">,
+        approvedByUserId: userId,
+        resolutionNotes: "Rejected by user",
+      });
+    } catch (error) {
+      // Error already handled in mutation
+    }
+  };
 
   return (
     <div className="flex flex-col gap-6 p-4">

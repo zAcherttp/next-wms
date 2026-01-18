@@ -6,6 +6,7 @@ import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { Loader2, Upload, X } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -117,6 +118,23 @@ export function QuantityAdjustmentDialog({
     };
   }, [clearFiles]);
 
+  // Debug logging
+  React.useEffect(() => {
+    if (open) {
+      console.log("Quantity Adjustment Dialog - Data Status:", {
+        zones: zones?.length ?? 0,
+        isLoadingZones,
+        adjustmentReasons: lookups?.adjustmentReasons?.length ?? 0,
+        isLoadingLookups,
+        quantityTypeId: !!lookups?.quantityTypeId,
+        defaultStatusId: !!lookups?.defaultStatusId,
+        organizationId: !!organizationId,
+        currentBranch: !!currentBranch?._id,
+        user: !!user?._id,
+      });
+    }
+  }, [open, zones, isLoadingZones, lookups, isLoadingLookups, organizationId, currentBranch?._id, user?._id]);
+
   // Initialize form when dialog opens with initial data
   React.useEffect(() => {
     if (open && initialData) {
@@ -152,7 +170,14 @@ export function QuantityAdjustmentDialog({
       !lookups?.quantityTypeId ||
       !lookups?.defaultStatusId
     ) {
-      console.error("Missing required data for adjustment request");
+      console.error("Missing required data for adjustment request", {
+        organizationId: !!organizationId,
+        branchId: !!currentBranch?._id,
+        userId: !!user?._id,
+        quantityTypeId: !!lookups?.quantityTypeId,
+        defaultStatusId: !!lookups?.defaultStatusId,
+      });
+      toast.error("Missing required information. Please ensure you're logged in and try again.");
       return;
     }
 
@@ -182,10 +207,12 @@ export function QuantityAdjustmentDialog({
         ],
       });
 
+      toast.success("Quantity adjustment request created successfully");
       onSuccess?.();
       handleClose();
     } catch (error) {
       console.error("Failed to create adjustment request:", error);
+      toast.error("Failed to create adjustment request. Please try again.");
     }
   };
 
@@ -203,7 +230,11 @@ export function QuantityAdjustmentDialog({
     (productName !== "" || skuId !== "") &&
     currentQty !== "" &&
     countedQty !== "" &&
-    reasonId !== "";
+    reasonId !== "" &&
+    !isLoadingLookups &&
+    !isLoadingZones &&
+    !!lookups?.quantityTypeId &&
+    !!lookups?.defaultStatusId;
 
   const isSubmitting = createAdjustmentMutation.isPending;
 

@@ -1166,40 +1166,95 @@ export const getSessionForProceed = query({
           ? await ctx.db.get(assignment.assignmentStatusTypeId)
           : null;
 
-        // Get line items for this zone
+        // Get line items for this zone - compare IDs properly
         const zoneLineItems = allLineItems.filter(
-          (item) => item.zoneId?.toString() === assignment.zoneId.toString(),
+          (item) => item.zoneId && item.zoneId === assignment.zoneId,
         );
 
-        // Enrich line items with SKU and product info
-        const enrichedLineItems = await Promise.all(
-          zoneLineItems.map(async (item) => {
-            const sku = await ctx.db.get(item.skuId);
-            const product = sku?.productId
-              ? await ctx.db.get(sku.productId)
-              : null;
+        // If no line items exist for this zone, fetch from inventory_batches directly
+        let enrichedLineItems: {
+          _id: string;
+          skuId: Id<"product_variants">;
+          skuCode: string;
+          productName: string;
+          expectedQuantity: number;
+          actualQuantity: number;
+          inventoryQuantity: number;
+          variance: number;
+          isScanned: boolean;
+          scannedAt?: number;
+          batchId?: Id<"inventory_batches">;
+          notes?: string;
+        }[] = [];
 
-            // Get the inventory batch for expected quantity from inventory
-            const inventoryBatch = item.batchId
-              ? await ctx.db.get(item.batchId)
-              : null;
+        if (zoneLineItems.length > 0) {
+          // Enrich existing line items with SKU and product info
+          enrichedLineItems = await Promise.all(
+            zoneLineItems.map(async (item) => {
+              const sku = await ctx.db.get(item.skuId);
+              const product = sku?.productId
+                ? await ctx.db.get(sku.productId)
+                : null;
 
-            return {
-              _id: item._id,
-              skuId: item.skuId,
-              skuCode: sku?.skuCode ?? "Unknown SKU",
-              productName: product?.name ?? "Unknown Product",
-              expectedQuantity: item.expectedQuantity,
-              actualQuantity: item.actualQuantity,
-              inventoryQuantity: inventoryBatch?.quantity ?? item.expectedQuantity,
-              variance: item.actualQuantity - item.expectedQuantity,
-              isScanned: item.scannedAt !== undefined,
-              scannedAt: item.scannedAt,
-              batchId: item.batchId,
-              notes: item.notes,
-            };
-          }),
-        );
+              // Get the inventory batch for expected quantity from inventory
+              const inventoryBatch = item.batchId
+                ? await ctx.db.get(item.batchId)
+                : null;
+
+              return {
+                _id: item._id as string,
+                skuId: item.skuId,
+                skuCode: sku?.skuCode ?? "Unknown SKU",
+                productName: product?.name ?? "Unknown Product",
+                expectedQuantity: item.expectedQuantity,
+                actualQuantity: item.actualQuantity,
+                inventoryQuantity: inventoryBatch?.quantity ?? item.expectedQuantity,
+                variance: item.actualQuantity - item.expectedQuantity,
+                isScanned: item.scannedAt !== undefined,
+                scannedAt: item.scannedAt,
+                batchId: item.batchId,
+                notes: item.notes,
+              };
+            }),
+          );
+        } else {
+          // Fallback: Get inventory batches directly from this zone for display
+          const batches = await ctx.db
+            .query("inventory_batches")
+            .withIndex("zoneId", (q) => q.eq("zoneId", assignment.zoneId))
+            .filter((q) =>
+              q.and(
+                q.eq(q.field("branchId"), session.branchId),
+                q.gt(q.field("quantity"), 0),
+                q.eq(q.field("isDeleted"), false),
+              ),
+            )
+            .collect();
+
+          enrichedLineItems = await Promise.all(
+            batches.map(async (batch) => {
+              const sku = await ctx.db.get(batch.skuId);
+              const product = sku?.productId
+                ? await ctx.db.get(sku.productId)
+                : null;
+
+              return {
+                _id: `batch-${batch._id}`, // Temporary ID for display (not a real line item)
+                skuId: batch.skuId,
+                skuCode: sku?.skuCode ?? "Unknown SKU",
+                productName: product?.name ?? "Unknown Product",
+                expectedQuantity: batch.quantity,
+                actualQuantity: 0,
+                inventoryQuantity: batch.quantity,
+                variance: 0 - batch.quantity,
+                isScanned: false,
+                scannedAt: undefined,
+                batchId: batch._id,
+                notes: undefined,
+              };
+            }),
+          );
+        }
 
         // Calculate zone progress
         const totalItems = enrichedLineItems.length;
@@ -1237,10 +1292,8 @@ export const getSessionForProceed = query({
     );
 
     // Calculate overall progress
-    const totalLineItems = allLineItems.length;
-    const totalScanned = allLineItems.filter(
-      (i) => i.scannedAt !== undefined,
-    ).length;
+    const totalLineItems = enrichedZones.reduce((sum, z) => sum + z.lineItems.length, 0);
+    const totalScanned = enrichedZones.reduce((sum, z) => sum + z.progress.scannedItems, 0);
     const totalZones = zoneAssignments.length;
     const completedZones = enrichedZones.filter(
       (z) => z.statusCode?.toLowerCase() === "completed",
@@ -1280,26 +1333,59 @@ export const getSessionForProceed = query({
  * Purpose: Records the counted quantity for a line item during cycle count
  *
  * Process:
- * 1. Validates the line item exists
- * 2. Updates the actual quantity and marks as scanned
- * 3. Returns the updated line item
+ * 1. If lineItemId is a real ID, updates the existing line item
+ * 2. If lineItemId starts with "batch-", creates a new line item from batch
+ * 3. Updates the actual quantity and marks as scanned
  *
  * Access: Available to assigned workers
  */
 export const recordLineItemCount = mutation({
   args: {
-    lineItemId: v.id("session_line_items"),
+    lineItemId: v.union(v.id("session_line_items"), v.string()),
     actualQuantity: v.number(),
     scannedByUserId: v.id("users"),
     notes: v.optional(v.string()),
+    // Required when creating from batch (fallback mode)
+    sessionId: v.optional(v.id("work_sessions")),
+    batchId: v.optional(v.id("inventory_batches")),
+    zoneId: v.optional(v.id("storage_zones")),
   },
   handler: async (ctx, args) => {
-    const lineItem = await ctx.db.get(args.lineItemId);
+    // Check if this is a batch-based item (fallback mode)
+    if (typeof args.lineItemId === "string" && args.lineItemId.startsWith("batch-")) {
+      // This is from the fallback - need to create a new line item
+      if (!args.sessionId || !args.batchId || !args.zoneId) {
+        throw new Error("sessionId, batchId, and zoneId are required when recording from inventory batch");
+      }
+
+      const batch = await ctx.db.get(args.batchId);
+      if (!batch) {
+        throw new Error("Inventory batch not found");
+      }
+
+      // Create the line item
+      const lineItemId = await ctx.db.insert("session_line_items", {
+        sessionId: args.sessionId,
+        skuId: batch.skuId,
+        expectedQuantity: batch.quantity,
+        actualQuantity: args.actualQuantity,
+        zoneId: args.zoneId,
+        batchId: args.batchId,
+        scannedAt: Date.now(),
+        scannedByUserId: args.scannedByUserId,
+        notes: args.notes,
+      });
+
+      return lineItemId;
+    }
+
+    // Existing line item - just update it
+    const lineItem = await ctx.db.get(args.lineItemId as Id<"session_line_items">);
     if (!lineItem) {
       throw new Error("Line item not found");
     }
 
-    await ctx.db.patch(args.lineItemId, {
+    await ctx.db.patch(args.lineItemId as Id<"session_line_items">, {
       actualQuantity: args.actualQuantity,
       scannedAt: Date.now(),
       scannedByUserId: args.scannedByUserId,
@@ -2163,6 +2249,112 @@ export const getAdjustmentRequestById = query({
 });
 
 /**
+ * createAdjustmentRequest
+ *
+ * Purpose: Creates a new adjustment request from cycle count session with multiple items
+ *
+ * Process:
+ * 1. Generates a unique request code
+ * 2. Finds the pending status for adjustment requests
+ * 3. Creates the adjustment request header
+ * 4. Creates all associated adjustment request detail records
+ * 5. Returns the newly created adjustment request ID
+ *
+ * Access: Restricted to authorized users with permission to create adjustment requests
+ */
+export const createAdjustmentRequest = mutation({
+  args: {
+    branchId: v.id("branches"),
+    adjustmentTypeId: v.id("system_lookups"),
+    details: v.array(
+      v.object({
+        skuId: v.id("products"),
+        batchId: v.union(v.id("inventory_batches"), v.null()),
+        currentQuantity: v.number(),
+        newQuantity: v.number(),
+        sourceZoneId: v.union(v.id("storage_zones"), v.null()),
+        destinationZoneId: v.union(v.id("storage_zones"), v.null()),
+      }),
+    ),
+    reason: v.string(),
+    requestedBy: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Generate request code
+    const timestamp = Date.now();
+    const randomSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const requestCode = `ADJ-${timestamp}-${randomSuffix}`;
+
+    // Step 2: Get the branch to find organizationId
+    const branch = await ctx.db.get(args.branchId);
+    if (!branch) {
+      throw new Error("Branch not found");
+    }
+
+    // Step 3: Find the pending status
+    const pendingStatus = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "AdjustmentStatus"),
+          q.eq(q.field("lookupValue"), "PENDING"),
+        ),
+      )
+      .first();
+
+    if (!pendingStatus) {
+      throw new Error("Pending status not found in system lookups");
+    }
+
+    // Step 4: Find a default reason type (or use the first one available)
+    const defaultReasonType = await ctx.db
+      .query("system_lookups")
+      .filter((q) => q.eq(q.field("lookupType"), "AdjustmentReason"))
+      .first();
+
+    // Step 5: Create the adjustment request header
+    const adjustmentRequestId = await ctx.db.insert("adjustment_requests", {
+      organizationId: branch.organizationId,
+      branchId: args.branchId.toString(),
+      requestCode,
+      adjustmentTypeId: args.adjustmentTypeId.toString(),
+      requestedByUserId: args.requestedBy.toString(),
+      requestedAt: timestamp,
+      adjustmentStatusTypeId: pendingStatus._id.toString(),
+      resolutionNotes: args.reason, // Store reason in resolutionNotes field
+    });
+
+    // Step 6: Get the adjustment type to check if it's quantity or location
+    const adjustmentType = await ctx.db.get(args.adjustmentTypeId);
+    const isQuantityType =
+      adjustmentType?.lookupValue?.toUpperCase() === "QUANTITY";
+
+    // Step 7: Create all adjustment request detail records
+    for (const detail of args.details) {
+      await ctx.db.insert("adjustment_request_details", {
+        adjustmentRequestId,
+        batchId: detail.batchId?.toString() ?? "",
+        skuId: detail.skuId.toString(),
+        // Quantity adjustment fields
+        expectedQuantity: detail.currentQuantity,
+        actualQuantity: detail.newQuantity,
+        varianceQuantity: detail.newQuantity - detail.currentQuantity,
+        costImpact: 0,
+        // Location transfer fields
+        fromZoneId: detail.sourceZoneId?.toString(),
+        toZoneId: detail.destinationZoneId?.toString(),
+        quantity: isQuantityType ? undefined : detail.currentQuantity,
+        // Reason
+        reasonTypeId: defaultReasonType?._id.toString() ?? "",
+        customReasonNotes: args.reason,
+      });
+    }
+
+    return adjustmentRequestId;
+  },
+});
+
+/**
  * createNewAdjustmentRequest
  *
  * Purpose: Creates a new inventory adjustment request (quantity or location) with line items
@@ -2298,12 +2490,14 @@ export const setAdjustmentRequestStatus = mutation({
 /**
  * approveAdjustmentRequest
  *
- * Purpose: Approves an adjustment request by updating its status to APPROVED
+ * Purpose: Approves an adjustment request and applies the inventory changes
  *
  * Process:
  * 1. Validates the adjustment request exists
- * 2. Fetches the APPROVED status lookup
- * 3. Updates the adjustment request status with approval details
+ * 2. Gets the adjustment details
+ * 3. Applies inventory changes based on adjustment type (QUANTITY or LOCATION)
+ * 4. Creates inventory transaction records
+ * 5. Updates the adjustment request status to APPROVED
  *
  * Access: Restricted to authorized users with permission to approve adjustments
  * Typical users: Warehouse managers, inventory supervisors
@@ -2333,7 +2527,101 @@ export const approveAdjustmentRequest = mutation({
       throw new Error("APPROVED status lookup not found. Please ensure seed data has been run.");
     }
 
-    // Step 3: Update the adjustment request status
+    // Step 3: Get adjustment type to determine how to process
+    const adjustmentType = await ctx.db.get(
+      adjustmentRequest.adjustmentTypeId as Id<"system_lookups">
+    );
+
+    // Step 4: Get all adjustment details
+    const details = await ctx.db
+      .query("adjustment_request_details")
+      .withIndex("adjustmentRequestId", (q) =>
+        q.eq("adjustmentRequestId", args.adjustmentRequestId)
+      )
+      .collect();
+
+    // Step 5: Get inventory transaction type lookup
+    const adjustmentTransactionType = await ctx.db
+      .query("system_lookups")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("lookupType"), "InventoryTransactionType"),
+          q.eq(q.field("lookupCode"), "ADJUSTMENT")
+        )
+      )
+      .first();
+
+    // Step 6: Apply changes based on adjustment type
+    if (adjustmentType?.lookupCode === "QUANTITY") {
+      // Process QUANTITY adjustments
+      for (const detail of details) {
+        const batchId = detail.batchId as Id<"inventory_batches">;
+        const batch = await ctx.db.get(batchId);
+        
+        if (batch) {
+          const oldQuantity = batch.quantity;
+          const newQuantity = detail.actualQuantity ?? detail.expectedQuantity ?? 0;
+          const quantityChange = newQuantity - oldQuantity;
+
+          // Update the batch quantity
+          await ctx.db.patch(batchId, {
+            quantity: newQuantity,
+          });
+
+          // Create inventory transaction record
+          if (adjustmentTransactionType && args.approvedByUserId) {
+            await ctx.db.insert("inventory_transactions", {
+              organizationId: adjustmentRequest.organizationId as Id<"organizations">,
+              batchId: batchId,
+              quantityBefore: oldQuantity,
+              quantityChange: quantityChange,
+              quantityAfter: newQuantity,
+              inventoryTransactionTypeId: adjustmentTransactionType._id,
+              createdByUserId: args.approvedByUserId as Id<"users">,
+              notes: args.resolutionNotes ?? `Quantity adjustment approved: ${detail.reasonTypeId}`,
+              adjustmentRequestDetailId: detail._id,
+            });
+          }
+        }
+      }
+    } else if (adjustmentType?.lookupCode === "LOCATION") {
+      // Process LOCATION adjustments
+      for (const detail of details) {
+        const batchId = detail.batchId as Id<"inventory_batches"> | undefined;
+        const fromZoneId = detail.fromZoneId as Id<"storage_zones"> | undefined;
+        const toZoneId = detail.toZoneId as Id<"storage_zones"> | undefined;
+        
+        if (batchId && toZoneId) {
+          const batch = await ctx.db.get(batchId);
+          
+          if (batch) {
+            const oldZoneId = batch.zoneId;
+            
+            // Update the batch location
+            await ctx.db.patch(batchId, {
+              zoneId: toZoneId,
+            });
+
+            // Create inventory transaction record for location change
+            if (adjustmentTransactionType && args.approvedByUserId) {
+              await ctx.db.insert("inventory_transactions", {
+                organizationId: adjustmentRequest.organizationId as Id<"organizations">,
+                batchId: batchId,
+                quantityBefore: batch.quantity,
+                quantityChange: 0, // No quantity change for location adjustment
+                quantityAfter: batch.quantity,
+                inventoryTransactionTypeId: adjustmentTransactionType._id,
+                createdByUserId: args.approvedByUserId as Id<"users">,
+                notes: args.resolutionNotes ?? `Location adjustment approved: moved from zone ${oldZoneId} to ${toZoneId}`,
+                adjustmentRequestDetailId: detail._id,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Step 7: Update the adjustment request status
     await ctx.db.patch(args.adjustmentRequestId, {
       adjustmentStatusTypeId: approvedStatus._id,
       approvedByUserId: args.approvedByUserId,

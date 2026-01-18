@@ -1,15 +1,15 @@
 "use client";
 
-import { convexQuery } from "@convex-dev/react-query";
-import { useQuery } from "@tanstack/react-query";
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
-import { Loader2, X } from "lucide-react";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { ArrowRight, ArrowRightLeft, Boxes, Check, Loader2, X } from "lucide-react";
 import { useState } from "react";
-import { LocationTransferDialog } from "@/components/location-transfer-dialog";
-import { NewAdjustmentRequestDialog } from "@/components/new-adjustment-request-dialog";
-import { QuantityAdjustmentDialog } from "@/components/quantity-adjustment-dialog";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -17,7 +17,17 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Separator } from "@/components/ui/separator";
 import {
   Table,
   TableBody,
@@ -27,6 +37,9 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Textarea } from "@/components/ui/textarea";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
 
 interface CycleCountSessionDetailDialogProps {
@@ -50,11 +63,21 @@ type LineItemFromApi = {
   notes?: string;
 };
 
+// Type for selected items with zone info
+type SelectedItemWithZone = LineItemFromApi & {
+  zoneName: string;
+  sourceZoneId: string;
+};
+
 export function CycleCountSessionDetailDialog({
   sessionId,
   open,
   onOpenChange,
 }: CycleCountSessionDetailDialogProps) {
+  const { user, organizationId } = useCurrentUser();
+  const { currentBranch } = useBranches({ organizationId });
+  const queryClient = useQueryClient();
+
   // Fetch session details from the backend
   const { data: session, isLoading } = useQuery({
     ...convexQuery(
@@ -64,46 +87,249 @@ export function CycleCountSessionDetailDialog({
     enabled: !!sessionId && open,
   });
 
+  // Fetch zones for location transfer - use the same query as LocationTransferDialog
+  const { data: zones, isLoading: isLoadingZones } = useQuery({
+    ...convexQuery(
+      api.cycleCount.getStorageZones,
+      open && currentBranch?._id
+        ? { branchId: currentBranch._id as Id<"branches"> }
+        : "skip",
+    ),
+    enabled: open && !!currentBranch?._id,
+  });
+
+  // Fetch adjustment lookups (reasons, statuses, types) - same as working dialogs
+  const { data: lookups, isLoading: isLoadingLookups } = useQuery({
+    ...convexQuery(api.cycleCount.getAdjustmentLookups, open ? {} : "skip"),
+    enabled: open,
+  });
+
+  // Create adjustment request mutation - use the same mutation as working dialogs
+  const createAdjustmentFn = useConvexMutation(
+    api.cycleCount.createNewAdjustmentRequest,
+  );
+  const createAdjustmentMutation = useMutation({
+    mutationFn: createAdjustmentFn,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["cycleCount"] });
+      queryClient.invalidateQueries({ queryKey: ["adjustmentRequests"] });
+    },
+  });
+
   const [activeZoneIndex, setActiveZoneIndex] = useState(0);
-  const [adjustmentDialogOpen, setAdjustmentDialogOpen] = useState(false);
+  const [selectedItems, setSelectedItems] = useState<
+    Map<string, SelectedItemWithZone>
+  >(new Map());
+  const [adjustmentTypeDialogOpen, setAdjustmentTypeDialogOpen] =
+    useState(false);
   const [quantityAdjustmentDialogOpen, setQuantityAdjustmentDialogOpen] =
     useState(false);
   const [locationTransferDialogOpen, setLocationTransferDialogOpen] =
     useState(false);
-  const [selectedLineItem, setSelectedLineItem] =
-    useState<LineItemFromApi | null>(null);
+  const [selectedDestinationZone, setSelectedDestinationZone] = useState<
+    string | null
+  >(null);
+  const [adjustmentReason, setAdjustmentReason] = useState("");
+  const [reasonId, setReasonId] = useState<string>("");
+  const [comments, setComments] = useState<string>("");
 
   const handleClose = () => {
     setActiveZoneIndex(0);
-    setSelectedLineItem(null);
+    setSelectedItems(new Map());
+    setAdjustmentTypeDialogOpen(false);
+    setQuantityAdjustmentDialogOpen(false);
+    setLocationTransferDialogOpen(false);
+    setSelectedDestinationZone(null);
+    setAdjustmentReason("");
+    setReasonId("");
+    setComments("");
     onOpenChange?.(false);
   };
 
-  const handleCompleteSession = () => {
-    // TODO: Implement complete session logic
-    // console.log("Complete session:", sessionId);
-    handleClose();
-  };
-
-  const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
-
-  const handleCreateAdjustment = (
-    lineItem: LineItemFromApi,
+  const handleItemToggle = (
+    item: LineItemFromApi,
+    zoneName: string,
     zoneId: string,
   ) => {
-    setSelectedLineItem(lineItem);
-    setSelectedZoneId(zoneId);
-    setAdjustmentDialogOpen(true);
+    const key = `${item._id}-${zoneId}`;
+    const newSelected = new Map(selectedItems);
+    if (newSelected.has(key)) {
+      newSelected.delete(key);
+    } else {
+      newSelected.set(key, { ...item, zoneName, sourceZoneId: zoneId });
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const handleSelectAllInZone = (
+    lineItems: LineItemFromApi[],
+    zoneName: string,
+    zoneId: string,
+    checked: boolean,
+  ) => {
+    const newSelected = new Map(selectedItems);
+    for (const item of lineItems) {
+      const key = `${item._id}-${zoneId}`;
+      if (checked) {
+        newSelected.set(key, { ...item, zoneName, sourceZoneId: zoneId });
+      } else {
+        newSelected.delete(key);
+      }
+    }
+    setSelectedItems(newSelected);
+  };
+
+  const handleCreateAdjustmentClick = () => {
+    if (selectedItems.size === 0) {
+      toast.error("Please select at least one item");
+      return;
+    }
+    setAdjustmentTypeDialogOpen(true);
   };
 
   const handleAdjustmentTypeSelect = (type: "quantity" | "location") => {
-    setAdjustmentDialogOpen(false);
+    setAdjustmentTypeDialogOpen(false);
     if (type === "quantity") {
       setQuantityAdjustmentDialogOpen(true);
     } else {
       setLocationTransferDialogOpen(true);
     }
   };
+
+  // Generate adjustment request code like ADJ-2026-001
+  const generateRequestCode = (): string => {
+    const year = new Date().getFullYear();
+    const random = Math.floor(Math.random() * 1000)
+      .toString()
+      .padStart(3, "0");
+    return `ADJ-${year}-${random}`;
+  };
+
+  const handleQuantityAdjustmentSubmit = async () => {
+    if (
+      !organizationId ||
+      !currentBranch?._id ||
+      !user?._id ||
+      !lookups?.quantityTypeId ||
+      !lookups?.defaultStatusId
+    ) {
+      console.error("Missing required data for quantity adjustment", {
+        organizationId: !!organizationId,
+        branchId: !!currentBranch?._id,
+        userId: !!user?._id,
+        quantityTypeId: !!lookups?.quantityTypeId,
+        defaultStatusId: !!lookups?.defaultStatusId,
+      });
+      toast.error("Missing required information. Please ensure you're logged in and try again.");
+      return;
+    }
+
+    const items = Array.from(selectedItems.values());
+    
+    // Find "Count Discrepancy" as the reason for cycle count adjustments
+    const countDiscrepancyReason = lookups.adjustmentReasons.find(
+      (r) => r.lookupCode === "COUNT_DISCREPANCY",
+    );
+
+    try {
+      await createAdjustmentMutation.mutateAsync({
+        organizationId: organizationId as string,
+        branchId: currentBranch._id as string,
+        requestCode: generateRequestCode(),
+        adjustmentTypeId: lookups.quantityTypeId as string,
+        requestedByUserId: user._id as string,
+        adjustmentStatusTypeId: lookups.defaultStatusId as string,
+        details: items.map((item) => ({
+          batchId: item.batchId || "unknown",
+          skuId: item.skuId || item.skuCode || "unknown",
+          expectedQuantity: item.expectedQuantity,
+          actualQuantity: item.actualQuantity,
+          varianceQuantity: item.actualQuantity - item.expectedQuantity,
+          costImpact: 0,
+          reasonTypeId: reasonId || (countDiscrepancyReason?._id ?? lookups.adjustmentReasons[0]?._id ?? ""),
+          customReasonNotes: comments || "Cycle count variance adjustment",
+        })),
+      });
+      toast.success("Quantity adjustment request created successfully");
+      setQuantityAdjustmentDialogOpen(false);
+      setSelectedItems(new Map());
+      setAdjustmentReason("");
+      setReasonId("");
+      setComments("");
+    } catch (error) {
+      toast.error("Failed to create adjustment request");
+      console.error(error);
+    }
+  };
+
+  const handleLocationTransferSubmit = async () => {
+    if (
+      !organizationId ||
+      !currentBranch?._id ||
+      !user?._id ||
+      !lookups?.locationTypeId ||
+      !lookups?.defaultStatusId
+    ) {
+      console.error("Missing required data for location transfer", {
+        organizationId: !!organizationId,
+        branchId: !!currentBranch?._id,
+        userId: !!user?._id,
+        locationTypeId: !!lookups?.locationTypeId,
+        defaultStatusId: !!lookups?.defaultStatusId,
+      });
+      toast.error("Missing required information. Please ensure you're logged in and try again.");
+      return;
+    }
+    
+    if (!selectedDestinationZone) {
+      toast.error("Please select a destination zone");
+      return;
+    }
+
+    const items = Array.from(selectedItems.values());
+    
+    // Find "Location Transfer" as the reason
+    const locationTransferReason = lookups.adjustmentReasons.find(
+      (r) => r.lookupCode === "LOCATION_TRANSFER",
+    );
+
+    try {
+      await createAdjustmentMutation.mutateAsync({
+        organizationId: organizationId as string,
+        branchId: currentBranch._id as string,
+        requestCode: generateRequestCode(),
+        adjustmentTypeId: lookups.locationTypeId as string,
+        requestedByUserId: user._id as string,
+        adjustmentStatusTypeId: lookups.defaultStatusId as string,
+        details: items.map((item) => ({
+          batchId: item.batchId || "unknown",
+          skuId: item.skuId || item.skuCode || "unknown",
+          fromZoneId: item.sourceZoneId,
+          toZoneId: selectedDestinationZone,
+          quantity: item.expectedQuantity,
+          // For location transfers, qty fields are 0 (no variance)
+          expectedQuantity: 0,
+          actualQuantity: 0,
+          varianceQuantity: 0,
+          costImpact: 0,
+          reasonTypeId: reasonId || (locationTransferReason?._id ?? lookups.adjustmentReasons[0]?._id ?? ""),
+          customReasonNotes: comments || "Cycle count location transfer",
+        })),
+      });
+      toast.success("Location transfer request created successfully");
+      setLocationTransferDialogOpen(false);
+      setSelectedItems(new Map());
+      setSelectedDestinationZone(null);
+      setAdjustmentReason("");
+      setReasonId("");
+      setComments("");
+    } catch (error) {
+      toast.error("Failed to create transfer request");
+      console.error(error);
+    }
+  };
+
+  const selectedItemsArray = Array.from(selectedItems.values());
 
   // Show loading state
   if (isLoading) {
@@ -145,49 +371,463 @@ export function CycleCountSessionDetailDialog({
     return <span className="font-medium text-amber-600">{variance}</span>;
   };
 
+  const isItemSelected = (itemId: string, zoneId: string) => {
+    return selectedItems.has(`${itemId}-${zoneId}`);
+  };
+
+  const areAllItemsInZoneSelected = (
+    lineItems: LineItemFromApi[],
+    zoneId: string,
+  ) => {
+    if (lineItems.length === 0) return false;
+    return lineItems.every((item) => isItemSelected(item._id, zoneId));
+  };
+
   return (
     <>
-      {/* New Adjustment Request Dialog */}
-      <NewAdjustmentRequestDialog
-        open={adjustmentDialogOpen}
-        onOpenChange={setAdjustmentDialogOpen}
-        onSelectType={handleAdjustmentTypeSelect}
-      />
+      {/* Adjustment Type Selection Dialog */}
+      <Dialog
+        open={adjustmentTypeDialogOpen}
+        onOpenChange={setAdjustmentTypeDialogOpen}
+      >
+        <DialogContent showCloseButton={false} className="sm:max-w-md">
+          <DialogHeader className="relative">
+            <DialogTitle>New Adjustment Request</DialogTitle>
+            <button
+              type="button"
+              onClick={() => setAdjustmentTypeDialogOpen(false)}
+              className="absolute top-0 right-0 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </button>
+          </DialogHeader>
+
+          <div className="mt-4 space-y-4">
+            <p className="text-muted-foreground text-sm">
+              Select the type of adjustment you want to make:
+            </p>
+
+            {/* Adjustment Type Options */}
+            <div className="space-y-3">
+              {/* Quantity Adjustment */}
+              <button
+                type="button"
+                onClick={() => handleAdjustmentTypeSelect("quantity")}
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent",
+                )}
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-primary/5">
+                  <Boxes className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-semibold">Quantity Adjustment</span>
+                  <span className="text-muted-foreground text-sm">
+                    Adjust item quantities due to discrepancies, damage, or
+                    inventory corrections
+                  </span>
+                </div>
+              </button>
+
+              {/* Location Transfer */}
+              <button
+                type="button"
+                onClick={() => handleAdjustmentTypeSelect("location")}
+                className={cn(
+                  "flex w-full items-start gap-3 rounded-lg border p-4 text-left transition-colors hover:bg-accent",
+                )}
+              >
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border bg-green-500/5">
+                  <ArrowRightLeft className="h-5 w-5 text-green-600" />
+                </div>
+                <div className="flex flex-col gap-0.5">
+                  <span className="font-semibold">Location Transfer</span>
+                  <span className="text-muted-foreground text-sm">
+                    Move items from one zone/section to another
+                  </span>
+                </div>
+              </button>
+            </div>
+          </div>
+
+          {/* Cancel Button */}
+          <div className="mt-4">
+            <Button variant="outline" onClick={() => setAdjustmentTypeDialogOpen(false)} className="w-full">
+              Cancel
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* Quantity Adjustment Dialog */}
-      <QuantityAdjustmentDialog
+      <Dialog
         open={quantityAdjustmentDialogOpen}
         onOpenChange={setQuantityAdjustmentDialogOpen}
-        initialData={
-          selectedLineItem
-            ? {
-                productId: selectedLineItem.skuCode,
-                productName: selectedLineItem.productName,
-                zoneId: selectedZoneId ?? activeZone?.zoneId?.toString(),
-                zoneName: activeZone?.zoneName,
-                skuId: selectedLineItem.skuId?.toString(),
-                batchId: selectedLineItem.batchId?.toString(),
-                currentQty: selectedLineItem.expectedQuantity,
-                countedQty: selectedLineItem.actualQuantity,
-              }
-            : undefined
-        }
-      />
+      >
+        <DialogContent showCloseButton={false} className="sm:max-w-2xl">
+          <DialogHeader className="relative">
+            <DialogTitle>Create Quantity Adjustment</DialogTitle>
+            <button
+              type="button"
+              onClick={() => setQuantityAdjustmentDialogOpen(false)}
+              className="absolute top-0 right-0 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </button>
+          </DialogHeader>
+
+          <Separator />
+
+          <div className="mt-2 space-y-4">
+            {/* Items Summary */}
+            <Field>
+              <FieldLabel>Items to Adjust ({selectedItems.size})</FieldLabel>
+              <div className="max-h-48 overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold text-xs uppercase">
+                        SKU
+                      </TableHead>
+                      <TableHead className="font-semibold text-xs uppercase">
+                        Product
+                      </TableHead>
+                      <TableHead className="font-semibold text-xs uppercase">
+                        Zone
+                      </TableHead>
+                      <TableHead className="text-center font-semibold text-xs uppercase">
+                        Expected
+                      </TableHead>
+                      <TableHead className="text-center font-semibold text-xs uppercase">
+                        Counted
+                      </TableHead>
+                      <TableHead className="text-center font-semibold text-xs uppercase">
+                        Variance
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedItemsArray.map((item) => (
+                      <TableRow key={`${item._id}-${item.sourceZoneId}`}>
+                        <TableCell className="font-medium">
+                          {item.skuCode}
+                        </TableCell>
+                        <TableCell className="max-w-32 truncate">
+                          {item.productName}
+                        </TableCell>
+                        <TableCell>{item.zoneName}</TableCell>
+                        <TableCell className="text-center">
+                          {item.expectedQuantity}
+                        </TableCell>
+                        <TableCell className="text-center font-medium">
+                          {item.actualQuantity}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {getVarianceDisplay(item.variance)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </Field>
+
+            {/* Total Variance Summary */}
+            <div className="grid grid-cols-3 gap-4">
+              <div className="rounded-md border bg-muted/50 p-3">
+                <span className="font-medium text-muted-foreground text-xs uppercase">
+                  Total Expected
+                </span>
+                <p className="mt-1 font-semibold text-lg">
+                  {selectedItemsArray.reduce((sum, item) => sum + item.expectedQuantity, 0)}
+                </p>
+              </div>
+              <div className="rounded-md border bg-muted/50 p-3">
+                <span className="font-medium text-muted-foreground text-xs uppercase">
+                  Total Counted
+                </span>
+                <p className="mt-1 font-semibold text-lg">
+                  {selectedItemsArray.reduce((sum, item) => sum + item.actualQuantity, 0)}
+                </p>
+              </div>
+              <div className={cn(
+                "rounded-md border p-3",
+                selectedItemsArray.reduce((sum, item) => sum + item.variance, 0) === 0
+                  ? "border-green-500/60 bg-green-500/10"
+                  : "border-amber-500/60 bg-amber-500/10"
+              )}>
+                <span className="font-medium text-muted-foreground text-xs uppercase">
+                  Total Variance
+                </span>
+                <p className={cn(
+                  "mt-1 font-semibold text-lg",
+                  selectedItemsArray.reduce((sum, item) => sum + item.variance, 0) === 0
+                    ? "text-green-600"
+                    : "text-amber-600"
+                )}>
+                  {selectedItemsArray.reduce((sum, item) => sum + item.variance, 0) > 0 && "+"}
+                  {selectedItemsArray.reduce((sum, item) => sum + item.variance, 0)}
+                </p>
+              </div>
+            </div>
+
+            {/* Reason */}
+            <Field>
+              <FieldLabel>Reason</FieldLabel>
+              <Select value={reasonId} onValueChange={setReasonId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select reason..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingLookups ? (
+                    <SelectItem value="_loading" disabled>
+                      Loading...
+                    </SelectItem>
+                  ) : (
+                    lookups?.adjustmentReasons.map((reason) => (
+                      <SelectItem key={reason._id} value={reason._id}>
+                        {reason.lookupValue}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {/* Comments */}
+            <Field>
+              <FieldLabel>Comments (Optional)</FieldLabel>
+              <Textarea
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
+                placeholder="Add any additional notes about this adjustment..."
+                className="min-h-20 resize-none"
+              />
+            </Field>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setQuantityAdjustmentDialogOpen(false)}
+              className="flex-1"
+              disabled={createAdjustmentMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleQuantityAdjustmentSubmit}
+              disabled={!reasonId || createAdjustmentMutation.isPending}
+              className="flex-1"
+            >
+              {createAdjustmentMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Location Transfer Dialog */}
-      <LocationTransferDialog
+      <Dialog
         open={locationTransferDialogOpen}
         onOpenChange={setLocationTransferDialogOpen}
-        initialData={
-          selectedZoneId
-            ? {
-                zoneId: selectedZoneId,
-                zoneName: activeZone?.zoneName,
-              }
-            : undefined
-        }
-      />
+      >
+        <DialogContent showCloseButton={false} className="sm:max-w-2xl">
+          <DialogHeader className="relative">
+            <DialogTitle>Transfer Items to New Location</DialogTitle>
+            <button
+              type="button"
+              onClick={() => setLocationTransferDialogOpen(false)}
+              className="absolute top-0 right-0 rounded-xs opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-hidden focus:ring-2 focus:ring-ring focus:ring-offset-2"
+            >
+              <X className="h-4 w-4" />
+              <span className="sr-only">Close</span>
+            </button>
+          </DialogHeader>
 
+          <Separator />
+
+          <div className="mt-2 space-y-4">
+            {/* From/To Zone Selection */}
+            <div className="grid grid-cols-2 gap-4">
+              <Field>
+                <FieldLabel>From Zone (Source)</FieldLabel>
+                <div className="rounded-md border bg-muted/50 px-3 py-2 text-sm">
+                  {selectedItemsArray.length > 0 
+                    ? [...new Set(selectedItemsArray.map(item => item.zoneName))].join(", ")
+                    : "Multiple zones"}
+                </div>
+              </Field>
+              <Field>
+                <FieldLabel>To Zone (Destination)</FieldLabel>
+                <Select
+                  value={selectedDestinationZone ?? ""}
+                  onValueChange={setSelectedDestinationZone}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select destination zone..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isLoadingZones ? (
+                      <SelectItem value="_loading" disabled>
+                        Loading zones...
+                      </SelectItem>
+                    ) : zones && zones.length > 0 ? (
+                      zones.map((zone) => (
+                        <SelectItem key={zone._id} value={zone._id}>
+                          {zone.name}
+                        </SelectItem>
+                      ))
+                    ) : (
+                      <SelectItem value="_empty" disabled>
+                        No zones available
+                      </SelectItem>
+                    )}
+                  </SelectContent>
+                </Select>
+              </Field>
+            </div>
+
+            {/* Items to Transfer */}
+            <Field>
+              <FieldLabel>Items to Transfer ({selectedItems.size})</FieldLabel>
+              <div className="max-h-48 overflow-auto rounded-md border">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-muted/50">
+                      <TableHead className="font-semibold text-xs uppercase">
+                        SKU
+                      </TableHead>
+                      <TableHead className="font-semibold text-xs uppercase">
+                        Product
+                      </TableHead>
+                      <TableHead className="font-semibold text-xs uppercase">
+                        From Zone
+                      </TableHead>
+                      <TableHead className="font-semibold text-xs uppercase">
+                        To Zone
+                      </TableHead>
+                      <TableHead className="text-center font-semibold text-xs uppercase">
+                        Qty
+                      </TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {selectedItemsArray.map((item) => (
+                      <TableRow key={`${item._id}-${item.sourceZoneId}`}>
+                        <TableCell className="font-medium">
+                          {item.skuCode}
+                        </TableCell>
+                        <TableCell className="max-w-32 truncate">
+                          {item.productName}
+                        </TableCell>
+                        <TableCell>{item.zoneName}</TableCell>
+                        <TableCell>
+                          {selectedDestinationZone ? (
+                            <Badge variant="outline" className="border-green-500/60 bg-green-500/10 text-green-600">
+                              {zones?.find(
+                                (z) => z._id === selectedDestinationZone,
+                              )?.name ?? "—"}
+                            </Badge>
+                          ) : (
+                            <span className="text-muted-foreground">Select zone...</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-center font-medium">
+                          {item.expectedQuantity}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            </Field>
+
+            {/* Transfer Summary */}
+            <div className="rounded-md border bg-muted/50 p-3">
+              <div className="flex items-center justify-between">
+                <span className="font-medium text-muted-foreground text-sm">
+                  Total Items to Transfer
+                </span>
+                <span className="font-semibold text-primary">
+                  {selectedItems.size} item(s) • {selectedItemsArray.reduce((sum, item) => sum + item.expectedQuantity, 0)} units
+                </span>
+              </div>
+            </div>
+
+            {/* Reason */}
+            <Field>
+              <FieldLabel>Reason</FieldLabel>
+              <Select value={reasonId} onValueChange={setReasonId}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select reason..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {isLoadingLookups ? (
+                    <SelectItem value="_loading" disabled>
+                      Loading...
+                    </SelectItem>
+                  ) : (
+                    lookups?.adjustmentReasons.map((reason) => (
+                      <SelectItem key={reason._id} value={reason._id}>
+                        {reason.lookupValue}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </Field>
+
+            {/* Comments */}
+            <Field>
+              <FieldLabel>Comments (Optional)</FieldLabel>
+              <Textarea
+                value={comments}
+                onChange={(e) => setComments(e.target.value)}
+                placeholder="Add any additional notes about this transfer..."
+                className="min-h-20 resize-none"
+              />
+            </Field>
+          </div>
+
+          <DialogFooter className="mt-4">
+            <Button
+              variant="outline"
+              onClick={() => setLocationTransferDialogOpen(false)}
+              className="flex-1"
+              disabled={createAdjustmentMutation.isPending}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleLocationTransferSubmit}
+              disabled={
+                !selectedDestinationZone || !reasonId || createAdjustmentMutation.isPending
+              }
+              className="flex-1"
+            >
+              {createAdjustmentMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Main Session Detail Dialog */}
       <Dialog open={open} onOpenChange={handleClose}>
         <DialogContent
           showCloseButton={false}
@@ -195,9 +835,16 @@ export function CycleCountSessionDetailDialog({
         >
           {/* Header */}
           <DialogHeader className="relative">
-            <DialogTitle className="pr-8">
-              {session.sessionCode} - {session.name}
-            </DialogTitle>
+            <div className="flex items-center justify-between pr-8">
+              <DialogTitle>
+                {session.sessionCode} - {session.name}
+              </DialogTitle>
+              {selectedItems.size > 0 && (
+                <Button size="sm" onClick={handleCreateAdjustmentClick}>
+                  Create Adjustment ({selectedItems.size})
+                </Button>
+              )}
+            </div>
             <p className="text-muted-foreground text-sm">
               Created by {session.createdByUser?.fullName ?? "Unknown"} on{" "}
               {formattedDate}
@@ -294,6 +941,22 @@ export function CycleCountSessionDetailDialog({
                     <Table>
                       <TableHeader>
                         <TableRow className="bg-muted/50">
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={areAllItemsInZoneSelected(
+                                zone.lineItems,
+                                zone.zoneId?.toString() ?? "",
+                              )}
+                              onCheckedChange={(checked) =>
+                                handleSelectAllInZone(
+                                  zone.lineItems,
+                                  zone.zoneName,
+                                  zone.zoneId?.toString() ?? "",
+                                  !!checked,
+                                )
+                              }
+                            />
+                          </TableHead>
                           <TableHead className="w-25 font-semibold text-xs uppercase">
                             SKU Code
                           </TableHead>
@@ -309,9 +972,6 @@ export function CycleCountSessionDetailDialog({
                           <TableHead className="w-25 text-center font-semibold text-xs uppercase">
                             Variance
                           </TableHead>
-                          <TableHead className="w-35 font-semibold text-xs uppercase">
-                            Action
-                          </TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -326,7 +986,30 @@ export function CycleCountSessionDetailDialog({
                           </TableRow>
                         ) : (
                           zone.lineItems.map((item) => (
-                            <TableRow key={item._id?.toString()}>
+                            <TableRow
+                              key={item._id?.toString()}
+                              className={cn(
+                                isItemSelected(
+                                  item._id,
+                                  zone.zoneId?.toString() ?? "",
+                                ) && "bg-muted/50",
+                              )}
+                            >
+                              <TableCell>
+                                <Checkbox
+                                  checked={isItemSelected(
+                                    item._id,
+                                    zone.zoneId?.toString() ?? "",
+                                  )}
+                                  onCheckedChange={() =>
+                                    handleItemToggle(
+                                      item,
+                                      zone.zoneName,
+                                      zone.zoneId?.toString() ?? "",
+                                    )
+                                  }
+                                />
+                              </TableCell>
                               <TableCell className="font-medium">
                                 {item.skuCode}
                               </TableCell>
@@ -335,30 +1018,10 @@ export function CycleCountSessionDetailDialog({
                                 {item.expectedQuantity}
                               </TableCell>
                               <TableCell className="text-center">
-                                <Input
-                                  type="number"
-                                  value={item.actualQuantity}
-                                  readOnly
-                                  className="mx-auto h-8 w-20 text-center"
-                                />
+                                {item.actualQuantity}
                               </TableCell>
                               <TableCell className="text-center">
                                 {getVarianceDisplay(item.variance)}
-                              </TableCell>
-                              <TableCell>
-                                <Button
-                                  className="text-foreground"
-                                  variant="link"
-                                  size="sm"
-                                  onClick={() =>
-                                    handleCreateAdjustment(
-                                      item,
-                                      zone.zoneId?.toString() ?? "",
-                                    )
-                                  }
-                                >
-                                  Create Adjustment
-                                </Button>
                               </TableCell>
                             </TableRow>
                           ))
@@ -370,19 +1033,6 @@ export function CycleCountSessionDetailDialog({
               ))}
             </Tabs>
           )}
-
-          {/* Footer */}
-          <DialogFooter className="flex-row gap-2 sm:justify-between">
-            <Button
-              onClick={handleCompleteSession}
-              className="flex-1 bg-green-600 text-secondary hover:bg-green-700"
-            >
-              Complete
-            </Button>
-            <Button variant="outline" onClick={handleClose} className="flex-1">
-              Close
-            </Button>
-          </DialogFooter>
         </DialogContent>
       </Dialog>
     </>

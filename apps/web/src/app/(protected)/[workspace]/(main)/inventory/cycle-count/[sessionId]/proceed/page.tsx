@@ -14,11 +14,13 @@ import {
 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import {
   Dialog,
+  DialogClose,
   DialogContent,
   DialogFooter,
   DialogHeader,
@@ -27,7 +29,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Textarea } from "@/components/ui/textarea";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
 
@@ -47,25 +48,6 @@ type LineItem = {
   notes?: string;
 };
 
-// Type for zone from the API
-// type Zone = {
-//   assignmentId: string;
-//   zoneId: string;
-//   zoneName: string;
-//   assignedUser: { _id: string; fullName: string } | null;
-//   status: string;
-//   statusCode: string;
-//   startedAt?: number;
-//   completedAt?: number;
-//   lineItems: LineItem[];
-//   progress: {
-//     totalItems: number;
-//     scannedItems: number;
-//     matchedItems: number;
-//     progressPercent: number;
-//   };
-// };
-
 export default function CycleCountProceedPage() {
   const params = useParams();
   const router = useRouter();
@@ -76,10 +58,10 @@ export default function CycleCountProceedPage() {
   // State
   const [activeZoneIndex, setActiveZoneIndex] = React.useState(0);
   const [skuInput, setSkuInput] = React.useState("");
-  const [foundItem, setFoundItem] = React.useState<LineItem | null>(null);
-  const [isDialogOpen, setIsDialogOpen] = React.useState(false);
+  const [selectedItem, setSelectedItem] = React.useState<LineItem | null>(null);
+  const [isCountDialogOpen, setIsCountDialogOpen] = React.useState(false);
   const [countedAmount, setCountedAmount] = React.useState(0);
-  const [notes, setNotes] = React.useState("");
+  const [countNote, setCountNote] = React.useState("");
 
   // Fetch session data
   const { data: session, isLoading } = useQuery({
@@ -105,6 +87,7 @@ export default function CycleCountProceedPage() {
       queryClient.invalidateQueries({
         queryKey: ["cycleCount.getSessionForProceed"],
       });
+      toast.success("Zone counting started");
     },
   });
 
@@ -117,10 +100,14 @@ export default function CycleCountProceedPage() {
       queryClient.invalidateQueries({
         queryKey: ["cycleCount.getSessionForProceed"],
       });
+      toast.success("Zone count completed");
       if (result.sessionCompleted) {
-        // Session is fully completed, redirect back
+        toast.success("Session fully completed!");
         router.push(`/${params.workspace}/inventory/cycle-count`);
       }
+    },
+    onError: () => {
+      toast.error("Failed to complete zone");
     },
   });
 
@@ -136,10 +123,12 @@ export default function CycleCountProceedPage() {
     );
 
     if (matchedItem) {
-      setFoundItem(matchedItem);
+      setSelectedItem(matchedItem);
       setCountedAmount(matchedItem.expectedQuantity);
-      setNotes("");
-      setIsDialogOpen(true);
+      setCountNote("");
+      setIsCountDialogOpen(true);
+    } else {
+      toast.error("SKU not found in this zone");
     }
   };
 
@@ -149,38 +138,77 @@ export default function CycleCountProceedPage() {
     }
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    setFoundItem(null);
+  const handleCountDialogClose = () => {
+    setIsCountDialogOpen(false);
+    setSelectedItem(null);
+    setCountedAmount(0);
+    setCountNote("");
     setSkuInput("");
-    setNotes("");
+  };
+
+  const handleRecordClick = (item: LineItem) => {
+    setSelectedItem(item);
+    setCountedAmount(item.isScanned ? item.actualQuantity : item.expectedQuantity);
+    setCountNote(item.notes ?? "");
+    setIsCountDialogOpen(true);
   };
 
   const handleConfirmCount = async () => {
-    if (!foundItem || !user) return;
+    if (!selectedItem || !user || !activeZone || !session) return;
 
-    await recordCountMutation.mutateAsync({
-      lineItemId: foundItem._id as Id<"session_line_items">,
-      actualQuantity: countedAmount,
-      scannedByUserId: user._id as Id<"users">,
-      notes: notes || undefined,
-    });
+    try {
+      // Check if this is a batch-based item (fallback mode - no line item created yet)
+      const isBatchBased = selectedItem._id.startsWith("batch-");
+      
+      await recordCountMutation.mutateAsync({
+        lineItemId: selectedItem._id,
+        actualQuantity: countedAmount,
+        scannedByUserId: user._id as Id<"users">,
+        notes: countNote || undefined,
+        // Additional params for batch-based items
+        ...(isBatchBased && {
+          sessionId: session._id as Id<"work_sessions">,
+          batchId: selectedItem.batchId as Id<"inventory_batches">,
+          zoneId: activeZone.zoneId as Id<"storage_zones">,
+        }),
+      });
 
-    handleDialogClose();
+      const variance = countedAmount - selectedItem.expectedQuantity;
+      if (variance === 0) {
+        toast.success(`Counted ${countedAmount} units of ${selectedItem.skuCode} - Match!`);
+      } else {
+        toast.warning(`Counted ${countedAmount} units of ${selectedItem.skuCode} - Variance: ${variance > 0 ? "+" : ""}${variance}`);
+      }
+
+      handleCountDialogClose();
+    } catch (error) {
+      console.error("Failed to record count:", error);
+      toast.error("Failed to record count");
+    }
   };
 
   const handleStartZone = async () => {
     if (!activeZone) return;
-    await startZoneMutation.mutateAsync({
-      assignmentId: activeZone.assignmentId as Id<"session_zone_assignments">,
-    });
+    try {
+      await startZoneMutation.mutateAsync({
+        assignmentId: activeZone.assignmentId as Id<"session_zone_assignments">,
+      });
+    } catch (error) {
+      console.error("Failed to start zone:", error);
+      toast.error("Failed to start zone counting");
+    }
   };
 
   const handleCompleteZone = async () => {
     if (!activeZone) return;
-    await completeZoneMutation.mutateAsync({
-      assignmentId: activeZone.assignmentId as Id<"session_zone_assignments">,
-    });
+    try {
+      await completeZoneMutation.mutateAsync({
+        assignmentId: activeZone.assignmentId as Id<"session_zone_assignments">,
+      });
+    } catch (error) {
+      console.error("Failed to complete zone:", error);
+      toast.error("Failed to complete zone");
+    }
   };
 
   const handleBack = () => {
@@ -397,50 +425,59 @@ export default function CycleCountProceedPage() {
                         No items in this zone
                       </p>
                     ) : (
-                      zone.lineItems.map((item) => (
-                        <div
-                          key={item._id}
-                          className={cn(
-                            "flex items-center justify-between rounded-md p-2",
-                            item.isScanned && "bg-muted/50",
-                          )}
-                        >
-                          <div>
-                            <p
-                              className={cn(
-                                "font-medium",
-                                item.isScanned && item.variance === 0
-                                  ? "text-green-600"
-                                  : item.isScanned && item.variance !== 0
-                                    ? "text-amber-600"
-                                    : "",
-                              )}
-                            >
-                              {item.skuCode}
-                              {item.isScanned && (
-                                <CheckCircle2 className="ml-1.5 inline h-4 w-4" />
-                              )}
-                            </p>
-                            <p className="text-muted-foreground text-sm">
-                              Exp: {item.expectedQuantity}
-                            </p>
-                          </div>
+                      zone.lineItems.map((item) => {
+                        const isComplete = item.isScanned;
+                        const hasVariance = item.isScanned && item.variance !== 0;
+                        return (
                           <div
-                            className={cn(
-                              "rounded-md border px-3 py-1 text-sm",
-                              item.isScanned
-                                ? item.variance === 0
-                                  ? "border-green-500/60 bg-green-500/10 text-green-600"
-                                  : "border-amber-500/60 bg-amber-500/10 text-amber-600"
-                                : "text-muted-foreground",
-                            )}
+                            key={item._id}
+                            className="flex items-center justify-between"
                           >
-                            {item.isScanned
-                              ? `Counted: ${item.actualQuantity}`
-                              : "Not counted"}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2">
+                                <p
+                                  className={cn(
+                                    "font-medium",
+                                    isComplete && !hasVariance && "text-green-600",
+                                    hasVariance && "text-amber-600",
+                                  )}
+                                >
+                                  {item.skuCode}
+                                </p>
+                                {isComplete && !hasVariance && (
+                                  <Check className="h-4 w-4 text-green-600" />
+                                )}
+                                {hasVariance && (
+                                  <span className="text-amber-600 text-xs">
+                                    ({item.variance > 0 ? "+" : ""}{item.variance})
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-muted-foreground text-sm">
+                                Exp: {item.expectedQuantity}
+                              </p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {/* Record Button */}
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className={cn(
+                                  "min-w-24",
+                                  isComplete && !hasVariance && "border-green-500 text-green-600",
+                                  hasVariance && "border-amber-500 text-amber-600",
+                                )}
+                                onClick={() => handleRecordClick(item)}
+                                disabled={zone.statusCode?.toLowerCase() !== "in_progress" && zone.statusCode?.toLowerCase() !== "in progress"}
+                              >
+                                {isComplete
+                                  ? `Counted: ${item.actualQuantity}`
+                                  : "Record"}
+                              </Button>
+                            </div>
                           </div>
-                        </div>
-                      ))
+                        );
+                      })
                     )}
                   </div>
                 </CardContent>
@@ -487,52 +524,56 @@ export default function CycleCountProceedPage() {
       )}
 
       {/* Found SKU Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-xl">
-              Found SKU: {foundItem?.skuCode}
-            </DialogTitle>
-            <p className="text-muted-foreground text-sm">
-              {foundItem?.productName}
-            </p>
-          </DialogHeader>
+      {selectedItem && (
+        <Dialog open={isCountDialogOpen} onOpenChange={setIsCountDialogOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-xl">
+                Count SKU: {selectedItem.skuCode}
+              </DialogTitle>
+              <p className="text-muted-foreground text-sm">
+                {selectedItem.productName}
+              </p>
+            </DialogHeader>
 
-          <div className="space-y-4 py-4">
-            {/* Expected vs Current */}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <Label className="text-muted-foreground text-xs">
-                  Expected Quantity
-                </Label>
-                <div className="rounded-md border bg-muted/50 px-3 py-2 font-medium">
-                  {foundItem?.expectedQuantity}
+            <div className="space-y-4 py-4">
+              {/* Progress Info */}
+              <div className="rounded-lg bg-muted/50 p-3">
+                <div className="flex justify-between text-sm">
+                  <span>Expected Quantity:</span>
+                  <span className="font-medium">
+                    {selectedItem.expectedQuantity}
+                  </span>
                 </div>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-muted-foreground text-xs">
-                  Current Inventory
-                </Label>
-                <div className="rounded-md border bg-muted/50 px-3 py-2 font-medium">
-                  {foundItem?.inventoryQuantity}
+                <div className="flex justify-between text-sm">
+                  <span>Current Inventory:</span>
+                  <span className="font-medium">
+                    {selectedItem.inventoryQuantity}
+                  </span>
                 </div>
+                {selectedItem.isScanned && (
+                  <div className="flex justify-between text-sm">
+                    <span>Previously Counted:</span>
+                    <span className="font-medium">
+                      {selectedItem.actualQuantity}
+                    </span>
+                  </div>
+                )}
               </div>
-            </div>
 
-            {/* Counted Amount */}
-            <div className="space-y-2">
-              <Label htmlFor="amount">Counted Amount</Label>
-              <Input
-                id="amount"
-                type="number"
-                value={countedAmount}
-                onChange={(e) => setCountedAmount(Number(e.target.value))}
-                min={0}
-              />
-            </div>
+              {/* Counted Amount */}
+              <div className="space-y-2">
+                <Label htmlFor="amount">Counted Amount</Label>
+                <Input
+                  id="amount"
+                  type="number"
+                  value={countedAmount}
+                  onChange={(e) => setCountedAmount(Number(e.target.value))}
+                  min={0}
+                />
+              </div>
 
-            {/* Variance Display */}
-            {foundItem && (
+              {/* Variance Display */}
               <div className="space-y-1">
                 <Label className="text-muted-foreground text-xs">
                   Variance
@@ -540,48 +581,50 @@ export default function CycleCountProceedPage() {
                 <div
                   className={cn(
                     "rounded-md border px-3 py-2 font-medium",
-                    countedAmount === foundItem.expectedQuantity
+                    countedAmount === selectedItem.expectedQuantity
                       ? "border-green-500/60 bg-green-500/10 text-green-600"
                       : "border-amber-500/60 bg-amber-500/10 text-amber-600",
                   )}
                 >
-                  {countedAmount - foundItem.expectedQuantity > 0 && "+"}
-                  {countedAmount - foundItem.expectedQuantity}
+                  {countedAmount - selectedItem.expectedQuantity > 0 && "+"}
+                  {countedAmount - selectedItem.expectedQuantity}
+                  {countedAmount === selectedItem.expectedQuantity && " (Match)"}
                 </div>
               </div>
-            )}
 
-            {/* Notes */}
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes (Optional)</Label>
-              <Textarea
-                id="notes"
-                placeholder="Add any notes about this count..."
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="min-h-16 resize-none"
-              />
+              {/* Note */}
+              <div className="space-y-2">
+                <Label htmlFor="note">Note (optional)</Label>
+                <Input
+                  id="note"
+                  placeholder="Add note about this count..."
+                  value={countNote}
+                  onChange={(e) => setCountNote(e.target.value)}
+                />
+              </div>
             </div>
-          </div>
 
-          <DialogFooter className="flex flex-row justify-between gap-2 sm:justify-between">
-            <Button variant="outline" onClick={handleDialogClose}>
-              Cancel
-            </Button>
-            <Button
-              onClick={handleConfirmCount}
-              disabled={recordCountMutation.isPending}
-            >
-              {recordCountMutation.isPending ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Check className="mr-2 h-4 w-4" />
-              )}
-              Confirm Count
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+            <DialogFooter className="flex flex-row justify-between gap-2 sm:justify-between">
+              <DialogClose asChild>
+                <Button variant="outline" onClick={handleCountDialogClose}>
+                  Cancel
+                </Button>
+              </DialogClose>
+              <Button
+                onClick={handleConfirmCount}
+                disabled={recordCountMutation.isPending}
+              >
+                {recordCountMutation.isPending ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="mr-2 h-4 w-4" />
+                )}
+                Confirm Count
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </div>
   );
 }
