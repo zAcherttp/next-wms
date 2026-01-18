@@ -24,6 +24,7 @@ export interface CameraActions {
   updateCameraPosition: (position: Vector3) => void;
   registerResetCamera: (fn: () => void) => void;
   resetCamera: () => void;
+  zoomToPosition: (position: Vector3) => void;
 }
 
 export type CameraSlice = CameraState & CameraActions;
@@ -54,5 +55,9 @@ export const createCameraSlice: StateCreator<
   resetCamera: () => {
     const fn = get().resetCameraFn;
     if (fn) fn();
+  },
+
+  zoomToPosition: (position) => {
+    set({ cameraPosition: position });
   },
 });

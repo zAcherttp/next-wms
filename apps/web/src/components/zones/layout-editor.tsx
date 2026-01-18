@@ -181,7 +181,7 @@ export const WarehouseEditor = forwardRef<
       useLayoutStore.getState().resetCamera();
     }, []);
 
-    const zoomToEntity = useCallback((_entityId: Id<"storage_zones">) => {
+    const zoomToEntity = useCallback((entityId: Id<"storage_zones">) => {
       // TODO: Implement zoom to entity
     }, []);
 
@@ -254,8 +254,7 @@ export const WarehouseEditor = forwardRef<
         // Core API
         validateLayout,
         resetCamera,
-        zoomToRack: zoomToEntity,
-        zoomToZone: zoomToEntity,
+        zoomToEntity,
         addRack,
         removeRack: removeRackById,
         getState,

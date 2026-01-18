@@ -56,11 +56,14 @@ export function useKeyboardShortcuts() {
           redo();
         }
       }
-      // Ctrl+Space - Reset camera view
+      // Ctrl+Space - Reset camera view, zoom to entity if selected
       else if (event.ctrlKey && event.code === "Space") {
         event.preventDefault();
         lastActionTimeRef.current = now;
-        resetCamera();
+        if (selectedEntityId) {
+        } else {
+          resetCamera();
+        }
       }
       // M key - toggle Move mode (only when entity is selected)
       else if (
