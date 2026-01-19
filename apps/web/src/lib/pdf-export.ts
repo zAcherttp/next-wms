@@ -48,9 +48,9 @@ function hexToRgb(hex: string): { r: number; g: number; b: number } {
   const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
   return result
     ? {
-        r: parseInt(result[1], 16),
-        g: parseInt(result[2], 16),
-        b: parseInt(result[3], 16),
+        r: Number.parseInt(result[1], 16),
+        g: Number.parseInt(result[2], 16),
+        b: Number.parseInt(result[3], 16),
       }
     : { r: 0, g: 0, b: 0 };
 }
@@ -61,7 +61,7 @@ function drawPieChart(
   options: PieChartOptions,
   x: number,
   y: number,
-  size: number
+  size: number,
 ) {
   const { title, data } = options;
   const radius = size / 2 - 10;
@@ -89,7 +89,8 @@ function drawPieChart(
 
   data.forEach((item, index) => {
     const sliceAngle = (item.value / total) * 2 * Math.PI;
-    const color = item.color || DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length];
+    const color =
+      item.color || DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length];
     const rgb = hexToRgb(color);
 
     doc.setFillColor(rgb.r, rgb.g, rgb.b);
@@ -139,7 +140,8 @@ function drawPieChart(
     const legendX = x + col * legendItemWidth;
     const itemY = legendY + row * 8;
 
-    const color = item.color || DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length];
+    const color =
+      item.color || DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length];
     const rgb = hexToRgb(color);
     const percentage = total > 0 ? Math.round((item.value / total) * 100) : 0;
 
@@ -151,7 +153,8 @@ function drawPieChart(
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(60);
-    const label = item.name.length > 12 ? item.name.substring(0, 12) + "..." : item.name;
+    const label =
+      item.name.length > 12 ? item.name.substring(0, 12) + "..." : item.name;
     doc.text(`${label} (${percentage}%)`, legendX + 6, itemY);
   });
 }
@@ -163,7 +166,7 @@ function drawBarChart(
   x: number,
   y: number,
   width: number,
-  height: number
+  height: number,
 ) {
   const { title, data, valueLabel } = options;
   const barHeight = 8;
@@ -181,7 +184,9 @@ function drawBarChart(
     doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(100);
-    doc.text("No data available", x + width / 2, y + height / 2, { align: "center" });
+    doc.text("No data available", x + width / 2, y + height / 2, {
+      align: "center",
+    });
     return;
   }
 
@@ -194,14 +199,16 @@ function drawBarChart(
   data.slice(0, 8).forEach((item, index) => {
     const barY = chartY + index * (barHeight + barSpacing);
     const barWidth = maxValue > 0 ? (item.value / maxValue) * chartWidth : 0;
-    const color = item.color || DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length];
+    const color =
+      item.color || DEFAULT_CHART_COLORS[index % DEFAULT_CHART_COLORS.length];
     const rgb = hexToRgb(color);
 
     // Label
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     doc.setTextColor(60);
-    const label = item.name.length > 15 ? item.name.substring(0, 15) + "..." : item.name;
+    const label =
+      item.name.length > 15 ? item.name.substring(0, 15) + "..." : item.name;
     doc.text(label, chartX - 3, barY + barHeight / 2 + 1, { align: "right" });
 
     // Bar
@@ -214,7 +221,7 @@ function drawBarChart(
     doc.text(
       item.value.toLocaleString(),
       chartX + barWidth + 3,
-      barY + barHeight / 2 + 1
+      barY + barHeight / 2 + 1,
     );
   });
 
@@ -319,18 +326,46 @@ export function exportReportToPDF(options: ReportPDFOptions) {
     // Background for charts section
     doc.setDrawColor(230);
     doc.setFillColor(252, 252, 253);
-    doc.roundedRect(margin, yPos, pageWidth - margin * 2, chartHeight, 2, 2, "FD");
+    doc.roundedRect(
+      margin,
+      yPos,
+      pageWidth - margin * 2,
+      chartHeight,
+      2,
+      2,
+      "FD",
+    );
 
     if (pieChart && barChart) {
       // Draw both charts side by side
       drawPieChart(doc, pieChart, margin + 5, yPos + 5, chartWidth - 10);
-      drawBarChart(doc, barChart, margin + chartWidth + 5, yPos + 5, chartWidth - 10, chartHeight - 10);
+      drawBarChart(
+        doc,
+        barChart,
+        margin + chartWidth + 5,
+        yPos + 5,
+        chartWidth - 10,
+        chartHeight - 10,
+      );
     } else if (pieChart) {
       // Center the pie chart
-      drawPieChart(doc, pieChart, margin + chartWidth / 2, yPos + 5, chartWidth);
+      drawPieChart(
+        doc,
+        pieChart,
+        margin + chartWidth / 2,
+        yPos + 5,
+        chartWidth,
+      );
     } else if (barChart) {
       // Center the bar chart
-      drawBarChart(doc, barChart, margin + chartWidth / 2, yPos + 5, chartWidth, chartHeight - 10);
+      drawBarChart(
+        doc,
+        barChart,
+        margin + chartWidth / 2,
+        yPos + 5,
+        chartWidth,
+        chartHeight - 10,
+      );
     }
 
     yPos += chartHeight + 12;

@@ -128,7 +128,9 @@ export function AdjustmentRequestDetailDialog({
               {/* Request Information Card */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-sm font-medium">Request Information</CardTitle>
+                  <CardTitle className="font-medium text-sm">
+                    Request Information
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
@@ -141,7 +143,8 @@ export function AdjustmentRequestDetailDialog({
                       icon={<Package className="h-4 w-4 text-primary" />}
                       label="Type"
                       value={
-                        adjustmentRequest.adjustmentType?.lookupValue || "Unknown"
+                        adjustmentRequest.adjustmentType?.lookupValue ||
+                        "Unknown"
                       }
                     />
                     <InfoItem
@@ -174,7 +177,9 @@ export function AdjustmentRequestDetailDialog({
                     <InfoItem
                       icon={<User className="h-4 w-4 text-primary" />}
                       label="Requested By"
-                      value={adjustmentRequest.requestedBy?.fullName || "Unknown"}
+                      value={
+                        adjustmentRequest.requestedBy?.fullName || "Unknown"
+                      }
                     />
                     {adjustmentRequest.approvedByUser && (
                       <InfoItem
@@ -207,7 +212,7 @@ export function AdjustmentRequestDetailDialog({
                   <Card>
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-medium">
+                        <CardTitle className="font-medium text-sm">
                           Adjustment Items
                         </CardTitle>
                         <Badge variant="secondary">
@@ -218,11 +223,17 @@ export function AdjustmentRequestDetailDialog({
                     <CardContent className="space-y-3">
                       {adjustmentRequest.details.map(
                         (detail: AdjustmentDetail, index: number) => {
-                          const isLocationTransfer = !!(detail.fromLocationName || detail.toLocationName);
-                          const isQuantityAdjustment = detail.currentQuantity !== undefined || detail.adjustedQuantity !== undefined;
-                          const variance = detail.varianceQuantity ?? 
-                            ((detail.adjustedQuantity ?? 0) - (detail.currentQuantity ?? 0));
-                          
+                          const isLocationTransfer = !!(
+                            detail.fromLocationName || detail.toLocationName
+                          );
+                          const isQuantityAdjustment =
+                            detail.currentQuantity !== undefined ||
+                            detail.adjustedQuantity !== undefined;
+                          const variance =
+                            detail.varianceQuantity ??
+                            (detail.adjustedQuantity ?? 0) -
+                              (detail.currentQuantity ?? 0);
+
                           return (
                             <div
                               key={detail._id}
@@ -230,24 +241,28 @@ export function AdjustmentRequestDetailDialog({
                             >
                               {/* Product Info Header */}
                               <div className="mb-3 flex items-start justify-between gap-3">
-                                <div className="flex items-center gap-3 min-w-0">
+                                <div className="flex min-w-0 items-center gap-3">
                                   <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
                                     <Package className="h-5 w-5 text-primary" />
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <p className="truncate font-medium text-sm">
-                                      {detail.productName || detail.skuId || detail.batchId || `Item ${index + 1}`}
+                                      {detail.productName ||
+                                        detail.skuId ||
+                                        detail.batchId ||
+                                        `Item ${index + 1}`}
                                     </p>
                                     <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
                                       {detail.skuCode && (
                                         <span>SKU: {detail.skuCode}</span>
                                       )}
-                                      {detail.batchId && detail.batchId !== detail.skuId && (
-                                        <>
-                                          {detail.skuCode && <span>•</span>}
-                                          <span>Batch: {detail.batchId}</span>
-                                        </>
-                                      )}
+                                      {detail.batchId &&
+                                        detail.batchId !== detail.skuId && (
+                                          <>
+                                            {detail.skuCode && <span>•</span>}
+                                            <span>Batch: {detail.batchId}</span>
+                                          </>
+                                        )}
                                     </div>
                                   </div>
                                 </div>
@@ -275,30 +290,44 @@ export function AdjustmentRequestDetailDialog({
                               {isQuantityAdjustment && (
                                 <div className="grid grid-cols-3 gap-3 rounded-md bg-muted/30 p-3">
                                   <div className="text-center">
-                                    <p className="text-muted-foreground text-xs">Expected</p>
+                                    <p className="text-muted-foreground text-xs">
+                                      Expected
+                                    </p>
                                     <p className="font-semibold text-lg">
-                                      {detail.currentQuantity ?? detail.expectedQuantity ?? "-"}
+                                      {detail.currentQuantity ??
+                                        detail.expectedQuantity ??
+                                        "-"}
                                     </p>
                                   </div>
                                   <div className="text-center">
-                                    <p className="text-muted-foreground text-xs">Counted</p>
-                                    <p className={cn(
-                                      "font-semibold text-lg",
-                                      variance > 0 && "text-amber-600",
-                                      variance < 0 && "text-red-600",
-                                      variance === 0 && "text-green-600",
-                                    )}>
-                                      {detail.adjustedQuantity ?? detail.actualQuantity ?? "-"}
+                                    <p className="text-muted-foreground text-xs">
+                                      Counted
+                                    </p>
+                                    <p
+                                      className={cn(
+                                        "font-semibold text-lg",
+                                        variance > 0 && "text-amber-600",
+                                        variance < 0 && "text-red-600",
+                                        variance === 0 && "text-green-600",
+                                      )}
+                                    >
+                                      {detail.adjustedQuantity ??
+                                        detail.actualQuantity ??
+                                        "-"}
                                     </p>
                                   </div>
                                   <div className="text-center">
-                                    <p className="text-muted-foreground text-xs">Variance</p>
-                                    <p className={cn(
-                                      "font-semibold text-lg",
-                                      variance > 0 && "text-amber-600",
-                                      variance < 0 && "text-red-600",
-                                      variance === 0 && "text-green-600",
-                                    )}>
+                                    <p className="text-muted-foreground text-xs">
+                                      Variance
+                                    </p>
+                                    <p
+                                      className={cn(
+                                        "font-semibold text-lg",
+                                        variance > 0 && "text-amber-600",
+                                        variance < 0 && "text-red-600",
+                                        variance === 0 && "text-green-600",
+                                      )}
+                                    >
                                       {variance > 0 ? `+${variance}` : variance}
                                     </p>
                                   </div>
@@ -309,7 +338,9 @@ export function AdjustmentRequestDetailDialog({
                               {isLocationTransfer && (
                                 <div className="flex items-center gap-3 rounded-md bg-muted/30 p-3">
                                   <div className="flex-1 text-center">
-                                    <p className="text-muted-foreground text-xs">From</p>
+                                    <p className="text-muted-foreground text-xs">
+                                      From
+                                    </p>
                                     <div className="flex items-center justify-center gap-1">
                                       <MapPin className="h-3 w-3 text-muted-foreground" />
                                       <p className="font-medium text-sm">
@@ -317,9 +348,11 @@ export function AdjustmentRequestDetailDialog({
                                       </p>
                                     </div>
                                   </div>
-                                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
                                   <div className="flex-1 text-center">
-                                    <p className="text-muted-foreground text-xs">To</p>
+                                    <p className="text-muted-foreground text-xs">
+                                      To
+                                    </p>
                                     <div className="flex items-center justify-center gap-1">
                                       <MapPin className="h-3 w-3 text-muted-foreground" />
                                       <p className="font-medium text-sm">
@@ -327,13 +360,20 @@ export function AdjustmentRequestDetailDialog({
                                       </p>
                                     </div>
                                   </div>
-                                  {(detail.quantityToTransfer || detail.quantity) && (
+                                  {(detail.quantityToTransfer ||
+                                    detail.quantity) && (
                                     <>
-                                      <Separator orientation="vertical" className="h-8" />
-                                      <div className="text-center px-2">
-                                        <p className="text-muted-foreground text-xs">Qty</p>
+                                      <Separator
+                                        orientation="vertical"
+                                        className="h-8"
+                                      />
+                                      <div className="px-2 text-center">
+                                        <p className="text-muted-foreground text-xs">
+                                          Qty
+                                        </p>
                                         <p className="font-semibold text-lg">
-                                          {detail.quantityToTransfer ?? detail.quantity}
+                                          {detail.quantityToTransfer ??
+                                            detail.quantity}
                                         </p>
                                       </div>
                                     </>
@@ -344,8 +384,12 @@ export function AdjustmentRequestDetailDialog({
                               {/* Reason/Notes */}
                               {detail.customReasonNotes && (
                                 <div className="mt-3 rounded-md bg-muted/30 p-2">
-                                  <p className="text-muted-foreground text-xs">Notes</p>
-                                  <p className="text-sm">{detail.customReasonNotes}</p>
+                                  <p className="text-muted-foreground text-xs">
+                                    Notes
+                                  </p>
+                                  <p className="text-sm">
+                                    {detail.customReasonNotes}
+                                  </p>
                                 </div>
                               )}
                             </div>

@@ -50,7 +50,7 @@ interface InfoItemProps {
 
 function InfoItem({ icon, label, value, subValue }: InfoItemProps) {
   return (
-    <div className="group flex items-start gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20">
+    <div className="group flex items-start gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:border-primary/20 hover:shadow-md">
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary/10 to-primary/5 text-primary transition-transform duration-200 group-hover:scale-105">
         {icon}
       </div>
@@ -59,7 +59,7 @@ function InfoItem({ icon, label, value, subValue }: InfoItemProps) {
           {label}
         </p>
         <p
-          className="truncate font-semibold text-base leading-tight text-foreground"
+          className="truncate font-semibold text-base text-foreground leading-tight"
           title={String(value)}
         >
           {value ?? "-"}
@@ -81,7 +81,12 @@ interface StatCardProps {
 
 function StatCard({ label, value, className, valueClassName }: StatCardProps) {
   return (
-    <Card className={cn("overflow-hidden border shadow-sm transition-all duration-200 hover:shadow-md", className)}>
+    <Card
+      className={cn(
+        "overflow-hidden border shadow-sm transition-all duration-200 hover:shadow-md",
+        className,
+      )}
+    >
       <CardContent className="p-6">
         <p className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
           {label}
@@ -360,7 +365,7 @@ export default function ProductInventoryDetailPage() {
                           <TableCell className="text-right">
                             <span
                               className={cn(
-                                "inline-flex items-center justify-center min-w-12 rounded-md px-2 py-1 font-bold text-sm",
+                                "inline-flex min-w-12 items-center justify-center rounded-md px-2 py-1 font-bold text-sm",
                                 variant.totalQuantity === 0
                                   ? "bg-red-100 text-red-700"
                                   : variant.totalQuantity <=
@@ -498,7 +503,7 @@ export default function ProductInventoryDetailPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              <span className="inline-flex items-center justify-center min-w-12 rounded-md bg-blue-100 px-2 py-1 font-bold text-sm text-blue-700">
+                              <span className="inline-flex min-w-12 items-center justify-center rounded-md bg-blue-100 px-2 py-1 font-bold text-blue-700 text-sm">
                                 {batch.quantity.toLocaleString()}
                               </span>
                             </TableCell>

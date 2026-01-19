@@ -143,7 +143,7 @@ export default function InventoryReportPage() {
   const filteredItems = React.useMemo(() => {
     if (!items) return [];
     if (filter === "all") return items;
-    
+
     return items.filter((item) => {
       switch (filter) {
         case "low-stock":
@@ -418,22 +418,36 @@ export default function InventoryReportPage() {
                   },
                   { label: "Expired", value: summary?.kpis.expiredCount ?? 0 },
                 ],
-                pieChart: categoryChartData.length > 0 ? {
-                  title: "Inventory by Category",
-                  data: categoryChartData.map((item) => ({
-                    name: item.name,
-                    value: item.quantity,
-                  })),
-                } : undefined,
-                barChart: zoneChartData.length > 0 ? {
-                  title: "Inventory by Zone",
-                  data: zoneChartData.map((item) => ({
-                    name: item.name,
-                    value: item.quantity,
-                  })),
-                  valueLabel: "Quantity",
-                } : undefined,
-                tableHeaders: ["SKU", "Product", "Category", "Zone", "Quantity", "Expires", "Status"],
+                pieChart:
+                  categoryChartData.length > 0
+                    ? {
+                        title: "Inventory by Category",
+                        data: categoryChartData.map((item) => ({
+                          name: item.name,
+                          value: item.quantity,
+                        })),
+                      }
+                    : undefined,
+                barChart:
+                  zoneChartData.length > 0
+                    ? {
+                        title: "Inventory by Zone",
+                        data: zoneChartData.map((item) => ({
+                          name: item.name,
+                          value: item.quantity,
+                        })),
+                        valueLabel: "Quantity",
+                      }
+                    : undefined,
+                tableHeaders: [
+                  "SKU",
+                  "Product",
+                  "Category",
+                  "Zone",
+                  "Quantity",
+                  "Expires",
+                  "Status",
+                ],
                 tableData: filteredItems.map((item) => [
                   item.skuCode,
                   item.productName,

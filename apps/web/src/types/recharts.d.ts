@@ -1,7 +1,7 @@
 // Type declarations to fix recharts compatibility with React 19
-declare module 'recharts' {
-  import * as React from 'react';
-  
+declare module "recharts" {
+  import * as React from "react";
+
   export const ResponsiveContainer: React.ComponentType<any>;
   export const PieChart: React.ComponentType<any>;
   export const Pie: React.ComponentType<any>;

@@ -608,7 +608,7 @@ export function MultiQuantityAdjustmentDialog({
                 transition={springTransition}
                 className="flex flex-1 flex-col space-y-4"
               >
-                <div className="shrink-0 flex items-center justify-between">
+                <div className="flex shrink-0 items-center justify-between">
                   <div>
                     <p className="font-medium">{currentZone?.name}</p>
                     <p className="text-muted-foreground text-sm">
@@ -853,92 +853,93 @@ export function MultiQuantityAdjustmentDialog({
                 className="flex flex-1 flex-col"
               >
                 <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
-                    {/* Summary */}
-                    <div className="rounded-lg border bg-muted/30 p-4">
-                      <h4 className="mb-2 font-medium text-sm">Summary</h4>
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <span className="text-muted-foreground">
-                            Total Items
-                          </span>
-                          <p className="font-medium">{adjustmentItems.length}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">
-                            Items with Variance
-                          </span>
-                          <p className="font-medium">{itemsWithVariance.length}</p>
-                        </div>
-                        <div>
-                          <span className="text-muted-foreground">Zones</span>
-                          <p className="font-medium">{selectedZoneIds.length}</p>
-                        </div>
+                  {/* Summary */}
+                  <div className="rounded-lg border bg-muted/30 p-4">
+                    <h4 className="mb-2 font-medium text-sm">Summary</h4>
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-muted-foreground">
+                          Total Items
+                        </span>
+                        <p className="font-medium">{adjustmentItems.length}</p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">
+                          Items with Variance
+                        </span>
+                        <p className="font-medium">
+                          {itemsWithVariance.length}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground">Zones</span>
+                        <p className="font-medium">{selectedZoneIds.length}</p>
                       </div>
                     </div>
+                  </div>
 
-                    {/* Reason */}
-                    <Field>
-                      <FieldLabel>Reason *</FieldLabel>
-                      <Select value={reasonId} onValueChange={setReasonId}>
-                        <SelectTrigger className="w-full">
-                          <SelectValue placeholder="Select reason..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {isLoadingLookups ? (
-                            <SelectItem value="_loading" disabled>
-                              Loading...
+                  {/* Reason */}
+                  <Field>
+                    <FieldLabel>Reason *</FieldLabel>
+                    <Select value={reasonId} onValueChange={setReasonId}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select reason..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {isLoadingLookups ? (
+                          <SelectItem value="_loading" disabled>
+                            Loading...
+                          </SelectItem>
+                        ) : (
+                          lookups?.adjustmentReasons.map((reason) => (
+                            <SelectItem key={reason._id} value={reason._id}>
+                              {reason.lookupValue}
                             </SelectItem>
-                          ) : (
-                            lookups?.adjustmentReasons.map((reason) => (
-                              <SelectItem key={reason._id} value={reason._id}>
-                                {reason.lookupValue}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
-                    </Field>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </Field>
 
-                    {/* Comments */}
-                    <Field>
-                      <FieldLabel>Comments (Optional)</FieldLabel>
-                      <Textarea
-                        value={comments}
-                        onChange={(e) => setComments(e.target.value)}
-                        placeholder="Add any additional notes..."
-                        className="min-h-20 resize-none"
-                      />
-                    </Field>
+                  {/* Comments */}
+                  <Field>
+                    <FieldLabel>Comments (Optional)</FieldLabel>
+                    <Textarea
+                      value={comments}
+                      onChange={(e) => setComments(e.target.value)}
+                      placeholder="Add any additional notes..."
+                      className="min-h-20 resize-none"
+                    />
+                  </Field>
 
-                    {/* Items with variance */}
-                    {itemsWithVariance.length > 0 && (
-                      <div>
-                        <Label className="text-muted-foreground text-sm">
-                          Items to be adjusted:
-                        </Label>
-                        <div className="mt-2 max-h-32 space-y-1 overflow-y-auto rounded-md border p-2">
-                          {itemsWithVariance.map((item) => (
-                            <div
-                              key={item.id}
-                              className="flex items-center justify-between rounded border bg-card px-3 py-2 text-sm"
+                  {/* Items with variance */}
+                  {itemsWithVariance.length > 0 && (
+                    <div>
+                      <Label className="text-muted-foreground text-sm">
+                        Items to be adjusted:
+                      </Label>
+                      <div className="mt-2 max-h-32 space-y-1 overflow-y-auto rounded-md border p-2">
+                        {itemsWithVariance.map((item) => (
+                          <div
+                            key={item.id}
+                            className="flex items-center justify-between rounded border bg-card px-3 py-2 text-sm"
+                          >
+                            <span className="truncate">{item.productName}</span>
+                            <span
+                              className={cn(
+                                "ml-2 font-medium",
+                                item.countedQuantity - item.expectedQuantity > 0
+                                  ? "text-amber-600"
+                                  : "text-red-600",
+                              )}
                             >
-                              <span className="truncate">{item.productName}</span>
-                              <span
-                                className={cn(
-                                  "ml-2 font-medium",
-                                  item.countedQuantity - item.expectedQuantity >
-                                    0
-                                    ? "text-amber-600"
-                                    : "text-red-600",
-                                )}
-                              >
-                                {item.expectedQuantity} → {item.countedQuantity}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
+                              {item.expectedQuantity} → {item.countedQuantity}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-                    )}
+                    </div>
+                  )}
                 </div>
               </motion.div>
             )}

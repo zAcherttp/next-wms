@@ -64,11 +64,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tabs,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { exportReportToPDF, formatDateRange } from "@/lib/pdf-export";
@@ -154,7 +150,7 @@ export default function InboundReportPage() {
   const filteredSessions = React.useMemo(() => {
     if (!sessions) return [];
     if (filter === "all") return sessions;
-    
+
     return sessions.filter((session) => {
       const statusCode = session.statusCode.toUpperCase();
       switch (filter) {
@@ -456,23 +452,40 @@ export default function InboundReportPage() {
                   "Variance",
                   "Accuracy",
                 ],
-                pieChart: statusChartData.length > 0 ? {
-                  title: "Status Breakdown",
-                  data: statusChartData.map((item) => ({
-                    name: item.name,
-                    value: item.value,
-                    color: STATUS_COLORS[item.code] || undefined,
-                  })),
-                } : undefined,
-                barChart: supplierChartData.length > 0 ? {
-                  title: "Top Suppliers by Items Received",
-                  data: supplierChartData.map((item) => ({
-                    name: item.name,
-                    value: item.items,
-                  })),
-                  valueLabel: "Items Received",
-                } : undefined,
-                tableHeaders: ["Session ID", "PO Code", "Supplier", "Received Date", "Status", "SKUs", "Received", "Expected", "Variance", "Accuracy"],
+                pieChart:
+                  statusChartData.length > 0
+                    ? {
+                        title: "Status Breakdown",
+                        data: statusChartData.map((item) => ({
+                          name: item.name,
+                          value: item.value,
+                          color: STATUS_COLORS[item.code] || undefined,
+                        })),
+                      }
+                    : undefined,
+                barChart:
+                  supplierChartData.length > 0
+                    ? {
+                        title: "Top Suppliers by Items Received",
+                        data: supplierChartData.map((item) => ({
+                          name: item.name,
+                          value: item.items,
+                        })),
+                        valueLabel: "Items Received",
+                      }
+                    : undefined,
+                tableHeaders: [
+                  "Session ID",
+                  "PO Code",
+                  "Supplier",
+                  "Received Date",
+                  "Status",
+                  "SKUs",
+                  "Received",
+                  "Expected",
+                  "Variance",
+                  "Accuracy",
+                ],
                 tableData: filteredSessions.map((s) => [
                   s.receiveSessionCode,
                   s.purchaseOrderCode,
@@ -717,25 +730,50 @@ export default function InboundReportPage() {
                 <TabsTrigger value="all">All Sessions</TabsTrigger>
                 <TabsTrigger value="completed">
                   Completed
-                  {summary?.statusBreakdown.find(s => s.statusCode === "COMPLETED")?.count ? (
+                  {summary?.statusBreakdown.find(
+                    (s) => s.statusCode === "COMPLETED",
+                  )?.count ? (
                     <Badge variant="secondary" className="ml-1">
-                      {summary.statusBreakdown.find(s => s.statusCode === "COMPLETED")?.count}
+                      {
+                        summary.statusBreakdown.find(
+                          (s) => s.statusCode === "COMPLETED",
+                        )?.count
+                      }
                     </Badge>
                   ) : null}
                 </TabsTrigger>
                 <TabsTrigger value="in-progress">
                   In Progress
-                  {summary?.statusBreakdown.find(s => s.statusCode === "IN_PROGRESS" || s.statusCode === "RECEIVING")?.count ? (
+                  {summary?.statusBreakdown.find(
+                    (s) =>
+                      s.statusCode === "IN_PROGRESS" ||
+                      s.statusCode === "RECEIVING",
+                  )?.count ? (
                     <Badge variant="secondary" className="ml-1">
-                      {summary.statusBreakdown.filter(s => s.statusCode === "IN_PROGRESS" || s.statusCode === "RECEIVING").reduce((sum, s) => sum + s.count, 0)}
+                      {summary.statusBreakdown
+                        .filter(
+                          (s) =>
+                            s.statusCode === "IN_PROGRESS" ||
+                            s.statusCode === "RECEIVING",
+                        )
+                        .reduce((sum, s) => sum + s.count, 0)}
                     </Badge>
                   ) : null}
                 </TabsTrigger>
                 <TabsTrigger value="pending">
                   Pending
-                  {summary?.statusBreakdown.find(s => s.statusCode === "PENDING" || s.statusCode === "DRAFT")?.count ? (
+                  {summary?.statusBreakdown.find(
+                    (s) =>
+                      s.statusCode === "PENDING" || s.statusCode === "DRAFT",
+                  )?.count ? (
                     <Badge variant="secondary" className="ml-1">
-                      {summary.statusBreakdown.filter(s => s.statusCode === "PENDING" || s.statusCode === "DRAFT").reduce((sum, s) => sum + s.count, 0)}
+                      {summary.statusBreakdown
+                        .filter(
+                          (s) =>
+                            s.statusCode === "PENDING" ||
+                            s.statusCode === "DRAFT",
+                        )
+                        .reduce((sum, s) => sum + s.count, 0)}
                     </Badge>
                   ) : null}
                 </TabsTrigger>

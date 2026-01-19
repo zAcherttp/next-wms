@@ -83,7 +83,9 @@ const statusFilterOptions = [
 
 interface QuantityAdjustmentsTableProps {
   onApprove?: (id: string) => void;
-  onReject?: (id: string) => void;  onNewRequest: () => void;}
+  onReject?: (id: string) => void;
+  onNewRequest: () => void;
+}
 
 export function QuantityAdjustmentsTable({
   onApprove,

@@ -149,7 +149,7 @@ export function AuditLogsTable({
           }).format(new Date(timestamp));
 
           return (
-            <TableCellFirst className="text-muted-foreground font-mono text-xs">
+            <TableCellFirst className="font-mono text-muted-foreground text-xs">
               {formatted}
             </TableCellFirst>
           );
@@ -271,7 +271,7 @@ export function AuditLogsTable({
         accessorKey: "ipAddress",
         header: "IP Address",
         cell: ({ row }) => (
-          <div className="text-muted-foreground font-mono text-xs">
+          <div className="font-mono text-muted-foreground text-xs">
             {row.getValue("ipAddress") || "-"}
           </div>
         ),
@@ -395,7 +395,7 @@ export function AuditLogsTable({
       </div>
       <div className="flex items-center justify-between space-x-2 py-4">
         <div className="hidden items-center gap-2 lg:flex">
-          <Label htmlFor="audit-rows-per-page" className="text-sm font-medium">
+          <Label htmlFor="audit-rows-per-page" className="font-medium text-sm">
             Showing
           </Label>
           <Select
@@ -415,12 +415,12 @@ export function AuditLogsTable({
               ))}
             </SelectContent>
           </Select>
-          <Label htmlFor="audit-rows-per-page" className="text-sm font-medium">
+          <Label htmlFor="audit-rows-per-page" className="font-medium text-sm">
             per page
           </Label>
         </div>
         <div className="flex w-full items-center gap-8 lg:w-fit">
-          <div className="flex w-fit items-center justify-center text-sm font-medium">
+          <div className="flex w-fit items-center justify-center font-medium text-sm">
             Page {table.getState().pagination.pageIndex + 1} of{" "}
             {table.getPageCount()}
           </div>

@@ -14,14 +14,18 @@ import { query } from "./_generated/server";
  */
 export const getLookupByTypeAndCode = query({
   args: {
+    organizationId: v.id("organizations"),
     lookupType: v.string(),
     lookupCode: v.string(),
   },
   handler: async (ctx, args) => {
     const lookup = await ctx.db
       .query("system_lookups")
-      .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", args.lookupType).eq("lookupCode", args.lookupCode)
+      .withIndex("by_organization_type_code", (q) =>
+        q
+          .eq("organizationId", args.organizationId)
+          .eq("lookupType", args.lookupType)
+          .eq("lookupCode", args.lookupCode)
       )
       .first();
 
@@ -35,12 +39,15 @@ export const getLookupByTypeAndCode = query({
  */
 export const getLookupsByType = query({
   args: {
+    organizationId: v.id("organizations"),
     lookupType: v.string(),
   },
   handler: async (ctx, args) => {
     const lookups = await ctx.db
       .query("system_lookups")
-      .withIndex("lookupType", (q) => q.eq("lookupType", args.lookupType))
+      .withIndex("by_organization_type", (q) =>
+        q.eq("organizationId", args.organizationId).eq("lookupType", args.lookupType)
+      )
       .collect();
 
     return lookups.sort((a, b) => a.sortOrder - b.sortOrder);

@@ -752,12 +752,20 @@ export default defineSchema({
   // ================================================================
 
   system_lookups: defineTable({
+    organizationId: v.optional(v.id("organizations")),
     lookupType: v.string(),
     lookupCode: v.string(),
     lookupValue: v.string(),
     description: v.string(),
     sortOrder: v.number(),
   })
+    .index("by_organization", ["organizationId"])
+    .index("by_organization_type", ["organizationId", "lookupType"])
+    .index("by_organization_type_code", [
+      "organizationId",
+      "lookupType",
+      "lookupCode",
+    ])
     .index("lookupType", ["lookupType"])
     .index("lookupType_lookupCode", ["lookupType", "lookupCode"]),
 });

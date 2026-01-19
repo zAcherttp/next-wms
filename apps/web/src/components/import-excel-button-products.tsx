@@ -212,8 +212,10 @@ export function ImportExcelButtonProducts() {
   });
 
   const { data: systemLookups } = useQuery({
-    ...convexQuery(api.systemLookups.list, {}),
-    enabled: true,
+    ...convexQuery(api.systemLookups.list, {
+      organizationId: organizationId as Id<"organizations">,
+    }),
+    enabled: !!organizationId,
   });
 
   // Mutation

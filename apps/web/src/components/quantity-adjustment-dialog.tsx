@@ -251,7 +251,10 @@ export function QuantityAdjustmentDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent showCloseButton={false} className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+      <DialogContent
+        showCloseButton={false}
+        className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg"
+      >
         <DialogHeader className="relative shrink-0 px-6 pt-6">
           <DialogTitle>Create Quantity Adjustment</DialogTitle>
           <button

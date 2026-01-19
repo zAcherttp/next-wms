@@ -150,7 +150,7 @@ export function InventoryTransactionsTable({
           }).format(new Date(timestamp));
 
           return (
-            <TableCellFirst className="text-muted-foreground font-mono text-xs">
+            <TableCellFirst className="font-mono text-muted-foreground text-xs">
               {formatted}
             </TableCellFirst>
           );
@@ -160,7 +160,7 @@ export function InventoryTransactionsTable({
         accessorKey: "transactionId",
         header: "Transaction ID",
         cell: ({ row }) => (
-          <div className="font-mono text-sm text-blue-600">
+          <div className="font-mono text-blue-600 text-sm">
             {row.getValue("transactionId")}
           </div>
         ),
@@ -259,7 +259,7 @@ export function InventoryTransactionsTable({
         accessorKey: "sourceDoc",
         header: "Source Doc",
         cell: ({ row }) => (
-          <div className="text-muted-foreground font-mono text-xs">
+          <div className="font-mono text-muted-foreground text-xs">
             {row.getValue("sourceDoc") || "-"}
           </div>
         ),
@@ -388,7 +388,7 @@ export function InventoryTransactionsTable({
       </div>
       <div className="flex items-center justify-between space-x-2 py-4">
         <div className="hidden items-center gap-2 lg:flex">
-          <Label htmlFor="rows-per-page" className="text-sm font-medium">
+          <Label htmlFor="rows-per-page" className="font-medium text-sm">
             Showing
           </Label>
           <Select
@@ -408,12 +408,12 @@ export function InventoryTransactionsTable({
               ))}
             </SelectContent>
           </Select>
-          <Label htmlFor="rows-per-page" className="text-sm font-medium">
+          <Label htmlFor="rows-per-page" className="font-medium text-sm">
             per page
           </Label>
         </div>
         <div className="flex w-full items-center gap-8 lg:w-fit">
-          <div className="flex w-fit items-center justify-center text-sm font-medium">
+          <div className="flex w-fit items-center justify-center font-medium text-sm">
             Page {table.getState().pagination.pageIndex + 1} of{" "}
             {table.getPageCount()}
           </div>
