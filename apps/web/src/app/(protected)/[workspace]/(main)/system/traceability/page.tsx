@@ -38,7 +38,10 @@ export default function TraceabilityPage() {
           align="start"
           showCompare={false}
           onUpdate={(data) => {
-            setDateRange(data.range);
+            // Defer the state update to prevent synchronous re-renders
+            setTimeout(() => {
+              setDateRange(data.range);
+            }, 0);
           }}
         />
         <Tabs value={activeTab} onValueChange={setActiveTab}>

@@ -395,11 +395,14 @@ export default function OutboundReportPage() {
             align="end"
             showCompare={false}
             onUpdate={(data) => {
-              updateFromPicker({
-                range: data.range,
-                preset: data.preset,
-                periodLabel: data.periodLabel,
-              });
+              // Defer the store update to prevent synchronous re-renders that cause freezing
+              setTimeout(() => {
+                updateFromPicker({
+                  range: data.range,
+                  preset: data.preset,
+                  periodLabel: data.periodLabel,
+                });
+              }, 0);
             }}
           />
           <Button

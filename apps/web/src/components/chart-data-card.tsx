@@ -1,7 +1,7 @@
 "use client";
 
 import { TrendingDown, TrendingUp } from "lucide-react";
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import {
   type ChartConfig,
@@ -47,7 +47,7 @@ export type ChartDataCardProps = {
  * A general-purpose data card with a mini chart visualization.
  * Supports projected data with Line mode (single value) or Area mode (min/max range).
  */
-export function ChartDataCard({
+export const ChartDataCard = React.memo(function ChartDataCard({
   title,
   value,
   changePercent,
@@ -177,8 +177,8 @@ export function ChartDataCard({
         </div>
 
         {/* Chart Section */}
-        <div className="h-auto w-full lg:w-full xl:w-50 min-[520px]:w-50">
-          <ChartContainer config={chartConfig}>
+        <div className="h-20 w-full lg:w-full xl:w-50 min-[520px]:w-50">
+          <ChartContainer config={chartConfig} className="h-full w-full">
             <AreaChart
               accessibilityLayer
               data={chartData}
@@ -258,4 +258,4 @@ export function ChartDataCard({
       </div>
     </div>
   );
-}
+});
