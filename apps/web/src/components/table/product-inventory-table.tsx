@@ -372,7 +372,7 @@ export function ProductInventoryTable({
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "Action",
       cell: ({ row }) => {
         const product = row.original;
 
@@ -385,7 +385,7 @@ export function ProductInventoryTable({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
               <DropdownMenuItem
                 onClick={() => navigator.clipboard.writeText(product._id)}
               >

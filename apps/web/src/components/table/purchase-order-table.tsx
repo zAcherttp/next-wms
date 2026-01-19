@@ -326,6 +326,7 @@ export function PurchaseOrdersTable() {
       },
       {
         id: "actions",
+        header: "Action",
         enableHiding: false,
         cell: ({ row }) => {
           const purchaseOrder = row.original;
@@ -339,8 +340,7 @@ export function PurchaseOrdersTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+
                 <DropdownMenuItem
                   onClick={() =>
                     navigator.clipboard.writeText(purchaseOrder.code)

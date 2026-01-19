@@ -386,8 +386,7 @@ function ActionsCell({ category }: { category: CategoryItem }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+
             <DropdownMenuItem onClick={() => setEditOpen(true)}>
               Edit name
             </DropdownMenuItem>
@@ -664,7 +663,7 @@ export function CategoriesTable() {
                 </TableHead>
               )}
               <TableHead className="text-right">
-                <span className="font-medium">Actions</span>
+                <span className="font-medium">Action</span>
               </TableHead>
             </TableRow>
           </TableHeader>

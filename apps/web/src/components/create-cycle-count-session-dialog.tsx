@@ -29,7 +29,6 @@ import {
 import { Textarea } from "@/components/ui/textarea";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { useMembers } from "@/hooks/use-members";
 import { cn } from "@/lib/utils";
 
 interface CreateCycleCountSessionDialogProps {
@@ -60,7 +59,7 @@ export const CreateCycleCountSessionDialog = React.memo(
     open,
     onOpenChange,
   }: CreateCycleCountSessionDialogProps) {
-    const { organizationId, authOrganization, userId } = useCurrentUser();
+    const { organizationId, userId } = useCurrentUser();
     const { currentBranch } = useBranches({
       organizationId: organizationId as Id<"organizations"> | undefined,
       includeDeleted: false,
@@ -85,8 +84,12 @@ export const CreateCycleCountSessionDialog = React.memo(
       enabled: !!currentBranch?._id,
     });
 
-    const { data: workers } = useMembers({
-      organizationId: authOrganization?.id,
+    // Fetch organization users (workers)
+    const { data: workers } = useQuery({
+      ...convexQuery(api.cycleCount.getOrganizationUsers, {
+        organizationId: organizationId as Id<"organizations">,
+      }),
+      enabled: !!organizationId && organizationId !== "",
     });
 
     // Fetch cycle count lookups
@@ -440,12 +443,9 @@ export const CreateCycleCountSessionDialog = React.memo(
                               <SelectValue placeholder="Assign worker..." />
                             </SelectTrigger>
                             <SelectContent>
-                              {(workers?.members ?? []).map((worker) => (
-                                <SelectItem
-                                  key={worker.userId}
-                                  value={worker.userId}
-                                >
-                                  {worker.user.name}
+                              {(workers ?? []).map((worker) => (
+                                <SelectItem key={worker._id} value={worker._id}>
+                                  {worker.fullName}
                                 </SelectItem>
                               ))}
                             </SelectContent>

@@ -229,6 +229,7 @@ export function CycleCountSessionsTable() {
       },
       {
         id: "actions",
+        header: "Action",
         enableHiding: false,
         cell: ({ row }) => {
           const session = row.original;
@@ -243,7 +244,7 @@ export function CycleCountSessionsTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
                 {status === "active" ||
                 status === "pending" ||
                 status === "in progress" ? (

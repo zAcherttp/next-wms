@@ -283,6 +283,7 @@ export function ReturnRequestsTable() {
       },
       {
         id: "actions",
+        header: "Action",
         enableHiding: false,
         cell: ({ row }) => {
           const returnRequest = row.original;
@@ -298,7 +299,7 @@ export function ReturnRequestsTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
                 <DropdownMenuItem
                   onClick={() =>
                     navigator.clipboard.writeText(returnRequest.requestCode)

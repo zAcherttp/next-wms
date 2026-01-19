@@ -530,8 +530,7 @@ function ActionsCell({ supplier }: { supplier: SupplierTableItem }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+
             <DropdownMenuItem onClick={() => setEditOpen(true)}>
               Edit supplier
             </DropdownMenuItem>
@@ -653,7 +652,7 @@ export const columns: ColumnDef<SupplierTableItem>[] = [
     id: "actions",
     header: () => (
       <div className="text-right">
-        <span className="font-medium">Actions</span>
+        <span className="font-medium">Action</span>
       </div>
     ),
     enableHiding: false,

@@ -67,8 +67,7 @@ export function LookupAction({ lookup }: LookupActionProps) {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuSeparator />
+
           <EditLookupDialog
             lookup={lookup}
             trigger={

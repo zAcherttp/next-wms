@@ -103,8 +103,7 @@ function ActionsCell({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-          <DropdownMenuSeparator />
+
           <DropdownMenuItem
             onClick={() => onEdit(product.productId as Id<"products">)}
           >
@@ -253,7 +252,7 @@ export const columns: ColumnDef<ProductTableItem>[] = [
     id: "actions",
     header: () => (
       <div className="text-right">
-        <span className="font-medium">Actions</span>
+        <span className="font-medium">Action</span>
       </div>
     ),
     enableHiding: false,

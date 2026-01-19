@@ -229,6 +229,7 @@ export const columns: ColumnDef<Branch>[] = [
   },
   {
     id: "actions",
+    header: "Action",
     enableHiding: false,
     cell: function ActionsCell({ row }) {
       const branch = row.original;
@@ -284,8 +285,7 @@ export const columns: ColumnDef<Branch>[] = [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
+
               <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
                 Details
               </DropdownMenuItem>

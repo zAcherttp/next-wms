@@ -254,7 +254,7 @@ export function LocationAdjustmentsTable({
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "Action",
       cell: ({ row }) => {
         const adjustment = row.original;
         const isPending = adjustment.status?.toLowerCase() === "pending";
@@ -268,7 +268,7 @@ export function LocationAdjustmentsTable({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
               <DropdownMenuItem
                 onClick={() =>
                   navigator.clipboard.writeText(adjustment.requestCode)

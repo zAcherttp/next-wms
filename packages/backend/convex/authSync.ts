@@ -87,6 +87,25 @@ export const getUserByAuthId = query({
 });
 
 /**
+ * Get multiple users by Better Auth IDs
+ */
+export const batchGetUserIdByAuthId = query({
+  args: { authIds: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const users = await Promise.all(
+      args.authIds.map(async (authId) => {
+        const user = await ctx.db
+          .query("users")
+          .withIndex("authId", (q) => q.eq("authId", authId))
+          .first();
+        return user ? { authId, _id: user._id } : null;
+      })
+    );
+    return users.filter((u) => u !== null);
+  },
+});
+
+/**
  * Get user by Convex document ID
  */
 export const getUserById = query({

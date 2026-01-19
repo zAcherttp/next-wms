@@ -509,6 +509,131 @@ export const createCycleCountSession = mutation({
 });
 
 /**
+ * batchCreateCycleCountSession
+ *
+ * Purpose: Creates multiple cycle count sessions in a single transaction
+ */
+export const batchCreateCycleCountSession = mutation({
+  args: {
+    sessions: v.array(
+      v.object({
+        organizationId: v.id("organizations"),
+        branchId: v.id("branches"),
+        sessionTypeId: v.id("system_lookups"),
+        sessionCode: v.string(),
+        name: v.string(),
+        description: v.optional(v.string()),
+        cycleCountTypeId: v.id("system_lookups"),
+        assignedUserId: v.id("users"),
+        sessionStatusTypeId: v.id("system_lookups"),
+        zoneAssignments: v.array(
+          v.object({
+            zoneId: v.id("storage_zones"),
+            assignedUserId: v.optional(v.id("users")),
+          }),
+        ),
+        lineItems: v.optional(
+          v.array(
+            v.object({
+              skuId: v.id("product_variants"),
+              expectedQuantity: v.number(),
+              zoneId: v.optional(v.id("storage_zones")),
+              batchId: v.optional(v.id("inventory_batches")),
+            }),
+          ),
+        ),
+      })
+    ),
+  },
+  handler: async (ctx, args) => {
+    // Get the "not_started" status for zone assignments once
+    const notStartedStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ZoneAssignmentStatus").eq("lookupCode", "NOT_STARTED")
+      )
+      .first();
+
+    const createdSessionIds = [];
+
+    for (const sessionArgs of args.sessions) {
+      if (!sessionArgs.zoneAssignments || sessionArgs.zoneAssignments.length === 0) {
+        continue;
+      }
+
+      // Create the work session
+      const sessionId = await ctx.db.insert("work_sessions", {
+        organizationId: sessionArgs.organizationId,
+        branchId: sessionArgs.branchId,
+        sessionTypeId: sessionArgs.sessionTypeId,
+        sessionCode: sessionArgs.sessionCode,
+        name: sessionArgs.name,
+        description: sessionArgs.description,
+        cycleCountTypeId: sessionArgs.cycleCountTypeId,
+        assignedUserId: sessionArgs.assignedUserId,
+        sessionStatusTypeId: sessionArgs.sessionStatusTypeId,
+      });
+
+      createdSessionIds.push(sessionId);
+
+      // Create zone-worker assignments
+      for (const assignment of sessionArgs.zoneAssignments) {
+        await ctx.db.insert("session_zone_assignments", {
+          sessionId,
+          zoneId: assignment.zoneId,
+          assignedUserId: assignment.assignedUserId ?? sessionArgs.assignedUserId,
+          assignmentStatusTypeId: notStartedStatus?._id,
+        });
+      }
+
+      // Create session line items
+      if (sessionArgs.lineItems && sessionArgs.lineItems.length > 0) {
+        for (const item of sessionArgs.lineItems) {
+          await ctx.db.insert("session_line_items", {
+            sessionId,
+            skuId: item.skuId,
+            expectedQuantity: item.expectedQuantity,
+            actualQuantity: 0,
+            zoneId: item.zoneId,
+            batchId: item.batchId,
+          });
+        }
+      } else {
+        // Auto-generate line items from inventory batches
+        const zoneIds = sessionArgs.zoneAssignments.map((a) => a.zoneId);
+        for (const zoneId of zoneIds) {
+          const batches = await ctx.db
+            .query("inventory_batches")
+            .withIndex("zoneId", (q) => q.eq("zoneId", zoneId))
+            .filter((q) =>
+              q.and(
+                q.eq(q.field("organizationId"), sessionArgs.organizationId),
+                q.eq(q.field("branchId"), sessionArgs.branchId),
+                q.eq(q.field("isDeleted"), false),
+                q.gt(q.field("quantity"), 0),
+              ),
+            )
+            .collect();
+
+          for (const batch of batches) {
+            await ctx.db.insert("session_line_items", {
+              sessionId,
+              skuId: batch.skuId,
+              expectedQuantity: batch.quantity,
+              actualQuantity: 0,
+              zoneId: zoneId,
+              batchId: batch._id,
+            });
+          }
+        }
+      }
+    }
+
+    return createdSessionIds;
+  },
+});
+
+/**
  * viewCycleCountSessionDetail
  *
  * Purpose: Retrieves a specific cycle count session by its ID along with zone assignments, line items, and inventory transactions

@@ -207,6 +207,7 @@ export const columns: ColumnDef<Member>[] = [
   },
   {
     id: "actions",
+    header: "Action",
     enableHiding: false,
     cell: ({ row }) => {
       const member = row.original;
@@ -221,8 +222,7 @@ export const columns: ColumnDef<Member>[] = [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
+
               <DropdownMenuItem
                 onClick={() =>
                   navigator.clipboard.writeText(member.user?.email ?? "")

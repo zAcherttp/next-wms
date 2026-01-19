@@ -286,8 +286,7 @@ function ActionsCell({ brand }: { brand: BrandWithProductCount }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuSeparator />
+
             <DropdownMenuItem onClick={() => setEditOpen(true)}>
               Edit name
             </DropdownMenuItem>
@@ -392,7 +391,7 @@ export const columns: ColumnDef<BrandWithProductCount>[] = [
     header: () => {
       return (
         <div className="text-right">
-          <span className="font-medium">Actions</span>
+          <span className="font-medium">Action</span>
         </div>
       );
     },

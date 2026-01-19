@@ -384,6 +384,7 @@ export function OutboundOrdersTable() {
       },
       {
         id: "actions",
+        header: "Action",
         enableHiding: false,
         cell: ({ row }) => {
           const outboundOrder = row.original;
@@ -407,8 +408,7 @@ export function OutboundOrdersTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                <DropdownMenuSeparator />
+
                 <DropdownMenuItem
                   onClick={() =>
                     navigator.clipboard.writeText(outboundOrder.orderCode)

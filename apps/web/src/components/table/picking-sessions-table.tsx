@@ -229,6 +229,7 @@ export function PickingSessionsTable() {
       },
       {
         id: "actions",
+        header: "Action",
         enableHiding: false,
         cell: ({ row }) => {
           const session = row.original;
@@ -243,7 +244,7 @@ export function PickingSessionsTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+
                 <DropdownMenuItem
                   onClick={() =>
                     navigator.clipboard.writeText(session.sessionCode)
