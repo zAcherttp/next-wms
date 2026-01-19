@@ -64,6 +64,7 @@ import {
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
+import { ImportExcelButtonProducts } from "@/components/import-excel-button-products";
 import { type ProductListItem, useProductsList } from "@/hooks/use-products";
 
 // Product table item type - flattened view showing one row per variant
@@ -79,8 +80,6 @@ export type ProductTableItem = {
   variantDescription: string;
   storageRequirement: string;
   trackingMethod: string;
-  costPrice: number;
-  sellingPrice: number;
   isActive: boolean;
 };
 
@@ -106,10 +105,6 @@ function ActionsCell({
         <DropdownMenuContent align="end">
           <DropdownMenuLabel>Actions</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuItem>
-            <Eye className="mr-2 h-4 w-4" />
-            View details
-          </DropdownMenuItem>
           <DropdownMenuItem
             onClick={() => onEdit(product.productId as Id<"products">)}
           >
@@ -255,86 +250,6 @@ export const columns: ColumnDef<ProductTableItem>[] = [
     cell: ({ row }) => <div>{row.getValue("trackingMethod") || "-"}</div>,
   },
   {
-    accessorKey: "costPrice",
-    header: ({ column }) => {
-      const sortOptions = [
-        { label: "Default", value: "default" },
-        { label: "Ascending", value: "asc" },
-        { label: "Descending", value: "desc" },
-      ];
-      const currentSort = column.getIsSorted();
-      const currentValue = currentSort ? String(currentSort) : "default";
-      return (
-        <div className="flex items-center justify-end">
-          <FilterPopover
-            label="Cost"
-            options={sortOptions}
-            currentValue={currentValue}
-            onChange={(value) => {
-              if (value === "default" || !value) {
-                column.clearSorting();
-              } else {
-                column.toggleSorting(value === "desc", false);
-              }
-            }}
-            isSort
-          />
-        </div>
-      );
-    },
-    cell: ({ row }) => {
-      const price = row.getValue("costPrice") as number;
-      return (
-        <div className="text-right">
-          {price?.toLocaleString("vi-VN", {
-            style: "currency",
-            currency: "VND",
-          }) ?? "-"}
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "sellingPrice",
-    header: ({ column }) => {
-      const sortOptions = [
-        { label: "Default", value: "default" },
-        { label: "Ascending", value: "asc" },
-        { label: "Descending", value: "desc" },
-      ];
-      const currentSort = column.getIsSorted();
-      const currentValue = currentSort ? String(currentSort) : "default";
-      return (
-        <div className="flex items-center justify-end">
-          <FilterPopover
-            label="Price"
-            options={sortOptions}
-            currentValue={currentValue}
-            onChange={(value) => {
-              if (value === "default" || !value) {
-                column.clearSorting();
-              } else {
-                column.toggleSorting(value === "desc", false);
-              }
-            }}
-            isSort
-          />
-        </div>
-      );
-    },
-    cell: ({ row }) => {
-      const price = row.getValue("sellingPrice") as number;
-      return (
-        <div className="text-right">
-          {price?.toLocaleString("vi-VN", {
-            style: "currency",
-            currency: "VND",
-          }) ?? "-"}
-        </div>
-      );
-    },
-  },
-  {
     id: "actions",
     header: () => (
       <div className="text-right">
@@ -369,8 +284,6 @@ function flattenProductsToTableItems(
         variantDescription: "-",
         storageRequirement: product.storageRequirement?.lookupValue ?? "",
         trackingMethod: product.trackingMethod?.lookupValue ?? "",
-        costPrice: 0,
-        sellingPrice: 0,
         isActive: product.isActive,
       });
     } else {
@@ -390,8 +303,6 @@ function flattenProductsToTableItems(
           variantDescription: variant.description,
           storageRequirement: product.storageRequirement?.lookupValue ?? "",
           trackingMethod: product.trackingMethod?.lookupValue ?? "",
-          costPrice: variant.costPrice,
-          sellingPrice: variant.sellingPrice,
           isActive: product.isActive && variant.isActive,
         });
       }
@@ -585,6 +496,9 @@ export function ProductsTable() {
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Import Excel Button */}
+          <ImportExcelButtonProducts />
 
           {/* Create Product Button */}
           <CreateProductDialog />

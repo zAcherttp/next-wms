@@ -52,6 +52,23 @@ export const getByTypeAndCode = query({
 });
 
 /**
+ * LIST ALL - Get all system lookups
+ * Used for Excel import to build mapping tables
+ */
+export const list = query({
+  args: {},
+  handler: async (ctx) => {
+    const lookups = await ctx.db.query("system_lookups").collect();
+    return lookups.sort((a, b) => {
+      if (a.lookupType !== b.lookupType) {
+        return a.lookupType.localeCompare(b.lookupType);
+      }
+      return a.sortOrder - b.sortOrder;
+    });
+  },
+});
+
+/**
  * GET BY ID - Get a lookup by its ID
  */
 export const get = query({

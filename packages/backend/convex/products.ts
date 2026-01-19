@@ -630,6 +630,152 @@ export const getVariants = query({
 });
 
 /**
+ * CREATE WITH VARIANTS - Create a product with multiple variants at once
+ * Used for Excel import and bulk product creation
+ */
+export const createWithVariants = mutation({
+  args: {
+    organizationId: v.id("organizations"),
+    name: v.string(),
+    description: v.string(),
+    categoryId: v.id("categories"),
+    brandId: v.id("brands"),
+    storageRequirementTypeId: v.id("system_lookups"),
+    trackingMethodTypeId: v.id("system_lookups"),
+    shelfLifeDays: v.optional(v.number()),
+    reorderPoint: v.optional(v.number()),
+    isActive: v.optional(v.boolean()),
+    variants: v.array(
+      v.object({
+        skuCode: v.string(),
+        description: v.string(),
+        costPrice: v.number(),
+        sellingPrice: v.number(),
+        unitOfMeasureId: v.id("system_lookups"),
+        weightKg: v.optional(v.number()),
+        volumeM3: v.optional(v.number()),
+        temperatureSensitive: v.optional(v.boolean()),
+        stackingLimit: v.optional(v.number()),
+        isActive: v.optional(v.boolean()),
+        barcodes: v.optional(
+          v.array(
+            v.object({
+              barcodeTypeId: v.id("system_lookups"),
+              barcodeValue: v.string(),
+            }),
+          ),
+        ),
+      }),
+    ),
+  },
+  handler: async (ctx, args) => {
+    const {
+      organizationId,
+      name,
+      description,
+      categoryId,
+      brandId,
+      storageRequirementTypeId,
+      trackingMethodTypeId,
+      shelfLifeDays,
+      reorderPoint,
+      isActive = true,
+      variants,
+    } = args;
+
+    // Validate category exists
+    const category = await ctx.db.get(categoryId);
+    if (!category || category.isDeleted) {
+      throw new Error("Category not found or deleted");
+    }
+
+    // Validate brand exists
+    const brand = await ctx.db.get(brandId);
+    if (!brand) {
+      throw new Error("Brand not found");
+    }
+
+    // Check duplicate product name
+    const existingProduct = await ctx.db
+      .query("products")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organizationId),
+      )
+      .filter((q) => q.eq(q.field("name"), name))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .first();
+
+    if (existingProduct) {
+      throw new Error("Product with this name already exists");
+    }
+
+    // Check duplicate SKU codes
+    for (const variant of variants) {
+      const existingSku = await ctx.db
+        .query("product_variants")
+        .withIndex("skuCode", (q) => q.eq("skuCode", variant.skuCode))
+        .filter((q) => q.eq(q.field("isDeleted"), false))
+        .first();
+
+      if (existingSku) {
+        throw new Error(`SKU "${variant.skuCode}" already exists`);
+      }
+    }
+
+    // Create product
+    const productId = await ctx.db.insert("products", {
+      organizationId,
+      name,
+      description,
+      categoryId,
+      brandId,
+      storageRequirementTypeId,
+      trackingMethodTypeId,
+      shelfLifeDays,
+      reorderPoint,
+      reorderPointOverride: undefined,
+      isActive,
+      isDeleted: false,
+    });
+
+    // Create variants
+    const variantIds: Id<"product_variants">[] = [];
+    for (const variant of variants) {
+      const variantId = await ctx.db.insert("product_variants", {
+        productId,
+        skuCode: variant.skuCode,
+        description: variant.description,
+        costPrice: variant.costPrice,
+        sellingPrice: variant.sellingPrice,
+        unitOfMeasureId: variant.unitOfMeasureId,
+        weightKg: variant.weightKg,
+        volumeM3: variant.volumeM3,
+        temperatureSensitive: variant.temperatureSensitive ?? false,
+        stackingLimit: variant.stackingLimit,
+        customFields: undefined,
+        isActive: variant.isActive ?? true,
+        isDeleted: false,
+      });
+
+      variantIds.push(variantId);
+
+      // Create barcodes if provided
+      if (variant.barcodes) {
+        for (const barcode of variant.barcodes) {
+          await ctx.db.insert("product_barcodes", {
+            skuId: variantId,
+            barcodeTypeId: barcode.barcodeTypeId,
+            barcodeValue: barcode.barcodeValue,
+          });
+        }
+      }
+    }
+
+    return { productId, variantIds };
+  },
+});
+
+/**
  * CREATE VARIANT - Add a new variant to a product
  * Permission required: products:create
  */

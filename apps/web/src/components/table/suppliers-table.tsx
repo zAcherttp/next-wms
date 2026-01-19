@@ -74,6 +74,7 @@ import {
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
+import { ImportExcelButtonSuppliers } from "@/components/import-excel-button-suppliers";
 
 // Supplier type for the table
 export type SupplierTableItem = Doc<"suppliers"> & {
@@ -759,11 +760,14 @@ export function SuppliersTable() {
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
+          {/* Clear Filters Button */}
           {activeFiltersCount >= 2 && (
             <Button variant="default" onClick={handleClearAllFilters}>
               Clear filters ({activeFiltersCount})
             </Button>
           )}
+
+          {/* Column Visibility Dropdown */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline">
@@ -775,24 +779,31 @@ export function SuppliersTable() {
               {table
                 .getAllColumns()
                 .filter((column) => column.getCanHide())
-                .map((column) => (
-                  <DropdownMenuItem
-                    key={column.id}
-                    className="capitalize"
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    <Checkbox
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                      className="mr-2"
-                    />
-                    {column.id}
-                  </DropdownMenuItem>
-                ))}
+                .map((column) => {
+                  return (
+                    <DropdownMenuItem
+                      key={column.id}
+                      className="capitalize"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Checkbox
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }
+                        className="mr-2"
+                      />
+                      {column.id}
+                    </DropdownMenuItem>
+                  );
+                })}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Import Excel Button */}
+          <ImportExcelButtonSuppliers />
+
+          {/* Create Supplier Button */}
           <CreateSupplierDialog />
         </div>
       </div>

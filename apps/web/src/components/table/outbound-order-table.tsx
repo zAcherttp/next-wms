@@ -376,7 +376,7 @@ export function OutboundOrdersTable() {
                 className="h-6 border-yellow-500/60 text-xs text-yellow-600 hover:bg-yellow-500/10"
                 onClick={() => handleVehicleArrived(row.original._id)}
               >
-                🚚 Chờ xe
+                🚚 Awaiting Vehicle
               </Button>
             </div>
           );
@@ -447,7 +447,7 @@ export function OutboundOrdersTable() {
                       disabled
                       className="text-muted-foreground"
                     >
-                      ⏳ Chờ xe tới để chất hàng
+                      ⏳ Waiting for vehicle to arrive
                     </DropdownMenuItem>
                   </>
                 )}
@@ -460,7 +460,7 @@ export function OutboundOrdersTable() {
                       onClick={() => handleStartLoading(outboundOrder._id)}
                       className="text-orange-600"
                     >
-                      📦 Chất hàng lên xe
+                      📦 Load onto vehicle
                     </DropdownMenuItem>
                   </>
                 )}
@@ -473,7 +473,7 @@ export function OutboundOrdersTable() {
                       onClick={() => handleCompleteLoading(outboundOrder._id)}
                       className="text-green-600"
                     >
-                      ✅ Hoàn thành chất hàng
+                      ✅ Complete loading
                     </DropdownMenuItem>
                   </>
                 )}

@@ -73,6 +73,7 @@ import {
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
+import { ImportExcelButtonBrands } from "@/components/import-excel-button-brands";
 import type { BrandWithProductCount } from "@/lib/types";
 
 // CreateBrandDialog component
@@ -529,6 +530,9 @@ export function BrandsTable() {
                 })}
             </DropdownMenuContent>
           </DropdownMenu>
+
+          {/* Import Excel Button */}
+          <ImportExcelButtonBrands />
 
           {/* Create Brand Button */}
           <CreateBrandDialog />

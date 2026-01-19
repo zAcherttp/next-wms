@@ -102,13 +102,7 @@ export function OutboundOrderDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        {trigger || (
-          <span className="cursor-pointer text-sm hover:underline">
-            View details
-          </span>
-        )}
-      </DialogTrigger>
+      {trigger && <DialogTrigger asChild>{trigger}</DialogTrigger>}
       <DialogContent className="sm:max-w-2xl">
         <DialogTitle className="sr-only">Outbound Order Details</DialogTitle>
         {isPending || !orderDetail ? (
