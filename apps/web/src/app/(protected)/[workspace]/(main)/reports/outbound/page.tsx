@@ -71,6 +71,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { exportReportToPDF, formatDateRange } from "@/lib/pdf-export";
@@ -100,6 +105,8 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "#dc2626", // Red
 };
 
+type OutboundFilter = "all" | "completed" | "shipped" | "pending" | "in-progress";
+
 export default function OutboundReportPage() {
   const { userId, organizationId } = useCurrentUser();
   const { currentBranch } = useBranches({
@@ -113,6 +120,9 @@ export default function OutboundReportPage() {
   const updateFromPicker = useDateFilterStore(
     (state) => state.updateFromPicker,
   );
+
+  // Filter state
+  const [filter, setFilter] = React.useState<OutboundFilter>("all");
 
   // Calculate date range timestamps
   const startDate =
@@ -148,6 +158,28 @@ export default function OutboundReportPage() {
     ),
     enabled: !!currentBranch,
   });
+
+  // Client-side filtering for better performance
+  const filteredOrders = React.useMemo(() => {
+    if (!orders) return [];
+    if (filter === "all") return orders;
+    
+    return orders.filter((order) => {
+      const statusCode = order.statusCode.toUpperCase();
+      switch (filter) {
+        case "completed":
+          return statusCode === "COMPLETED";
+        case "shipped":
+          return statusCode === "SHIPPED";
+        case "pending":
+          return statusCode === "PENDING" || statusCode === "DRAFT";
+        case "in-progress":
+          return statusCode === "IN_PROGRESS" || statusCode === "PICKING" || statusCode === "PACKING";
+        default:
+          return true;
+      }
+    });
+  }, [orders, filter]);
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -296,7 +328,7 @@ export default function OutboundReportPage() {
   );
 
   const table = useReactTable({
-    data: orders ?? [],
+    data: filteredOrders,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -369,48 +401,37 @@ export default function OutboundReportPage() {
             variant="outline"
             size="sm"
             onClick={() => {
-              if (!orders) return;
+              if (filteredOrders.length === 0) return;
               exportReportToPDF({
                 title: "Outbound Report",
                 subtitle: "Order Fulfillment & Shipping Performance",
                 dateRange: formatDateRange(dateRange.from, dateRange.to),
                 branchName: currentBranch?.name,
                 kpis: [
-                  {
-                    label: "Total Orders",
-                    value: summary?.kpis.totalOrders ?? 0,
-                  },
-                  {
-                    label: "Items Shipped",
-                    value:
-                      summary?.kpis.totalItemsShipped?.toLocaleString() ?? "0",
-                  },
-                  {
-                    label: "Avg Items/Order",
-                    value: summary?.kpis.avgItemsPerOrder ?? 0,
-                  },
-                  {
-                    label: "Fulfillment Rate",
-                    value: `${summary?.kpis.fulfillmentRate ?? 0}%`,
-                  },
-                  {
-                    label: "Pick Sessions",
-                    value: summary?.kpis.totalPickingSessions ?? 0,
-                  },
+                  { label: "Total Orders", value: summary?.kpis.totalOrders ?? 0 },
+                  { label: "Items Shipped", value: summary?.kpis.totalItemsShipped?.toLocaleString() ?? "0" },
+                  { label: "Avg Items/Order", value: summary?.kpis.avgItemsPerOrder ?? 0 },
+                  { label: "Fulfillment Rate", value: `${summary?.kpis.overallFulfillmentRate ?? 0}%` },
+                  { label: "Pick Sessions", value: summary?.kpis.totalPickingSessions ?? 0 },
                 ],
-                tableHeaders: [
-                  "Order ID",
-                  "Order Date",
-                  "Created By",
-                  "Status",
-                  "SKUs",
-                  "Requested",
-                  "Picked",
-                  "Packed",
-                  "Fulfillment",
-                  "Tracking",
-                ],
-                tableData: orders.map((o) => [
+                pieChart: statusChartData.length > 0 ? {
+                  title: "Order Status Breakdown",
+                  data: statusChartData.map((item) => ({
+                    name: item.name,
+                    value: item.value,
+                    color: STATUS_COLORS[item.code] || undefined,
+                  })),
+                } : undefined,
+                barChart: topProductsData.length > 0 ? {
+                  title: "Top Products Shipped",
+                  data: topProductsData.map((item) => ({
+                    name: item.productName,
+                    value: item.quantity,
+                  })),
+                  valueLabel: "Quantity Shipped",
+                } : undefined,
+                tableHeaders: ["Order ID", "Order Date", "Created By", "Status", "SKUs", "Requested", "Picked", "Packed", "Fulfillment", "Tracking"],
+                tableData: filteredOrders.map((o) => [
                   o.orderCode,
                   new Date(o.orderDate).toLocaleDateString(),
                   o.createdByName,
@@ -425,7 +446,7 @@ export default function OutboundReportPage() {
                 fileName: `outbound-report-${new Date().toISOString().split("T")[0]}`,
               });
             }}
-            disabled={!orders || orders.length === 0}
+            disabled={filteredOrders.length === 0}
           >
             <Download className="mr-2 h-4 w-4" />
             Export
@@ -749,10 +770,54 @@ export default function OutboundReportPage() {
       {/* Detailed Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Outbound Orders</CardTitle>
-          <CardDescription>
-            Detailed list of all outbound orders in the selected period
-          </CardDescription>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>Outbound Orders</CardTitle>
+              <CardDescription>
+                Detailed list of all outbound orders in the selected period
+              </CardDescription>
+            </div>
+            <Tabs
+              value={filter}
+              onValueChange={(v) => setFilter(v as OutboundFilter)}
+            >
+              <TabsList>
+                <TabsTrigger value="all">All Orders</TabsTrigger>
+                <TabsTrigger value="completed">
+                  Completed
+                  {summary?.statusBreakdown.find(s => s.statusCode === "COMPLETED")?.count ? (
+                    <Badge variant="secondary" className="ml-1">
+                      {summary.statusBreakdown.find(s => s.statusCode === "COMPLETED")?.count}
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+                <TabsTrigger value="shipped">
+                  Shipped
+                  {summary?.statusBreakdown.find(s => s.statusCode === "SHIPPED")?.count ? (
+                    <Badge variant="secondary" className="ml-1">
+                      {summary.statusBreakdown.find(s => s.statusCode === "SHIPPED")?.count}
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+                <TabsTrigger value="in-progress">
+                  In Progress
+                  {summary?.statusBreakdown && summary.statusBreakdown.filter(s => ["IN_PROGRESS", "PICKING", "PACKING"].includes(s.statusCode)).reduce((sum, s) => sum + s.count, 0) > 0 ? (
+                    <Badge variant="secondary" className="ml-1">
+                      {summary.statusBreakdown.filter(s => ["IN_PROGRESS", "PICKING", "PACKING"].includes(s.statusCode)).reduce((sum, s) => sum + s.count, 0)}
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+                <TabsTrigger value="pending">
+                  Pending
+                  {summary?.statusBreakdown && summary.statusBreakdown.filter(s => ["PENDING", "DRAFT"].includes(s.statusCode)).reduce((sum, s) => sum + s.count, 0) > 0 ? (
+                    <Badge variant="secondary" className="ml-1">
+                      {summary.statusBreakdown.filter(s => ["PENDING", "DRAFT"].includes(s.statusCode)).reduce((sum, s) => sum + s.count, 0)}
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">

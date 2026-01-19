@@ -50,22 +50,22 @@ interface InfoItemProps {
 
 function InfoItem({ icon, label, value, subValue }: InfoItemProps) {
   return (
-    <div className="flex items-start gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all hover:bg-accent/5">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+    <div className="group flex items-start gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:shadow-md hover:border-primary/20">
+      <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary/10 to-primary/5 text-primary transition-transform duration-200 group-hover:scale-105">
         {icon}
       </div>
       <div className="min-w-0 flex-1">
-        <p className="mb-1 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+        <p className="mb-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wider">
           {label}
         </p>
         <p
-          className="truncate font-semibold text-base leading-tight"
+          className="truncate font-semibold text-base leading-tight text-foreground"
           title={String(value)}
         >
           {value ?? "-"}
         </p>
         {subValue && (
-          <p className="mt-1 text-muted-foreground text-xs">{subValue}</p>
+          <p className="mt-1.5 text-muted-foreground text-xs">{subValue}</p>
         )}
       </div>
     </div>
@@ -81,12 +81,12 @@ interface StatCardProps {
 
 function StatCard({ label, value, className, valueClassName }: StatCardProps) {
   return (
-    <Card className={cn("overflow-hidden", className)}>
+    <Card className={cn("overflow-hidden border shadow-sm transition-all duration-200 hover:shadow-md", className)}>
       <CardContent className="p-6">
-        <p className="mb-2 font-semibold text-muted-foreground text-xs uppercase tracking-wider">
+        <p className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
           {label}
         </p>
-        <p className={cn("font-bold text-3xl tracking-tight", valueClassName)}>
+        <p className={cn("font-bold text-4xl tracking-tight", valueClassName)}>
           {value}
         </p>
       </CardContent>
@@ -153,14 +153,6 @@ export default function ProductInventoryDetailPage() {
       month: "short",
       day: "numeric",
     });
-  };
-
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: "USD",
-      maximumFractionDigits: 2,
-    }).format(amount);
   };
 
   if (isLoading) {
@@ -239,7 +231,7 @@ export default function ProductInventoryDetailPage() {
 
       {/* Page Content */}
       <div className="flex-1 overflow-y-auto bg-muted/5">
-        <div className="mx-auto max-w-[1600px] space-y-8 p-6 lg:p-8">
+        <div className="mx-auto max-w-400 space-y-8 p-6 lg:p-8">
           {/* SECTION 1: Header Info & Attributes */}
           <div className="space-y-6">
             <div className="flex flex-col items-start justify-between gap-6 md:flex-row">
@@ -295,26 +287,24 @@ export default function ProductInventoryDetailPage() {
           <Separator />
 
           {/* SECTION 2: Summary Statistics */}
-          <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatCard
               label="Total Quantity"
               value={productDetail.summary.totalQuantity.toLocaleString()}
-              className="border-blue-100 bg-blue-50/50"
+              className="border-blue-100 bg-linear-to-br from-blue-50 to-blue-100/50"
               valueClassName="text-blue-700"
             />
             <StatCard
               label="Active Variants"
               value={productDetail.summary.totalVariants}
+              className="border-purple-100 bg-linear-to-br from-purple-50 to-purple-100/50"
+              valueClassName="text-purple-700"
             />
             <StatCard
               label="Total Batches"
               value={productDetail.summary.totalBatches}
-            />
-            <StatCard
-              label="Total Value"
-              value={formatCurrency(productDetail.summary.totalValue)}
-              className="border-green-100 bg-green-50/50"
-              valueClassName="text-green-700"
+              className="border-amber-100 bg-linear-to-br from-amber-50 to-amber-100/50"
+              valueClassName="text-amber-700"
             />
           </div>
 
@@ -338,9 +328,7 @@ export default function ProductInventoryDetailPage() {
                     <TableRow>
                       <TableHead className="pl-6">SKU Code</TableHead>
                       <TableHead>Description</TableHead>
-                      <TableHead className="text-right">Qty</TableHead>
-                      <TableHead className="text-right">Cost</TableHead>
-                      <TableHead className="text-right">Price</TableHead>
+                      <TableHead className="text-right">Quantity</TableHead>
                       <TableHead>Properties</TableHead>
                       <TableHead className="pr-6">Barcodes</TableHead>
                     </TableRow>
@@ -349,7 +337,7 @@ export default function ProductInventoryDetailPage() {
                     {productDetail.variants.length === 0 ? (
                       <TableRow>
                         <TableCell
-                          colSpan={7}
+                          colSpan={5}
                           className="h-32 text-center text-muted-foreground"
                         >
                           No variants found.
@@ -372,23 +360,17 @@ export default function ProductInventoryDetailPage() {
                           <TableCell className="text-right">
                             <span
                               className={cn(
-                                "inline-block min-w-7.5 font-bold",
+                                "inline-flex items-center justify-center min-w-12 rounded-md px-2 py-1 font-bold text-sm",
                                 variant.totalQuantity === 0
-                                  ? "text-red-600"
+                                  ? "bg-red-100 text-red-700"
                                   : variant.totalQuantity <=
                                       (productDetail.product.reorderPoint ?? 10)
-                                    ? "text-yellow-600"
-                                    : "text-foreground",
+                                    ? "bg-yellow-100 text-yellow-700"
+                                    : "bg-green-100 text-green-700",
                               )}
                             >
                               {variant.totalQuantity.toLocaleString()}
                             </span>
-                          </TableCell>
-                          <TableCell className="text-right text-muted-foreground">
-                            {formatCurrency(variant.costPrice)}
-                          </TableCell>
-                          <TableCell className="text-right font-medium">
-                            {formatCurrency(variant.sellingPrice)}
                           </TableCell>
                           <TableCell>
                             <div className="flex flex-wrap gap-1.5">
@@ -516,7 +498,7 @@ export default function ProductInventoryDetailPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              <span className="font-bold">
+                              <span className="inline-flex items-center justify-center min-w-12 rounded-md bg-blue-100 px-2 py-1 font-bold text-sm text-blue-700">
                                 {batch.quantity.toLocaleString()}
                               </span>
                             </TableCell>

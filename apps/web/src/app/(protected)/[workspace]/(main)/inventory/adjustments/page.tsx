@@ -4,15 +4,13 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
-import { Plus } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { LocationTransferDialog } from "@/components/location-transfer-dialog";
+import { MultiQuantityAdjustmentDialog } from "@/components/multi-quantity-adjustment-dialog";
 import { NewAdjustmentRequestDialog } from "@/components/new-adjustment-request-dialog";
-import { QuantityAdjustmentDialog } from "@/components/quantity-adjustment-dialog";
 import { LocationAdjustmentsTable } from "@/components/table/location-adjustments-table";
 import { QuantityAdjustmentsTable } from "@/components/table/quantity-adjustments-table";
-import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -148,7 +146,7 @@ export default function Page() {
         />
       )}
       {isQuantityDialogOpen && (
-        <QuantityAdjustmentDialog
+        <MultiQuantityAdjustmentDialog
           open={isQuantityDialogOpen}
           onOpenChange={setIsQuantityDialogOpen}
         />
@@ -160,6 +158,34 @@ export default function Page() {
         />
       )}
 
+      {/* Stats Cards */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <StatCard
+          title="Total Quantity Requests"
+          value={displayStats.totalQuantityRequests}
+          bgColor="bg-card"
+          textColor="text-foreground"
+        />
+        <StatCard
+          title="Pending Approval"
+          value={displayStats.pendingApproval}
+          bgColor="bg-yellow-500/5"
+          textColor="text-yellow-600"
+        />
+        <StatCard
+          title="Approved"
+          value={displayStats.approved}
+          bgColor="bg-green-500/5"
+          textColor="text-green-600"
+        />
+        <StatCard
+          title="Rejected"
+          value={displayStats.rejected}
+          bgColor="bg-red-500/5"
+          textColor="text-red-600"
+        />
+      </div>
+
       {/* Tabs */}
       <Tabs defaultValue="quantity" className="w-full">
         <TabsList className="grid w-full max-w-md grid-cols-2">
@@ -167,63 +193,21 @@ export default function Page() {
           <TabsTrigger value="location">Location Adjustments</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="quantity" className="mt-6 space-y-6">
-          {/* Stats Cards */}
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <StatCard
-              title="Total Quantity Requests"
-              value={displayStats.totalQuantityRequests}
-              bgColor="bg-card"
-              textColor="text-foreground"
-            />
-            <StatCard
-              title="Pending Approval"
-              value={displayStats.pendingApproval}
-              bgColor="bg-yellow-500/5"
-              textColor="text-yellow-600"
-            />
-            <StatCard
-              title="Approved"
-              value={displayStats.approved}
-              bgColor="bg-green-500/5"
-              textColor="text-green-600"
-            />
-            <StatCard
-              title="Rejected"
-              value={displayStats.rejected}
-              bgColor="bg-red-500/5"
-              textColor="text-red-600"
-            />
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2">
-            <Button size="sm" onClick={() => setIsNewRequestDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Request
-            </Button>
-          </div>
-
+        <TabsContent value="quantity" className="mt-6">
           {/* Quantity Adjustments Table */}
           <QuantityAdjustmentsTable
             onApprove={handleApprove}
             onReject={handleReject}
+            onNewRequest={() => setIsNewRequestDialogOpen(true)}
           />
         </TabsContent>
 
-        <TabsContent value="location" className="mt-6 space-y-6">
-          {/* Action Buttons */}
-          <div className="flex items-center justify-end gap-2">
-            <Button size="sm" onClick={() => setIsNewRequestDialogOpen(true)}>
-              <Plus className="mr-2 h-4 w-4" />
-              New Request
-            </Button>
-          </div>
-
+        <TabsContent value="location" className="mt-6">
           {/* Location Adjustments Table */}
           <LocationAdjustmentsTable
             onApprove={handleApprove}
             onReject={handleReject}
+            onNewRequest={() => setIsNewRequestDialogOpen(true)}
           />
         </TabsContent>
       </Tabs>
