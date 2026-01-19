@@ -86,10 +86,10 @@ export function QuantityAdjustmentDialog({
     multiple: true,
   });
 
-  // Fetch storage zones for this branch
+  // Fetch storage zones for this branch (only rack-type zones)
   const { data: zones, isLoading: isLoadingZones } = useQuery({
     ...convexQuery(
-      api.cycleCount.getStorageZones,
+      api.storageZones.getRackByBranch,
       open && currentBranch?._id
         ? { branchId: currentBranch._id as Id<"branches"> }
         : "skip",

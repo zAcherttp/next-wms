@@ -82,10 +82,10 @@ const NAV_DATA = [
         title: "Products",
         url: "/inventory/products",
       },
-      {
-        title: "Stock",
-        url: "/inventory/stock",
-      },
+      // {
+      //   title: "Stock",
+      //   url: "/inventory/stock",
+      // },
       // {
       //   title: "Batches",
       //   url: "/inventory/batches",

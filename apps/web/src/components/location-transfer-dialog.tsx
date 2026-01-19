@@ -78,10 +78,10 @@ export function LocationTransferDialog({
   // Item Selection
   const [selectedBatches, setSelectedBatches] = React.useState<string[]>([]);
 
-  // Fetch storage zones for this branch
+  // Fetch storage zones for this branch (only rack-type zones)
   const { data: zones, isLoading: isLoadingZones } = useQuery({
     ...convexQuery(
-      api.cycleCount.getStorageZones,
+      api.storageZones.getRackByBranch,
       open && currentBranch?._id
         ? { branchId: currentBranch._id as Id<"branches"> }
         : "skip",
