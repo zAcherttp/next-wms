@@ -22,6 +22,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { logCRUDAction } from "./audit";
 
 /**
  * LIST - Get all suppliers with pagination and filters
@@ -204,6 +205,16 @@ export const create = mutation({
       isDeleted: false,
     });
 
+    // Log audit for supplier creation
+    await logCRUDAction(ctx, {
+      organizationId,
+      action: "CREATE",
+      entityType: "suppliers",
+      entityId: supplierId,
+      newValue: { name, email, contactPerson },
+      notes: `Created supplier "${name}"`,
+    });
+
     return supplierId;
   },
 });
@@ -301,6 +312,17 @@ export const update = mutation({
 
     await ctx.db.patch(id, updates);
 
+    // Log audit for supplier update
+    await logCRUDAction(ctx, {
+      organizationId: supplier.organizationId,
+      action: "UPDATE",
+      entityType: "suppliers",
+      entityId: id,
+      oldValue: { name: supplier.name, email: supplier.email },
+      newValue: updates,
+      notes: `Updated supplier "${supplier.name}"`,
+    });
+
     return id;
   },
 });
@@ -338,6 +360,16 @@ export const remove = mutation({
     await ctx.db.patch(args.id, {
       isDeleted: true,
       deletedAt: Date.now(),
+    });
+
+    // Log audit for supplier deletion
+    await logCRUDAction(ctx, {
+      organizationId: supplier.organizationId,
+      action: "DELETE",
+      entityType: "suppliers",
+      entityId: args.id,
+      oldValue: { name: supplier.name, email: supplier.email },
+      notes: `Deleted supplier "${supplier.name}"`,
     });
 
     return args.id;

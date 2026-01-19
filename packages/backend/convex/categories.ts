@@ -20,6 +20,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { logCRUDAction } from "./audit";
 
 /**
  * LIST - Get all categories with pagination
@@ -228,6 +229,16 @@ export const create = mutation({
       isDeleted: false,
     });
 
+    // Log audit for category creation
+    await logCRUDAction(ctx, {
+      organizationId,
+      action: "CREATE",
+      entityType: "categories",
+      entityId: categoryId,
+      newValue: { name, path },
+      notes: `Created category "${name}"`,
+    });
+
     return categoryId;
   },
 });
@@ -270,6 +281,17 @@ export const update = mutation({
 
     await ctx.db.patch(id, updates);
 
+    // Log audit for category update
+    await logCRUDAction(ctx, {
+      organizationId: category.organizationId,
+      action: "UPDATE",
+      entityType: "categories",
+      entityId: id,
+      oldValue: { name: category.name },
+      newValue: updates,
+      notes: `Updated category "${category.name}"`,
+    });
+
     return id;
   },
 });
@@ -308,6 +330,16 @@ export const remove = mutation({
     await ctx.db.patch(args.id, {
       isDeleted: true,
       deletedAt: Date.now(),
+    });
+
+    // Log audit for category deletion
+    await logCRUDAction(ctx, {
+      organizationId: category.organizationId,
+      action: "DELETE",
+      entityType: "categories",
+      entityId: args.id,
+      oldValue: { name: category.name, path: category.path },
+      notes: `Deleted category "${category.name}"`,
     });
 
     return args.id;

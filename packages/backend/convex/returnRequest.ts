@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { logCRUDAction } from "./audit";
 
 // ================================================================
 // HELPER FUNCTIONS
@@ -545,6 +546,16 @@ export const createReturnRequest = mutation({
       });
     }
 
+    // Log audit for return request creation
+    await logCRUDAction(ctx, {
+      organizationId: args.organizationId as Id<"organizations">,
+      action: "CREATE",
+      entityType: "return_requests",
+      entityId: returnRequestId,
+      newValue: { requestCode: args.requestCode, itemCount: args.details.length },
+      notes: `Created return request ${args.requestCode} with ${args.details.length} items`,
+    });
+
     // Step 4: Return the newly created return request ID
     return returnRequestId;
   },
@@ -642,6 +653,16 @@ export const approveReturnRequest = mutation({
     if (returnRequest.purchaseOrderId) {
       await checkAndCompleteReceiveSession(ctx, returnRequest.purchaseOrderId);
     }
+
+    // Log audit for return request approval
+    await logCRUDAction(ctx, {
+      organizationId: returnRequest.organizationId as Id<"organizations">,
+      action: "UPDATE",
+      entityType: "return_requests",
+      entityId: args.returnRequestId,
+      newValue: { status: "APPROVED" },
+      notes: `Approved return request ${returnRequest.requestCode}`,
+    });
 
     return args.returnRequestId;
   },
@@ -835,6 +856,16 @@ export const rejectReturnRequest = mutation({
     if (returnRequest.purchaseOrderId) {
       await checkAndCompleteReceiveSession(ctx, returnRequest.purchaseOrderId);
     }
+
+    // Log audit for return request rejection
+    await logCRUDAction(ctx, {
+      organizationId: returnRequest.organizationId as Id<"organizations">,
+      action: "UPDATE",
+      entityType: "return_requests",
+      entityId: args.returnRequestId,
+      newValue: { status: "REJECTED", batchesCreated: createdBatches.length },
+      notes: `Rejected return request ${returnRequest.requestCode}, created ${createdBatches.length} inventory batches`,
+    });
 
     return {
       returnRequestId: args.returnRequestId,

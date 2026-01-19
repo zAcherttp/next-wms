@@ -86,22 +86,22 @@ const NAV_DATA = [
         title: "Stock",
         url: "/inventory/stock",
       },
-      {
-        title: "Batches",
-        url: "/inventory/batches",
-      },
-      {
-        title: "Serials",
-        url: "/inventory/serials",
-      },
+      // {
+      //   title: "Batches",
+      //   url: "/inventory/batches",
+      // },
+      // {
+      //   title: "Serials",
+      //   url: "/inventory/serials",
+      // },
       {
         title: "Adjustments",
         url: "/inventory/adjustments",
       },
-      {
-        title: "Transfers",
-        url: "/inventory/transfers",
-      },
+      // {
+      //   title: "Transfers",
+      //   url: "/inventory/transfers",
+      // },
       {
         title: "Cycle Count",
         url: "/inventory/cycle-count",
@@ -117,10 +117,10 @@ const NAV_DATA = [
         title: "Zones",
         url: "/warehouses-ops/zones",
       },
-      {
-        title: "Work Sessions",
-        url: "/warehouses-ops/work-sessions",
-      },
+      // {
+      //   title: "Work Sessions",
+      //   url: "/warehouses-ops/work-sessions",
+      // },
     ],
     permission: { warehouse: ["read"] },
   },

@@ -91,7 +91,7 @@ export default function ProductsInventoryPage() {
     <div className="flex flex-col gap-6 p-4">
       {/* Page Header */}
       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+        {/* <div>
           <h1 className="font-bold text-2xl tracking-tight">
             Product Inventory
           </h1>
@@ -101,7 +101,7 @@ export default function ProductsInventoryPage() {
               <span className="font-medium"> - {currentBranch.name}</span>
             )}
           </p>
-        </div>
+        </div> */}
         <Button
           variant="outline"
           size="sm"
