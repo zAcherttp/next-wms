@@ -12,13 +12,15 @@ import {
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   Boxes,
   ChevronLeft,
   ChevronRight,
-  Clock,
   ClipboardList,
+  Clock,
+  ListTodo,
   MoreHorizontal,
   Package,
   PackageCheck,
@@ -26,11 +28,15 @@ import {
   Truck,
   Warehouse,
 } from "lucide-react";
+import type { Route } from "next";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import * as React from "react";
 import { useMemo } from "react";
-import { ChartDataCard, type ChartDataPoint } from "@/components/chart-data-card";
+import {
+  ChartDataCard,
+  type ChartDataPoint,
+} from "@/components/chart-data-card";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -52,6 +58,15 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -92,7 +107,7 @@ type RecentActivity = {
 };
 
 export default function DashboardPage() {
-  const { userId, organizationId } = useCurrentUser();
+  const { organizationId } = useCurrentUser();
   const params = useParams();
   const workspace = params.workspace as string;
 
@@ -108,7 +123,6 @@ export default function DashboardPage() {
   const setProjectionStyle = useChartStore((state) => state.setProjectionStyle);
 
   // Date range state - use local state for stable API calls
-  const selectedPreset = useDateFilterStore((state) => state.selectedPreset);
   const periodLabel = useDateFilterStore((state) => state.periodLabel);
   const dateRange = useDateFilterStore((state) => state.dateRange);
   const updateFromPicker = useDateFilterStore(
@@ -155,19 +169,21 @@ export default function DashboardPage() {
 
   // Get icon for entity type
   const getActivityIcon = (entityType: string) => {
+    const cn = "size-5 text-gray-500";
+
     switch (entityType.toLowerCase()) {
       case "purchase_orders":
-        return <Package className="h-4 w-4 text-blue-500" />;
+        return <Package className={cn} />;
       case "outbound_orders":
-        return <Truck className="h-4 w-4 text-green-500" />;
+        return <Truck className={cn} />;
       case "receive_sessions":
-        return <PackageCheck className="h-4 w-4 text-purple-500" />;
+        return <PackageCheck className={cn} />;
       case "inventory_batches":
-        return <Boxes className="h-4 w-4 text-orange-500" />;
+        return <Boxes className={cn} />;
       case "return_requests":
-        return <RotateCcw className="h-4 w-4 text-red-500" />;
+        return <RotateCcw className={cn} />;
       default:
-        return <ClipboardList className="h-4 w-4 text-gray-500" />;
+        return <ClipboardList className={cn} />;
     }
   };
 
@@ -214,14 +230,16 @@ export default function DashboardPage() {
 
     // Create trend data from orderActivityTrend
     const trendData: ChartDataPoint[] =
-      dashboardData.orderActivityTrend?.map((item: { date: string; inbound: number; outbound: number }) => ({
-        label: new Date(item.date).toLocaleDateString("en-US", {
-          month: "short",
-          day: "numeric",
+      dashboardData.orderActivityTrend?.map(
+        (item: { date: string; inbound: number; outbound: number }) => ({
+          label: new Date(item.date).toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          }),
+          value: item.inbound + item.outbound,
+          isProjected: false,
         }),
-        value: item.inbound + item.outbound,
-        isProjected: false,
-      })) ?? [];
+      ) ?? [];
 
     return [
       {
@@ -279,14 +297,7 @@ export default function DashboardPage() {
         cell: ({ row }) => {
           const type = row.getValue("type") as string;
           return (
-            <Badge
-              variant="outline"
-              className={cn(
-                type === "Inbound"
-                  ? "border-blue-200 bg-blue-50 text-blue-700"
-                  : "border-green-200 bg-green-50 text-green-700",
-              )}
-            >
+            <Badge variant="outline" className={getBadgeStyleByStatus(type)}>
               {type}
             </Badge>
           );
@@ -298,10 +309,7 @@ export default function DashboardPage() {
         cell: ({ row }) => {
           const status = row.getValue("status") as string;
           return (
-            <Badge
-              variant="outline"
-              className={cn("rounded-sm", getBadgeStyleByStatus(status))}
-            >
+            <Badge variant="outline" className={getBadgeStyleByStatus(status)}>
               {status}
             </Badge>
           );
@@ -309,18 +317,18 @@ export default function DashboardPage() {
       },
       {
         accessorKey: "itemCount",
-        header: () => <div className="text-right">Items</div>,
+        header: () => <div className="text-center">Items</div>,
         cell: ({ row }) => (
-          <div className="text-right">{row.getValue("itemCount")}</div>
+          <div className="text-center">{row.getValue("itemCount")}</div>
         ),
       },
       {
         accessorKey: "createdAt",
-        header: "Created",
+        header: () => <div className="text-center">Created</div>,
         cell: ({ row }) => {
           const timestamp = row.getValue("createdAt") as number;
           return (
-            <div className="text-muted-foreground">
+            <div className="text-center text-muted-foreground">
               {formatRelativeTime(timestamp)}
             </div>
           );
@@ -338,13 +346,13 @@ export default function DashboardPage() {
           return (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon-sm">
-                  <MoreHorizontal className="h-4 w-4" />
+                <Button variant="ghost" size="icon-sm" className="mr-0">
+                  <MoreHorizontal className="size-5" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem asChild>
-                  <Link href={viewUrl}>View details</Link>
+                  <Link href={viewUrl as Route}>View details</Link>
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
@@ -368,7 +376,7 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="mb-20 flex flex-col gap-4">
       {/* Header with date picker and chart settings */}
       <div className="flex flex-row items-center justify-between">
         <DateRangePicker
@@ -436,190 +444,192 @@ export default function DashboardPage() {
 
       {/* Dashboard Cards - 4 cards with charts */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {isPending ? (
-          <>
-            {[1, 2, 3, 4].map((i) => (
+        {isPending
+          ? [1, 2, 3, 4].map((i) => (
               <div
                 key={i}
                 className="h-32 animate-pulse rounded-xl border bg-card"
               />
+            ))
+          : cardsData.map((card) => (
+              <ChartDataCard
+                key={card.title}
+                title={card.title}
+                value={card.value}
+                changePercent={card.changePercent}
+                isPositive={card.isPositive}
+                periodLabel={periodLabel}
+                data={card.data}
+                color={card.color}
+              />
             ))}
-          </>
-        ) : (
-          cardsData.map((card) => (
-            <ChartDataCard
-              key={card.title}
-              title={card.title}
-              value={card.value}
-              changePercent={card.changePercent}
-              isPositive={card.isPositive}
-              periodLabel={periodLabel}
-              data={card.data}
-              color={card.color}
-            />
-          ))
-        )}
       </div>
 
-      {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Pending Actions</CardTitle>
-          <CardDescription>Tasks requiring attention</CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 md:grid-cols-3">
-          <Link
-            href={`/${workspace}/receiving-sessions`}
-            className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
-          >
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-purple-100 p-2">
-                <PackageCheck className="h-5 w-5 text-purple-600" />
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-[3fr_2fr]">
+        {/* Recent Activity */}
+        <Card className="shadow-none">
+          <CardHeader className="gap-0">
+            <CardTitle className="flex items-center gap-4">
+              <div className="rounded-sm border-2 bg-secondary/80 p-1.5">
+                <Activity className="size-5" />
               </div>
-              <div>
-                <p className="font-medium">Receive Sessions</p>
-                <p className="text-muted-foreground text-sm">
-                  Pending verification
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">
-                {dashboardData?.pendingActions?.receiveSessions ?? 0}
-              </Badge>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </Link>
-
-          <Link
-            href={`/${workspace}/orders`}
-            className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
-          >
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-green-100 p-2">
-                <Truck className="h-5 w-5 text-green-600" />
-              </div>
-              <div>
-                <p className="font-medium">Outbound Orders</p>
-                <p className="text-muted-foreground text-sm">
-                  Ready for picking
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">
-                {dashboardData?.pendingActions?.outboundOrders ?? 0}
-              </Badge>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </Link>
-
-          <Link
-            href={`/${workspace}/return-requests`}
-            className="flex items-center justify-between rounded-lg border p-4 transition-colors hover:bg-muted/50"
-          >
-            <div className="flex items-center gap-3">
-              <div className="rounded-full bg-red-100 p-2">
-                <RotateCcw className="h-5 w-5 text-red-600" />
-              </div>
-              <div>
-                <p className="font-medium">Return Requests</p>
-                <p className="text-muted-foreground text-sm">
-                  Awaiting review
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Badge variant="secondary">
-                {dashboardData?.pendingActions?.returnRequests ?? 0}
-              </Badge>
-              <ArrowRight className="h-4 w-4 text-muted-foreground" />
-            </div>
-          </Link>
-        </CardContent>
-      </Card>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Recent Activity</CardTitle>
-            <CardDescription>Latest updates across the system</CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {isPending ? (
-            <div className="space-y-3">
-              {[1, 2, 3, 4, 5].map((i) => (
-                <div key={i} className="flex items-center gap-3">
-                  <Skeleton className="h-8 w-8 rounded-full" />
-                  <Skeleton className="h-4 w-full" />
-                </div>
-              ))}
-            </div>
-          ) : (dashboardData?.recentActivity as RecentActivity[])?.length >
-            0 ? (
-            <div className="space-y-3">
-              {(dashboardData.recentActivity as RecentActivity[]).map(
-                (activity) => (
-                  <div
-                    key={activity._id}
-                    className="flex items-start gap-3 rounded-lg border p-3"
-                  >
-                    <div className="mt-0.5">
-                      {getActivityIcon(activity.entityType)}
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <p className="text-sm">
-                        <span className="font-medium">{activity.userName}</span>{" "}
-                        <span className="text-muted-foreground">
-                          {activity.action.toLowerCase()}
-                        </span>{" "}
-                        <span className="font-medium">
-                          {activity.entityType.replace(/_/g, " ")}
-                        </span>
-                        {activity.entityId && (
-                          <span className="text-muted-foreground">
-                            {" "}
-                            ({activity.entityId.slice(-8)})
-                          </span>
-                        )}
-                      </p>
-                      {activity.notes && (
-                        <p className="text-muted-foreground text-xs">
-                          {activity.notes}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-1 text-muted-foreground text-xs">
-                      <Clock className="h-3 w-3" />
-                      {formatRelativeTime(activity.timestamp)}
-                    </div>
+              Recent Activity
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isPending ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map((i) => (
+                  <div key={i} className="flex items-center gap-3">
+                    <Skeleton className="h-8 w-8 rounded-full" />
+                    <Skeleton className="h-4 w-full" />
                   </div>
-                ),
-              )}
-            </div>
-          ) : (
-            <div className="flex h-32 items-center justify-center text-muted-foreground">
-              No recent activity
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                ))}
+              </div>
+            ) : (dashboardData?.recentActivity as RecentActivity[])?.length >
+              0 ? (
+              <ScrollArea className="h-80 overflow-y-auto">
+                {(dashboardData?.recentActivity as RecentActivity[]).map(
+                  (activity) => (
+                    <Item
+                      key={activity._id}
+                      className="mb-3"
+                      variant={"outline"}
+                    >
+                      <ItemMedia variant={"icon"}>
+                        {getActivityIcon(activity.entityType)}
+                      </ItemMedia>
+                      <ItemContent>
+                        <ItemTitle className="text-sm">
+                          <span className="font-medium">
+                            {activity.userName}
+                          </span>{" "}
+                          <span className="text-muted-foreground">
+                            {activity.action.toLowerCase()}
+                          </span>{" "}
+                          <span className="font-medium">
+                            {activity.entityType.replace(/_/g, " ")}
+                          </span>
+                        </ItemTitle>
+                        {activity.notes && (
+                          <ItemDescription className="text-xs">
+                            {activity.notes}
+                          </ItemDescription>
+                        )}
+                      </ItemContent>
+                      <ItemActions>
+                        <div className="flex items-center gap-1 text-muted-foreground text-xs">
+                          <Clock className="h-3 w-3" />
+                          {formatRelativeTime(activity.timestamp)}
+                        </div>
+                      </ItemActions>
+                    </Item>
+                  ),
+                )}
+              </ScrollArea>
+            ) : (
+              <div className="flex h-80 items-center justify-center text-muted-foreground">
+                No recent activity
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
+        {/* Quick Actions */}
+        <Card className="shadow-none">
+          <CardHeader className="gap-0">
+            <CardTitle className="flex items-center gap-4">
+              <div className="rounded-sm border-2 bg-muted p-1.5">
+                <ListTodo className="size-5" />
+              </div>
+              Pending Actions
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-3 md:grid-rows-3">
+            <Link
+              href={`/${workspace}/receiving-sessions`}
+              className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-purple-500/20 p-2">
+                  <PackageCheck className="h-5 w-5 text-purple-500/80" />
+                </div>
+                <div>
+                  <p className="font-medium">Receive Sessions</p>
+                  <p className="text-muted-foreground text-sm">
+                    Pending verification
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">
+                  {dashboardData?.pendingActions?.receiveSessions ?? 0}
+                </Badge>
+                <ArrowRight className="size-5 text-muted-foreground" />
+              </div>
+            </Link>
+
+            <Link
+              href={`/${workspace}/orders`}
+              className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-green-500/20 p-2">
+                  <Truck className="h-5 w-5 text-green-500/80" />
+                </div>
+                <div>
+                  <p className="font-medium">Outbound Orders</p>
+                  <p className="text-muted-foreground text-sm">
+                    Ready for picking
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">
+                  {dashboardData?.pendingActions?.outboundOrders ?? 0}
+                </Badge>
+                <ArrowRight className="size-5 text-muted-foreground" />
+              </div>
+            </Link>
+
+            <Link
+              href={`/${workspace}/return-requests`}
+              className="flex items-center justify-between rounded-lg border p-3 transition-colors hover:bg-muted/50"
+            >
+              <div className="flex items-center gap-3">
+                <div className="rounded-full bg-red-500/20 p-2">
+                  <RotateCcw className="h-5 w-5 text-red-500/80" />
+                </div>
+                <div>
+                  <p className="font-medium">Return Requests</p>
+                  <p className="text-muted-foreground text-sm">
+                    Awaiting review
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">
+                  {dashboardData?.pendingActions?.returnRequests ?? 0}
+                </Badge>
+                <ArrowRight className="size-5 text-muted-foreground" />
+              </div>
+            </Link>
+          </CardContent>
+        </Card>
+      </div>
       {/* Recent Orders Table */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>
-              Latest inbound and outbound orders
-            </CardDescription>
-          </div>
+          <CardTitle className="flex items-center gap-4">
+            <div className="rounded-sm border-2 bg-muted p-1.5">
+              <ListTodo className="size-5" />
+            </div>
+            Recent Orders
+          </CardTitle>
           <Link href={`/${workspace}/inbound-orders`}>
             <Button variant="outline" size="sm">
               View All
-              <ArrowRight className="ml-2 h-4 w-4" />
+              <ArrowRight className="ml-2 size-5" />
             </Button>
           </Link>
         </CardHeader>
@@ -680,14 +690,14 @@ export default function DashboardPage() {
             </Table>
           </div>
           {/* Pagination */}
-          <div className="flex items-center justify-end space-x-2 py-4">
+          <div className="flex items-center justify-end space-x-2 pt-4">
             <Button
               variant="outline"
               size="icon"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="size-5" />
             </Button>
             <Button
               variant="outline"
@@ -695,7 +705,7 @@ export default function DashboardPage() {
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="size-5" />
             </Button>
           </div>
         </CardContent>
