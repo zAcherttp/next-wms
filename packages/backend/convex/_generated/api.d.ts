@@ -25,6 +25,7 @@ import type * as privateData from "../privateData.js";
 import type * as products from "../products.js";
 import type * as purchaseOrders from "../purchaseOrders.js";
 import type * as receiveSessions from "../receiveSessions.js";
+import type * as reports from "../reports.js";
 import type * as returnRequest from "../returnRequest.js";
 import type * as seedMockData from "../seedMockData.js";
 import type * as storageZones from "../storageZones.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   products: typeof products;
   purchaseOrders: typeof purchaseOrders;
   receiveSessions: typeof receiveSessions;
+  reports: typeof reports;
   returnRequest: typeof returnRequest;
   seedMockData: typeof seedMockData;
   storageZones: typeof storageZones;
