@@ -78,24 +78,8 @@ const data = {
           url: "/inventory/products",
         },
         {
-          title: "Stock",
-          url: "/inventory/stock",
-        },
-        {
-          title: "Batches",
-          url: "/inventory/batches",
-        },
-        {
-          title: "Serials",
-          url: "/inventory/serials",
-        },
-        {
           title: "Adjustments",
           url: "/inventory/adjustments",
-        },
-        {
-          title: "Transfers",
-          url: "/inventory/transfers",
         },
         {
           title: "Cycle Count",
