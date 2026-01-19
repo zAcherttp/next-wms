@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { logCRUDAction } from "./audit";
 import { createNotification } from "./notifications";
 
 /**
@@ -317,6 +318,17 @@ export const createOutboundOrder = mutation({
         });
       }
     }
+
+    // Log audit for outbound order creation
+    await logCRUDAction(ctx, {
+      organizationId: branch.organizationId,
+      userId: args.userId,
+      action: "CREATE",
+      entityType: "outbound_orders",
+      entityId: orderId,
+      newValue: { orderCode, itemCount: args.items.length },
+      notes: `Created outbound order ${orderCode} with ${args.items.length} items`,
+    });
 
     return {
       success: true,

@@ -1,6 +1,8 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { logCRUDAction } from "./audit";
+import { logInventoryTransaction } from "./inventory";
 import { createNotification } from "./notifications";
 
 // ================================================================
@@ -910,6 +912,21 @@ export const createReceiveSession = mutation({
       }
     }
 
+    // Log audit for receive session creation
+    await logCRUDAction(ctx, {
+      organizationId: branch.organizationId,
+      userId: args.userId,
+      action: "CREATE",
+      entityType: "receive_sessions",
+      entityId: receiveSessionId,
+      newValue: { 
+        receiveSessionCode, 
+        purchaseOrderCode: purchaseOrder.code,
+        itemCount: poDetails.length 
+      },
+      notes: `Created receive session ${receiveSessionCode} from PO ${purchaseOrder.code}`,
+    });
+
     return {
       success: true,
       receiveSessionId,
@@ -1435,6 +1452,18 @@ export const completeReceiveSession = mutation({
         receivedAt: Date.now(),
         batchStatusTypeId: activeBatchStatusId,
         isDeleted: false,
+      });
+
+      // Log inventory transaction for receiving
+      await logInventoryTransaction(ctx, {
+        organizationId: branch.organizationId,
+        batchId,
+        quantityBefore: 0,
+        quantityChange: item.quantityReceived,
+        quantityAfter: item.quantityReceived,
+        transactionType: "RECEIVE",
+        createdByUserId: args.verifiedByUserId ?? session.assignedWorkerId!,
+        notes: `Received ${item.quantityReceived} units into batch ${internalBatchNumber}`,
       });
 
       createdBatches.push({

@@ -1,8 +1,99 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
-import { internalMutation, mutation } from "./_generated/server";
+import { internalMutation, mutation, type MutationCtx } from "./_generated/server";
 import { logAudit } from "./audit";
 import { createNotification } from "./notifications";
+
+/**
+ * Get or create an inventory transaction type from system_lookups.
+ * Creates the lookup if it doesn't exist.
+ */
+async function getOrCreateTransactionType(
+  ctx: MutationCtx,
+  transactionType: "RECEIVE" | "SHIP" | "ADJUST" | "TRANSFER" | "PICK"
+): Promise<Id<"system_lookups">> {
+  // Try to find existing lookup
+  const existing = await ctx.db
+    .query("system_lookups")
+    .withIndex("lookupType_lookupCode", (q) =>
+      q.eq("lookupType", "InventoryTransactionType").eq("lookupCode", transactionType)
+    )
+    .first();
+
+  if (existing) {
+    return existing._id;
+  }
+
+  // Create if not exists
+  const lookupValues: Record<string, { value: string; order: number }> = {
+    RECEIVE: { value: "Receive", order: 1 },
+    SHIP: { value: "Ship", order: 2 },
+    ADJUST: { value: "Adjust", order: 3 },
+    TRANSFER: { value: "Transfer", order: 4 },
+    PICK: { value: "Pick", order: 5 },
+  };
+
+  const id = await ctx.db.insert("system_lookups", {
+    organizationId: undefined,
+    lookupType: "InventoryTransactionType",
+    lookupCode: transactionType,
+    lookupValue: lookupValues[transactionType].value,
+    description: `Inventory transaction type for ${transactionType.toLowerCase()} operations`,
+    sortOrder: lookupValues[transactionType].order,
+  });
+
+  return id;
+}
+
+/**
+ * Helper to log inventory transactions.
+ * Automatically handles transaction type lookup creation.
+ * Use this for tracking all inventory movements.
+ */
+export async function logInventoryTransaction(
+  ctx: MutationCtx,
+  args: {
+    organizationId: Id<"organizations">;
+    batchId?: Id<"inventory_batches">;
+    serialNumberId?: Id<"serial_numbers">;
+    quantityBefore: number;
+    quantityChange: number;
+    quantityAfter: number;
+    transactionType: "RECEIVE" | "SHIP" | "ADJUST" | "TRANSFER" | "PICK";
+    createdByUserId: Id<"users">;
+    notes?: string;
+    // Source document references
+    purchaseOrderDetailId?: Id<"purchase_order_details">;
+    transferOrderDetailId?: Id<"transfer_order_details">;
+    workSessionId?: Id<"work_sessions">;
+    adjustmentRequestDetailId?: Id<"adjustment_request_details">;
+    outboundOrderDetailId?: Id<"outbound_order_details">;
+  }
+) {
+  try {
+    const transactionTypeId = await getOrCreateTransactionType(ctx, args.transactionType);
+
+    await ctx.db.insert("inventory_transactions", {
+      organizationId: args.organizationId,
+      batchId: args.batchId,
+      serialNumberId: args.serialNumberId,
+      quantityBefore: args.quantityBefore,
+      quantityChange: args.quantityChange,
+      quantityAfter: args.quantityAfter,
+      inventoryTransactionTypeId: transactionTypeId,
+      createdByUserId: args.createdByUserId,
+      notes: args.notes,
+      purchaseOrderDetailId: args.purchaseOrderDetailId,
+      transferOrderDetailId: args.transferOrderDetailId,
+      workSessionId: args.workSessionId,
+      adjustmentRequestDetailId: args.adjustmentRequestDetailId,
+      outboundOrderDetailId: args.outboundOrderDetailId,
+    });
+  } catch (error) {
+    // Log error but don't throw - transaction logging should not break main operations
+    console.error("Failed to log inventory transaction:", error);
+  }
+}
 
 /**
  * Adjust inventory quantity (increase or decrease).

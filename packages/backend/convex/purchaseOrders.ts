@@ -1,6 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
-
+import { logCRUDAction } from "./audit";
 /**
  * Generate the next purchase order code
  * Format: PO-YYYY-MM-XXX where XXX is a 3-digit sequence number for the month
@@ -274,6 +274,17 @@ export const createPurchaseOrder = mutation({
         recommendedZoneId: item.zoneId,
       });
     }
+
+    // Log audit for purchase order creation
+    await logCRUDAction(ctx, {
+      organizationId: branch.organizationId,
+      userId: args.userId,
+      action: "CREATE",
+      entityType: "purchase_orders",
+      entityId: orderId,
+      newValue: { code, supplierId: args.supplierId, itemCount: args.items.length },
+      notes: `Created purchase order ${code} with ${args.items.length} items`,
+    });
 
     return {
       success: true,
@@ -597,6 +608,19 @@ export const cancelPurchaseOrder = mutation({
     // Update purchase order status
     await ctx.db.patch(args.purchaseOrderId, {
       purchaseOrderStatusTypeId: cancelledStatus._id,
+    });
+
+    // Log audit for purchase order cancellation
+    await logCRUDAction(ctx, {
+      organizationId: purchaseOrder.organizationId,
+      userId: args.userId,
+      action: "UPDATE",
+      entityType: "purchase_orders",
+      entityId: args.purchaseOrderId,
+      fieldName: "status",
+      oldValue: currentStatus.lookupCode,
+      newValue: "CANCELLED",
+      notes: `Cancelled purchase order ${purchaseOrder.code}`,
     });
 
     return {

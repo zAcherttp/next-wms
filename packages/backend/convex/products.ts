@@ -24,6 +24,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { logCRUDAction } from "./audit";
 
 // ============================================================================
 // PRODUCT QUERIES
@@ -488,6 +489,16 @@ export const create = mutation({
       isDeleted: false,
     });
 
+    // Log audit for product creation
+    await logCRUDAction(ctx, {
+      organizationId,
+      action: "CREATE",
+      entityType: "products",
+      entityId: productId,
+      newValue: { name, categoryId, brandId },
+      notes: `Created product "${name}"`,
+    });
+
     return productId;
   },
 });
@@ -564,6 +575,17 @@ export const update = mutation({
 
     await ctx.db.patch(id, updates);
 
+    // Log audit for product update
+    await logCRUDAction(ctx, {
+      organizationId: product.organizationId,
+      action: "UPDATE",
+      entityType: "products",
+      entityId: id,
+      oldValue: { name: product.name },
+      newValue: updates,
+      notes: `Updated product "${product.name}"`,
+    });
+
     return id;
   },
 });
@@ -602,6 +624,16 @@ export const remove = mutation({
         deletedAt: Date.now(),
       });
     }
+
+    // Log audit for product deletion
+    await logCRUDAction(ctx, {
+      organizationId: product.organizationId,
+      action: "DELETE",
+      entityType: "products",
+      entityId: args.id,
+      oldValue: { name: product.name, variantCount: variants.length },
+      notes: `Deleted product "${product.name}" and ${variants.length} variants`,
+    });
 
     return args.id;
   },
