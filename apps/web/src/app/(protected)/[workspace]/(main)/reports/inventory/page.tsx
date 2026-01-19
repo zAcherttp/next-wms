@@ -42,6 +42,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { PieSectorData } from "recharts/types/polar/Pie";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
@@ -178,9 +179,7 @@ export default function InventoryReportPage() {
         accessorKey: "productName",
         header: "Product",
         cell: ({ row }) => (
-          <div className="max-w-[200px] truncate">
-            {row.getValue("productName")}
-          </div>
+          <div className="max-w-50 truncate">{row.getValue("productName")}</div>
         ),
       },
       {
@@ -591,13 +590,9 @@ export default function InventoryReportPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({
-                      name,
-                      percent,
-                    }: {
-                      name: string;
-                      percent: number;
-                    }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    label={({ name, percent }: PieSectorData) =>
+                      `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
+                    }
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="quantity"

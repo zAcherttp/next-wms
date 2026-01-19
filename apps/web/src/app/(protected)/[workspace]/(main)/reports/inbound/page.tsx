@@ -43,6 +43,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import type { PieSectorData } from "recharts/types/polar/Pie";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
@@ -624,13 +625,9 @@ export default function InboundReportPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({
-                      name,
-                      percent,
-                    }: {
-                      name: string;
-                      percent: number;
-                    }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                    label={({ name, percent }: PieSectorData) =>
+                      `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
+                    }
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
