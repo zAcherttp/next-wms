@@ -732,6 +732,301 @@ export const getOutboundReportOrders = query({
 });
 
 // ================================================================
+// DASHBOARD SUMMARY
+// ================================================================
+
+/**
+ * Get dashboard summary with KPIs, activity feed, charts, and pending actions
+ */
+export const getDashboardSummary = query({
+  args: {
+    branchId: v.id("branches"),
+    startDate: v.number(),
+    endDate: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const { branchId, startDate, endDate } = args;
+
+    const branch = await ctx.db.get(branchId);
+    if (!branch) {
+      throw new Error("Branch not found");
+    }
+    const organizationId = branch.organizationId;
+
+    // ========== KPI: Total Inventory ==========
+    const inventoryBatches = await ctx.db
+      .query("inventory_batches")
+      .withIndex("branchId", (q) => q.eq("branchId", branchId))
+      .filter((q) =>
+        q.and(q.eq(q.field("isDeleted"), false), q.gt(q.field("quantity"), 0))
+      )
+      .collect();
+
+    const totalInventory = inventoryBatches.reduce(
+      (sum, b) => sum + b.quantity,
+      0
+    );
+    const uniqueSkus = new Set(inventoryBatches.map((b) => b.skuId)).size;
+
+    // ========== KPI: Low Stock & Expiring ==========
+    const lowStockCount = inventoryBatches.filter((b) => b.quantity <= 10).length;
+    const thirtyDaysFromNow = endDate + 30 * 24 * 60 * 60 * 1000;
+    const expiringSoonCount = inventoryBatches.filter(
+      (b) =>
+        b.expiresAt &&
+        b.expiresAt > endDate &&
+        b.expiresAt <= thirtyDaysFromNow
+    ).length;
+
+    // ========== KPI: Pending Inbound (Purchase Orders) ==========
+    const purchaseOrders = await ctx.db
+      .query("purchase_orders")
+      .withIndex("branchId", (q) => q.eq("branchId", branchId))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .collect();
+
+    const pendingStatusLookup = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "PENDING")
+      )
+      .first();
+
+    const pendingInboundCount = pendingStatusLookup
+      ? purchaseOrders.filter(
+          (po) => po.purchaseOrderStatusTypeId === pendingStatusLookup._id
+        ).length
+      : 0;
+
+    // ========== KPI: Outbound Ready ==========
+    const outboundOrders = await ctx.db
+      .query("outbound_orders")
+      .withIndex("branchId", (q) => q.eq("branchId", branchId))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .collect();
+
+    const readyStatusLookup = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "OutboundStatus").eq("lookupCode", "READY")
+      )
+      .first();
+
+    const pendingOutboundLookup = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "OutboundStatus").eq("lookupCode", "PENDING")
+      )
+      .first();
+
+    const outboundReadyCount = readyStatusLookup
+      ? outboundOrders.filter(
+          (o) => o.outboundStatusTypeId === readyStatusLookup._id
+        ).length
+      : 0;
+
+    const outboundPendingCount = pendingOutboundLookup
+      ? outboundOrders.filter(
+          (o) => o.outboundStatusTypeId === pendingOutboundLookup._id
+        ).length
+      : 0;
+
+    // ========== KPI: Pending Return Requests ==========
+    const returnRequests = await ctx.db
+      .query("return_requests")
+      .withIndex("branchId", (q) => q.eq("branchId", branchId))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .collect();
+
+    const pendingReturnLookup = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ReturnStatus").eq("lookupCode", "PENDING")
+      )
+      .first();
+
+    const pendingReturnsCount = pendingReturnLookup
+      ? returnRequests.filter(
+          (r) => r.returnStatusTypeId === pendingReturnLookup._id
+        ).length
+      : 0;
+
+    // ========== KPI: Receive Sessions ==========
+    const receiveSessions = await ctx.db
+      .query("receive_sessions")
+      .withIndex("branchId", (q) => q.eq("branchId", branchId))
+      .collect();
+
+    const pendingReceiveLookup = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ReceiveSessionStatus").eq("lookupCode", "PENDING")
+      )
+      .first();
+
+    const pendingReceiveCount = pendingReceiveLookup
+      ? receiveSessions.filter(
+          (rs) => rs.receiveSessionStatusTypeId === pendingReceiveLookup._id
+        ).length
+      : 0;
+
+    // ========== Order Activity Trend (for charts) ==========
+    const inboundInRange = receiveSessions.filter(
+      (rs) => rs.receivedAt >= startDate && rs.receivedAt <= endDate
+    );
+    const outboundInRange = outboundOrders.filter(
+      (o) => o.orderDate >= startDate && o.orderDate <= endDate
+    );
+
+    const inboundTrend = getDailyTrendData(
+      inboundInRange.map((rs) => ({ date: rs.receivedAt, value: 1 })),
+      startDate,
+      endDate
+    );
+
+    const outboundTrend = getDailyTrendData(
+      outboundInRange.map((o) => ({ date: o.orderDate, value: 1 })),
+      startDate,
+      endDate
+    );
+
+    // Combine trends for chart
+    const orderActivityTrend = inboundTrend.map((item, index) => ({
+      date: item.date,
+      inbound: item.value,
+      outbound: outboundTrend[index]?.value ?? 0,
+    }));
+
+    // ========== Recent Activity (from audit_logs) ==========
+    const auditLogs = await ctx.db
+      .query("audit_logs")
+      .withIndex("organizationId", (q) => q.eq("organizationId", organizationId))
+      .order("desc")
+      .take(20);
+
+    const recentActivity = await Promise.all(
+      auditLogs.slice(0, 10).map(async (log) => {
+        const user = log.userId ? await ctx.db.get(log.userId) : null;
+        const actionType = await ctx.db.get(log.actionTypeId);
+
+        return {
+          _id: log._id,
+          entityType: log.entityType,
+          entityId: log.entityId,
+          action: actionType?.lookupValue ?? "Unknown",
+          userName: user?.fullName ?? "System",
+          notes: log.notes,
+          timestamp: log._creationTime,
+        };
+      })
+    );
+
+    // ========== Recent Orders (for table) ==========
+    const recentPurchaseOrders = await Promise.all(
+      purchaseOrders
+        .filter((po) => po.orderedAt >= startDate && po.orderedAt <= endDate)
+        .sort((a, b) => b.orderedAt - a.orderedAt)
+        .slice(0, 5)
+        .map(async (po) => {
+          const status = await ctx.db.get(po.purchaseOrderStatusTypeId);
+          const supplier = await ctx.db.get(po.supplierId);
+          const details = await ctx.db
+            .query("purchase_order_details")
+            .withIndex("purchaseOrderId", (q) =>
+              q.eq("purchaseOrderId", po._id)
+            )
+            .collect();
+
+          return {
+            _id: po._id,
+            code: po.code,
+            type: "Inbound" as const,
+            status: status?.lookupValue ?? "Unknown",
+            statusCode: status?.lookupCode ?? "UNKNOWN",
+            itemCount: details.length,
+            createdAt: po.orderedAt,
+            supplierName: supplier?.name,
+          };
+        })
+    );
+
+    const recentOutboundOrders = await Promise.all(
+      outboundOrders
+        .filter((o) => o.orderDate >= startDate && o.orderDate <= endDate)
+        .sort((a, b) => b.orderDate - a.orderDate)
+        .slice(0, 5)
+        .map(async (o) => {
+          const status = await ctx.db.get(o.outboundStatusTypeId);
+          const details = await ctx.db
+            .query("outbound_order_details")
+            .withIndex("outboundOrderId", (q) =>
+              q.eq("outboundOrderId", o._id)
+            )
+            .collect();
+
+          return {
+            _id: o._id,
+            code: o.orderCode,
+            type: "Outbound" as const,
+            status: status?.lookupValue ?? "Unknown",
+            statusCode: status?.lookupCode ?? "UNKNOWN",
+            itemCount: details.length,
+            createdAt: o.orderDate,
+            trackingNumber: o.trackingNumber,
+          };
+        })
+    );
+
+    // Combine and sort recent orders
+    const recentOrders = [...recentPurchaseOrders, ...recentOutboundOrders]
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, 10);
+
+    // ========== Fulfillment Rate ==========
+    const completedOutboundLookup = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "OutboundStatus").eq("lookupCode", "SHIPPED")
+      )
+      .first();
+
+    const shippedCount = completedOutboundLookup
+      ? outboundInRange.filter(
+          (o) => o.outboundStatusTypeId === completedOutboundLookup._id
+        ).length
+      : 0;
+
+    const fulfillmentRate =
+      outboundInRange.length > 0
+        ? Math.round((shippedCount / outboundInRange.length) * 100)
+        : 100;
+
+    return {
+      kpis: {
+        totalInventory,
+        uniqueSkus,
+        pendingInboundCount,
+        outboundReadyCount,
+        outboundPendingCount,
+        lowStockCount,
+        expiringSoonCount,
+        pendingReturnsCount,
+        pendingReceiveCount,
+        fulfillmentRate,
+      },
+      orderActivityTrend,
+      recentActivity,
+      recentOrders,
+      pendingActions: {
+        receiveSessions: pendingReceiveCount,
+        outboundOrders: outboundReadyCount + outboundPendingCount,
+        returnRequests: pendingReturnsCount,
+      },
+    };
+  },
+});
+
+// ================================================================
 // HELPER FUNCTIONS
 // ================================================================
 
