@@ -146,20 +146,16 @@ export function CreateOrganizationForm({
             await new Promise((resolve) => setTimeout(resolve, 500));
 
             // Query the organization by slug to get the Convex ID
-            const org = await convex.query(
-              api.authSync.getOrganizationBySlug,
-              { slug: value.orgSlug }
-            );
+            const org = await convex.query(api.authSync.getOrganizationBySlug, {
+              slug: value.orgSlug,
+            });
 
             if (org?._id) {
               // Update the logo with the storage ID (converts to URL)
-              await convex.mutation(
-                api.authSync.updateOrganizationLogo,
-                {
-                  organizationId: org._id,
-                  storageId,
-                }
-              );
+              await convex.mutation(api.authSync.updateOrganizationLogo, {
+                organizationId: org._id,
+                storageId,
+              });
             }
           } catch (logoError) {
             // Log error but don't fail org creation
