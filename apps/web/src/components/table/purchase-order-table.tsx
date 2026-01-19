@@ -24,7 +24,6 @@ import {
   ChevronsRight,
   Filter,
   MoreHorizontal,
-  XCircle,
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
@@ -374,7 +373,6 @@ export function PurchaseOrdersTable() {
                       }}
                       className="text-destructive focus:text-destructive"
                     >
-                      <XCircle className="mr-2 h-4 w-4" />
                       Cancel order
                     </DropdownMenuItem>
                   </>

@@ -58,9 +58,6 @@ export function useHasPermissions(permissionSets: PermissionsInput[]) {
     )
     .join("||");
 
-  console.log("combinedKey", combinedKey);
-  console.log("permissionSets", permissionSets);
-
   return useQuery({
     queryKey: [userId, "hasPerms", "batch", combinedKey],
     queryFn: () =>
