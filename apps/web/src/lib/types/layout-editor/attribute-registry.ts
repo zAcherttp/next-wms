@@ -97,13 +97,6 @@ export const BLOCK_SCHEMAS = {
     position: positionSchema,
     label: z.string(),
   }),
-
-  doorpoint: z.object({
-    name: z.string().min(1),
-    position: positionSchema,
-    label: z.string(),
-    width: z.number().positive(),
-  }),
 } satisfies Record<BlockType, z.ZodObject<z.ZodRawShape>>;
 
 // ============================================================================
@@ -288,25 +281,6 @@ export const BLOCK_UI_SCHEMAS: Record<BlockType, BlockUISchema> = {
       { key: "name", label: "Name", type: "string", required: true },
       { key: "position", label: "Position", type: "position", required: true },
       { key: "label", label: "Label", type: "string", required: true },
-    ],
-  },
-
-  doorpoint: {
-    blockType: "doorpoint",
-    displayName: "Door Point",
-    icon: "DoorOpen",
-    path: "floor.doorpoint",
-    attributes: [
-      { key: "name", label: "Name", type: "string", required: true },
-      { key: "position", label: "Position", type: "position", required: true },
-      { key: "label", label: "Label", type: "string", required: true },
-      {
-        key: "width",
-        label: "Width",
-        type: "number",
-        min: 0.5,
-        unit: "meters",
-      },
     ],
   },
 };

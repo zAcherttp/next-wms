@@ -53,9 +53,7 @@ export function exportReportToPDF(options: ReportPDFOptions) {
   // Date Range and Branch
   doc.setFontSize(10);
   doc.setTextColor(120);
-  const metaText = branchName
-    ? `${branchName} | ${dateRange}`
-    : dateRange;
+  const metaText = branchName ? `${branchName} | ${dateRange}` : dateRange;
   doc.text(metaText, margin, yPos);
 
   // Generated timestamp on the right
@@ -130,7 +128,7 @@ export function exportReportToPDF(options: ReportPDFOptions) {
         `Page ${data.pageNumber} of ${pageCount}`,
         pageWidth / 2,
         doc.internal.pageSize.getHeight() - 10,
-        { align: "center" }
+        { align: "center" },
       );
     },
   });
@@ -139,9 +137,12 @@ export function exportReportToPDF(options: ReportPDFOptions) {
   doc.save(`${fileName}.pdf`);
 }
 
-export function formatDateRange(from: Date | undefined, to: Date | undefined): string {
+export function formatDateRange(
+  from: Date | undefined,
+  to: Date | undefined,
+): string {
   if (!from && !to) return "All time";
-  
+
   const formatDate = (date: Date) =>
     date.toLocaleDateString("en-US", {
       month: "short",

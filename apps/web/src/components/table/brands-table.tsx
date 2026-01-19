@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
+import { ImportExcelButtonBrands } from "@/components/import-excel-button-brands";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Button } from "@/components/ui/button";
@@ -49,12 +50,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -73,7 +74,6 @@ import {
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import { ImportExcelButtonBrands } from "@/components/import-excel-button-brands";
 import type { BrandWithProductCount } from "@/lib/types";
 
 // CreateBrandDialog component

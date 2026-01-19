@@ -208,20 +208,28 @@ export function ReceiveSessionDetailDialog({
                 Items
               </h3>
 
-              <div className="rounded-md border overflow-x-auto">
-                <Table className="table-fixed w-full">
+              <div className="overflow-x-auto rounded-md border">
+                <Table className="w-full table-fixed">
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="w-[90px] px-2 text-center">SKU</TableHead>
-                      <TableHead className="w-[120px] px-2 text-center">Name</TableHead>
+                      <TableHead className="w-[90px] px-2 text-center">
+                        SKU
+                      </TableHead>
+                      <TableHead className="w-[120px] px-2 text-center">
+                        Name
+                      </TableHead>
                       <TableHead className="w-[65px] px-2 text-center">
                         Expected
                       </TableHead>
                       <TableHead className="w-[65px] px-2 text-center">
                         Received
                       </TableHead>
-                      <TableHead className="w-[140px] px-2 text-center">Location</TableHead>
-                      <TableHead className="w-[180px] px-2 text-center">Note</TableHead>
+                      <TableHead className="w-[140px] px-2 text-center">
+                        Location
+                      </TableHead>
+                      <TableHead className="w-[180px] px-2 text-center">
+                        Note
+                      </TableHead>
                       <TableHead className="w-[90px] px-2 text-center">
                         Status
                       </TableHead>
@@ -231,10 +239,10 @@ export function ReceiveSessionDetailDialog({
                     {sessionDetail.items.length > 0 ? (
                       sessionDetail.items.map((item) => (
                         <TableRow key={item.detailId}>
-                          <TableCell className="px-2 text-center font-medium text-blue-600 truncate">
+                          <TableCell className="truncate px-2 text-center font-medium text-blue-600">
                             {item.skuCode}
                           </TableCell>
-                          <TableCell className="px-2 text-center truncate">
+                          <TableCell className="truncate px-2 text-center">
                             {item.productName ?? "-"}
                           </TableCell>
                           <TableCell className="px-2 text-center">
@@ -244,12 +252,12 @@ export function ReceiveSessionDetailDialog({
                             {item.quantityReceived}
                           </TableCell>
                           <TableCell
-                            className="px-2 text-center text-muted-foreground truncate"
+                            className="truncate px-2 text-center text-muted-foreground"
                             title={item.recommendedZone ?? undefined}
                           >
                             {item.recommendedZone ?? "-"}
                           </TableCell>
-                          <TableCell className="px-2 text-center max-w-[180px] break-words whitespace-normal text-muted-foreground">
+                          <TableCell className="max-w-[180px] whitespace-normal break-words px-2 text-center text-muted-foreground">
                             {item.notes ?? "-"}
                           </TableCell>
                           <TableCell className="px-2 text-center">

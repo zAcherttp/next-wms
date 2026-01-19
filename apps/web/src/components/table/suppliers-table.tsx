@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
+import { ImportExcelButtonSuppliers } from "@/components/import-excel-button-suppliers";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Button } from "@/components/ui/button";
@@ -50,12 +51,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -74,7 +75,6 @@ import {
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import { ImportExcelButtonSuppliers } from "@/components/import-excel-button-suppliers";
 
 // Supplier type for the table
 export type SupplierTableItem = Doc<"suppliers"> & {
@@ -690,8 +690,11 @@ export function SuppliersTable() {
 
   // State for filtering and sorting
   const [sorting, setSorting] = React.useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
-  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    [],
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
 

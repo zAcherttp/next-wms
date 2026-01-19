@@ -66,16 +66,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import type { InventoryReportItem } from "@/lib/types";
 import { exportReportToPDF, formatDateRange } from "@/lib/pdf-export";
+import type { InventoryReportItem } from "@/lib/types";
 import { cn } from "@/lib/utils";
 import { useDateFilterStore } from "@/store/date-filter";
 
@@ -104,7 +99,7 @@ export default function InventoryReportPage() {
   const dateRange = useDateFilterStore((state) => state.dateRange);
   const periodLabel = useDateFilterStore((state) => state.periodLabel);
   const updateFromPicker = useDateFilterStore(
-    (state) => state.updateFromPicker
+    (state) => state.updateFromPicker,
   );
 
   // Filter state
@@ -120,10 +115,12 @@ export default function InventoryReportPage() {
       currentBranch
         ? {
             branchId: currentBranch._id,
-            startDate: dateRange.from?.getTime() ?? Date.now() - 30 * 24 * 60 * 60 * 1000,
+            startDate:
+              dateRange.from?.getTime() ??
+              Date.now() - 30 * 24 * 60 * 60 * 1000,
             endDate,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!currentBranch,
   });
@@ -138,7 +135,7 @@ export default function InventoryReportPage() {
             filter,
             endDate,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!currentBranch,
   });
@@ -146,7 +143,7 @@ export default function InventoryReportPage() {
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -175,12 +172,12 @@ export default function InventoryReportPage() {
         accessorKey: "categoryName",
         header: ({ column }) => {
           const categories = items
-            ? Array.from(
-                new Set(items.map((item) => item.categoryName))
-              ).map((name) => ({
-                label: name,
-                value: name,
-              }))
+            ? Array.from(new Set(items.map((item) => item.categoryName))).map(
+                (name) => ({
+                  label: name,
+                  value: name,
+                }),
+              )
             : [];
 
           const currentFilter = column.getFilterValue() as string[] | undefined;
@@ -209,12 +206,12 @@ export default function InventoryReportPage() {
         accessorKey: "zoneName",
         header: ({ column }) => {
           const zones = items
-            ? Array.from(
-                new Set(items.map((item) => item.zoneName))
-              ).map((name) => ({
-                label: name,
-                value: name,
-              }))
+            ? Array.from(new Set(items.map((item) => item.zoneName))).map(
+                (name) => ({
+                  label: name,
+                  value: name,
+                }),
+              )
             : [];
 
           const currentFilter = column.getFilterValue() as string[] | undefined;
@@ -249,13 +246,11 @@ export default function InventoryReportPage() {
             <div
               className={cn(
                 "text-right font-medium",
-                isLowStock && "text-orange-600"
+                isLowStock && "text-orange-600",
               )}
             >
               {quantity}
-              {isLowStock && (
-                <AlertTriangle className="ml-1 inline h-3 w-3" />
-              )}
+              {isLowStock && <AlertTriangle className="ml-1 inline h-3 w-3" />}
             </div>
           );
         },
@@ -276,10 +271,10 @@ export default function InventoryReportPage() {
             <div
               className={cn(
                 isExpired
-                  ? "text-red-600 font-medium"
+                  ? "font-medium text-red-600"
                   : isExpiringSoon
-                    ? "text-orange-600 font-medium"
-                    : ""
+                    ? "font-medium text-orange-600"
+                    : "",
               )}
             >
               {new Date(expiresAt).toLocaleDateString("en-US", {
@@ -288,7 +283,9 @@ export default function InventoryReportPage() {
                 year: "numeric",
               })}
               {isExpired && <span className="ml-1">(Expired)</span>}
-              {isExpiringSoon && !isExpired && <span className="ml-1">(Soon)</span>}
+              {isExpiringSoon && !isExpired && (
+                <span className="ml-1">(Soon)</span>
+              )}
             </div>
           );
         },
@@ -311,7 +308,7 @@ export default function InventoryReportPage() {
         },
       },
     ],
-    [items]
+    [items],
   );
 
   const table = useReactTable({
@@ -358,7 +355,9 @@ export default function InventoryReportPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Inventory Report</h1>
+          <h1 className="font-bold text-2xl tracking-tight">
+            Inventory Report
+          </h1>
           <p className="text-muted-foreground">
             Monitor stock levels, values, and inventory health
           </p>
@@ -387,12 +386,29 @@ export default function InventoryReportPage() {
                 branchName: currentBranch?.name,
                 kpis: [
                   { label: "Total SKUs", value: summary?.kpis.totalSKUs ?? 0 },
-                  { label: "Total Quantity", value: summary?.kpis.totalQuantity?.toLocaleString() ?? "0" },
-                  { label: "Low Stock", value: summary?.kpis.lowStockCount ?? 0 },
-                  { label: "Expiring Soon", value: summary?.kpis.expiringSoonCount ?? 0 },
+                  {
+                    label: "Total Quantity",
+                    value: summary?.kpis.totalQuantity?.toLocaleString() ?? "0",
+                  },
+                  {
+                    label: "Low Stock",
+                    value: summary?.kpis.lowStockCount ?? 0,
+                  },
+                  {
+                    label: "Expiring Soon",
+                    value: summary?.kpis.expiringSoonCount ?? 0,
+                  },
                   { label: "Expired", value: summary?.kpis.expiredCount ?? 0 },
                 ],
-                tableHeaders: ["SKU", "Product", "Category", "Zone", "Quantity", "Expires", "Status"],
+                tableHeaders: [
+                  "SKU",
+                  "Product",
+                  "Category",
+                  "Zone",
+                  "Quantity",
+                  "Expires",
+                  "Status",
+                ],
                 tableData: items.map((item) => [
                   item.skuCode,
                   item.productName,
@@ -419,7 +435,7 @@ export default function InventoryReportPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total SKUs</CardTitle>
+            <CardTitle className="font-medium text-sm">Total SKUs</CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -427,12 +443,10 @@ export default function InventoryReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="font-bold text-2xl">
                   {summary?.kpis.totalSKUs ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  unique products
-                </p>
+                <p className="text-muted-foreground text-xs">unique products</p>
               </>
             )}
           </CardContent>
@@ -440,7 +454,7 @@ export default function InventoryReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="font-medium text-sm">
               Total Quantity
             </CardTitle>
             <Boxes className="h-4 w-4 text-muted-foreground" />
@@ -450,10 +464,10 @@ export default function InventoryReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="font-bold text-2xl">
                   {summary?.kpis.totalQuantity?.toLocaleString() ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">units in stock</p>
+                <p className="text-muted-foreground text-xs">units in stock</p>
               </>
             )}
           </CardContent>
@@ -461,7 +475,7 @@ export default function InventoryReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock</CardTitle>
+            <CardTitle className="font-medium text-sm">Low Stock</CardTitle>
             <AlertTriangle className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
@@ -469,10 +483,12 @@ export default function InventoryReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold text-orange-600">
+                <div className="font-bold text-2xl text-orange-600">
                   {summary?.kpis.lowStockCount ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">items need reorder</p>
+                <p className="text-muted-foreground text-xs">
+                  items need reorder
+                </p>
               </>
             )}
           </CardContent>
@@ -480,9 +496,7 @@ export default function InventoryReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Expiring Soon
-            </CardTitle>
+            <CardTitle className="font-medium text-sm">Expiring Soon</CardTitle>
             <Calendar className="h-4 w-4 text-yellow-500" />
           </CardHeader>
           <CardContent>
@@ -490,10 +504,10 @@ export default function InventoryReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold text-yellow-600">
+                <div className="font-bold text-2xl text-yellow-600">
                   {summary?.kpis.expiringSoonCount ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">within 30 days</p>
+                <p className="text-muted-foreground text-xs">within 30 days</p>
               </>
             )}
           </CardContent>
@@ -501,7 +515,7 @@ export default function InventoryReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Expired</CardTitle>
+            <CardTitle className="font-medium text-sm">Expired</CardTitle>
             <PackageX className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
@@ -509,10 +523,10 @@ export default function InventoryReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold text-red-600">
+                <div className="font-bold text-2xl text-red-600">
                   {summary?.kpis.expiredCount ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   items to dispose
                 </p>
               </>
@@ -673,7 +687,7 @@ export default function InventoryReportPage() {
                           ? null
                           : flexRender(
                               header.column.columnDef.header,
-                              header.getContext()
+                              header.getContext(),
                             )}
                       </TableHead>
                     ))}
@@ -701,7 +715,7 @@ export default function InventoryReportPage() {
                         <TableCell key={cell.id}>
                           {flexRender(
                             cell.column.columnDef.cell,
-                            cell.getContext()
+                            cell.getContext(),
                           )}
                         </TableCell>
                       ))}
@@ -723,7 +737,7 @@ export default function InventoryReportPage() {
 
           {/* Pagination */}
           <div className="flex items-center justify-between py-4">
-            <div className="text-sm text-muted-foreground">
+            <div className="text-muted-foreground text-sm">
               Showing{" "}
               {table.getState().pagination.pageIndex *
                 table.getState().pagination.pageSize +
@@ -732,7 +746,7 @@ export default function InventoryReportPage() {
               {Math.min(
                 (table.getState().pagination.pageIndex + 1) *
                   table.getState().pagination.pageSize,
-                table.getFilteredRowModel().rows.length
+                table.getFilteredRowModel().rows.length,
               )}{" "}
               of {table.getFilteredRowModel().rows.length} items
             </div>

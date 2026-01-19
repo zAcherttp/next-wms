@@ -96,7 +96,9 @@ function parseExcelFile(file: File): Promise<ParsedSupplier[]> {
         resolve(suppliers);
       } catch (error) {
         reject(
-          new Error("Failed to parse Excel file. Please check the file format."),
+          new Error(
+            "Failed to parse Excel file. Please check the file format.",
+          ),
         );
       }
     };
@@ -168,9 +170,8 @@ export function ImportExcelButtonSuppliers() {
       });
 
       // Step 3: Validate and prepare suppliers
-      const validSuppliers: Array<
-        ParsedSupplier & { brandId: Id<"brands"> }
-      > = [];
+      const validSuppliers: Array<ParsedSupplier & { brandId: Id<"brands"> }> =
+        [];
       const errors: string[] = [];
 
       for (const supplier of parsedSuppliers) {

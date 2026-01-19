@@ -62,7 +62,9 @@ function parseExcelFile(file: File): Promise<ParsedBrand[]> {
         resolve(brands);
       } catch (error) {
         reject(
-          new Error("Failed to parse Excel file. Please check the file format."),
+          new Error(
+            "Failed to parse Excel file. Please check the file format.",
+          ),
         );
       }
     };

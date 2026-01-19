@@ -26,6 +26,7 @@ import {
   Trash2,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ImportExcelButtonProducts } from "@/components/import-excel-button-products";
 import { CreateProductDialog } from "@/components/products/create-product-dialog";
 import { DeleteProductDialog } from "@/components/products/delete-product-dialog";
 import { EditProductDialog } from "@/components/products/edit-product-dialog";
@@ -64,7 +65,6 @@ import {
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import { ImportExcelButtonProducts } from "@/components/import-excel-button-products";
 import { type ProductListItem, useProductsList } from "@/hooks/use-products";
 
 // Product table item type - flattened view showing one row per variant
