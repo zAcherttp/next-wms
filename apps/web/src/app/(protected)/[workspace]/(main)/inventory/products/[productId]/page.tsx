@@ -37,7 +37,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { cn } from "@/lib/utils";
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 
 // --- Components ---
 
@@ -50,7 +50,7 @@ interface InfoItemProps {
 
 function InfoItem({ icon, label, value, subValue }: InfoItemProps) {
   return (
-    <div className="group flex items-start gap-4 rounded-xl border bg-card p-5 shadow-sm transition-all duration-200 hover:border-primary/20 hover:shadow-md">
+    <div className="group flex items-start gap-4 rounded-xl border bg-card p-4 shadow-sm transition-all duration-200 hover:border-primary/20 hover:shadow-md">
       <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-linear-to-br from-primary/10 to-primary/5 text-primary transition-transform duration-200 group-hover:scale-105">
         {icon}
       </div>
@@ -58,15 +58,17 @@ function InfoItem({ icon, label, value, subValue }: InfoItemProps) {
         <p className="mb-1.5 font-medium text-muted-foreground text-xs uppercase tracking-wider">
           {label}
         </p>
-        <p
-          className="truncate font-semibold text-base text-foreground leading-tight"
-          title={String(value)}
-        >
-          {value ?? "-"}
-        </p>
-        {subValue && (
-          <p className="mt-1.5 text-muted-foreground text-xs">{subValue}</p>
-        )}
+        <div className="flex items-baseline gap-2">
+          <p
+            className="truncate font-semibold text-base text-foreground leading-tight"
+            title={String(value)}
+          >
+            {value ?? "-"}
+          </p>
+          {subValue && (
+            <p className="shrink-0 text-muted-foreground text-xs">{subValue}</p>
+          )}
+        </div>
       </div>
     </div>
   );
@@ -87,7 +89,7 @@ function StatCard({ label, value, className, valueClassName }: StatCardProps) {
         className,
       )}
     >
-      <CardContent className="p-6">
+      <CardContent >
         <p className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
           {label}
         </p>
@@ -122,9 +124,8 @@ export default function ProductInventoryDetailPage() {
       return (
         <Badge
           variant="outline"
-          className="h-7 gap-1.5 border-red-200 bg-red-500/10 px-3 text-red-600"
+          className={cn("h-7 px-3", getBadgeStyleByStatus("cancelled"))}
         >
-          <PackageX className="h-3.5 w-3.5" />
           Out of Stock
         </Badge>
       );
@@ -133,9 +134,8 @@ export default function ProductInventoryDetailPage() {
       return (
         <Badge
           variant="outline"
-          className="h-7 gap-1.5 border-yellow-200 bg-yellow-500/10 px-3 text-yellow-600"
+          className={cn("h-7 px-3", getBadgeStyleByStatus("pending"))}
         >
-          <AlertTriangle className="h-3.5 w-3.5" />
           Low Stock
         </Badge>
       );
@@ -143,9 +143,8 @@ export default function ProductInventoryDetailPage() {
     return (
       <Badge
         variant="outline"
-        className="h-7 gap-1.5 border-green-200 bg-green-500/10 px-3 text-green-600"
+        className={cn("h-7 px-3", getBadgeStyleByStatus("completed"))}
       >
-        <Package className="h-3.5 w-3.5" />
         In Stock
       </Badge>
     );
@@ -193,7 +192,7 @@ export default function ProductInventoryDetailPage() {
       <div className="shrink-0 border-b bg-background px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild>
+            <Button variant="ghost" size="icon" asChild aria-label="Go back to products list">
               <Link href={`/${workspace}/inventory/products` as Route}>
                 <ArrowLeft className="h-5 w-5" />
               </Link>
@@ -217,15 +216,15 @@ export default function ProductInventoryDetailPage() {
             )}
             {productDetail.product.isActive ? (
               <Badge
-                variant="secondary"
-                className="h-7 bg-green-100 px-3 text-green-700"
+                variant="outline"
+                className={cn("h-7 px-3", getBadgeStyleByStatus("active"))}
               >
                 Active
               </Badge>
             ) : (
               <Badge
-                variant="secondary"
-                className="h-7 bg-gray-100 px-3 text-gray-700"
+                variant="outline"
+                className={cn("h-7 px-3", getBadgeStyleByStatus("default"))}
               >
                 Inactive
               </Badge>
@@ -239,7 +238,7 @@ export default function ProductInventoryDetailPage() {
         <div className="mx-auto max-w-400 space-y-8 p-6 lg:p-8">
           {/* SECTION 1: Header Info & Attributes */}
           <div className="space-y-6">
-            <div className="flex flex-col items-start justify-between gap-6 md:flex-row">
+            <div className="flex flex-col items-start justify-between gap-0 md:flex-row">
               <div className="max-w-4xl space-y-2">
                 <h2 className="font-bold text-3xl text-foreground tracking-tight">
                   {productDetail.product.name}
@@ -288,28 +287,25 @@ export default function ProductInventoryDetailPage() {
               />
             </div>
           </div>
-
-          <Separator />
-
           {/* SECTION 2: Summary Statistics */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
             <StatCard
               label="Total Quantity"
               value={productDetail.summary.totalQuantity.toLocaleString()}
-              className="border-blue-100 bg-linear-to-br from-blue-50 to-blue-100/50"
-              valueClassName="text-blue-700"
+              className="bg-card"
+              valueClassName="text-blue-600"
             />
             <StatCard
               label="Active Variants"
               value={productDetail.summary.totalVariants}
-              className="border-purple-100 bg-linear-to-br from-purple-50 to-purple-100/50"
-              valueClassName="text-purple-700"
+              className="bg-card"
+              valueClassName="text-purple-600"
             />
             <StatCard
               label="Total Batches"
               value={productDetail.summary.totalBatches}
-              className="border-amber-100 bg-linear-to-br from-amber-50 to-amber-100/50"
-              valueClassName="text-amber-700"
+              className="bg-card"
+              valueClassName="text-amber-600"
             />
           </div>
 
@@ -367,11 +363,11 @@ export default function ProductInventoryDetailPage() {
                               className={cn(
                                 "inline-flex min-w-12 items-center justify-center rounded-md px-2 py-1 font-bold text-sm",
                                 variant.totalQuantity === 0
-                                  ? "bg-red-100 text-red-700"
+                                  ? "bg-red-500/10 text-red-500/70"
                                   : variant.totalQuantity <=
                                       (productDetail.product.reorderPoint ?? 10)
-                                    ? "bg-yellow-100 text-yellow-700"
-                                    : "bg-green-100 text-green-700",
+                                    ? "bg-amber-500/10 text-amber-500/70"
+                                    : "bg-emerald-500/10 text-emerald-500/70",
                               )}
                             >
                               {variant.totalQuantity.toLocaleString()}
@@ -384,7 +380,6 @@ export default function ProductInventoryDetailPage() {
                                   variant="outline"
                                   className="h-5 gap-1 text-[10px]"
                                 >
-                                  <Scale className="h-3 w-3" />
                                   {variant.weightKg}kg
                                 </Badge>
                               )}
@@ -529,8 +524,8 @@ export default function ProductInventoryDetailPage() {
                                   </span>
                                   {isExpired && (
                                     <Badge
-                                      variant="destructive"
-                                      className="h-5 text-[10px]"
+                                      variant="outline"
+                                      className={cn("h-5 text-[10px]", getBadgeStyleByStatus("cancelled"))}
                                     >
                                       Expired
                                     </Badge>
@@ -538,7 +533,7 @@ export default function ProductInventoryDetailPage() {
                                   {isExpiringSoon && !isExpired && (
                                     <Badge
                                       variant="outline"
-                                      className="h-5 border-yellow-500 bg-yellow-50 text-[10px] text-yellow-600"
+                                      className={cn("h-5 text-[10px]", getBadgeStyleByStatus("pending"))}
                                     >
                                       Expiring
                                     </Badge>
