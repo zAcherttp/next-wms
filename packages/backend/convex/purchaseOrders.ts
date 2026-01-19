@@ -553,3 +553,55 @@ export const getVariantsBySkuCodes = query({
     });
   },
 });
+
+/**
+ * Cancel a purchase order
+ * Only allowed for orders with "PENDING" status
+ */
+export const cancelPurchaseOrder = mutation({
+  args: {
+    purchaseOrderId: v.id("purchase_orders"),
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Get purchase order
+    const purchaseOrder = await ctx.db.get(args.purchaseOrderId);
+    if (!purchaseOrder) {
+      throw new Error("Purchase order not found");
+    }
+
+    if (purchaseOrder.isDeleted) {
+      throw new Error("Purchase order has been deleted");
+    }
+
+    // Get current status
+    const currentStatus = await ctx.db.get(
+      purchaseOrder.purchaseOrderStatusTypeId,
+    );
+    if (!currentStatus || currentStatus.lookupCode !== "PENDING") {
+      throw new Error("Only pending purchase orders can be cancelled");
+    }
+
+    // Get the "CANCELLED" status from system_lookups
+    const cancelledStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "CANCELLED"),
+      )
+      .first();
+
+    if (!cancelledStatus) {
+      throw new Error("Cancelled status not found in system lookups");
+    }
+
+    // Update purchase order status
+    await ctx.db.patch(args.purchaseOrderId, {
+      purchaseOrderStatusTypeId: cancelledStatus._id,
+    });
+
+    return {
+      success: true,
+      message: "Purchase order cancelled successfully",
+    };
+  },
+});

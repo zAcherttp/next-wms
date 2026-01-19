@@ -24,6 +24,7 @@ import {
   ChevronsRight,
   Filter,
   MoreHorizontal,
+  XCircle,
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
@@ -33,6 +34,16 @@ import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -92,6 +103,38 @@ export function PurchaseOrdersTable() {
   const createReceiveSession = useMutation(
     api.receiveSessions.createReceiveSession,
   );
+
+  // Mutation for cancelling purchase order
+  const cancelPurchaseOrder = useMutation(
+    api.purchaseOrders.cancelPurchaseOrder,
+  );
+
+  // State for cancel confirmation dialog
+  const [cancelDialogOpen, setCancelDialogOpen] = React.useState(false);
+  const [orderToCancel, setOrderToCancel] = React.useState<{
+    id: Id<"purchase_orders">;
+    code: string;
+  } | null>(null);
+
+  const handleCancelOrder = async () => {
+    if (!orderToCancel || !userId) return;
+    try {
+      await cancelPurchaseOrder({
+        purchaseOrderId: orderToCancel.id,
+        userId: userId as Id<"users">,
+      });
+      toast.success(`Purchase order ${orderToCancel.code} cancelled successfully`);
+    } catch (error) {
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to cancel purchase order",
+      );
+    } finally {
+      setCancelDialogOpen(false);
+      setOrderToCancel(null);
+    }
+  };
 
   const columns: ColumnDef<PurchaseOrderListItem>[] = React.useMemo(
     () => [
@@ -314,26 +357,41 @@ export function PurchaseOrdersTable() {
                 </DropdownMenuItem>
                 {purchaseOrder.purchaseOrderStatus?.lookupCode ===
                   "PENDING" && (
-                  <DropdownMenuItem
-                    onClick={async () => {
-                      if (!userId) return;
-                      try {
-                        await createReceiveSession({
-                          purchaseOrderId: purchaseOrder._id,
-                          userId: userId as Id<"users">,
+                  <>
+                    <DropdownMenuItem
+                      onClick={async () => {
+                        if (!userId) return;
+                        try {
+                          await createReceiveSession({
+                            purchaseOrderId: purchaseOrder._id,
+                            userId: userId as Id<"users">,
+                          });
+                          toast.success("Receive session created successfully");
+                        } catch (error) {
+                          toast.error(
+                            error instanceof Error
+                              ? error.message
+                              : "Failed to create receive session",
+                          );
+                        }
+                      }}
+                    >
+                      Proceed receiving
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => {
+                        setOrderToCancel({
+                          id: purchaseOrder._id,
+                          code: purchaseOrder.code,
                         });
-                        toast.success("Receive session created successfully");
-                      } catch (error) {
-                        toast.error(
-                          error instanceof Error
-                            ? error.message
-                            : "Failed to create receive session",
-                        );
-                      }
-                    }}
-                  >
-                    Proceed receiving
-                  </DropdownMenuItem>
+                        setCancelDialogOpen(true);
+                      }}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <XCircle className="mr-2 h-4 w-4" />
+                      Cancel order
+                    </DropdownMenuItem>
+                  </>
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
@@ -531,6 +589,27 @@ export function PurchaseOrdersTable() {
         onOpenChange={setDetailDialogOpen}
         trigger={<span className="hidden" />}
       />
+      <AlertDialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cancel Purchase Order</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to cancel purchase order{" "}
+              <strong>{orderToCancel?.code}</strong>? This action cannot be
+              undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, keep it</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleCancelOrder}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Yes, cancel order
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
