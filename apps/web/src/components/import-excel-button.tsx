@@ -68,11 +68,11 @@ function parseExcelFile(file: File): Promise<ParsedExcelData> {
         }
 
         // Extract branch name from B5
-        const branchCell = sheet["B5"];
+        const branchCell = sheet.B5;
         const branchName = branchCell?.v ? String(branchCell.v).trim() : null;
 
         // Extract supplier name from F5
-        const supplierCell = sheet["F5"];
+        const supplierCell = sheet.F5;
         const supplierName = supplierCell?.v
           ? String(supplierCell.v).trim()
           : null;
@@ -110,7 +110,7 @@ function parseExcelFile(file: File): Promise<ParsedExcelData> {
           supplierName,
           products,
         });
-      } catch (error) {
+      } catch (_error) {
         reject(
           new Error(
             "Failed to parse Excel file. Please check the file format.",

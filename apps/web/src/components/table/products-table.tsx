@@ -19,7 +19,6 @@ import {
   ChevronsLeft,
   ChevronsRight,
   Edit,
-  Eye,
   Filter,
   MoreHorizontal,
   Settings2,
@@ -38,7 +37,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -405,7 +403,7 @@ export function ProductsTable() {
   useEffect(() => {
     table.getColumn("sku")?.setFilterValue(debouncedFilterValue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedFilterValue]);
+  }, [debouncedFilterValue, table]);
 
   // Calculate active filters count
   const activeFiltersCount =

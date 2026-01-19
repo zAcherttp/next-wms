@@ -5,6 +5,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { Loader2, Upload, X } from "lucide-react";
+import Image from "next/image";
 import * as React from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -430,7 +431,7 @@ export function QuantityAdjustmentDialog({
                     className="group relative h-16 w-16 overflow-hidden rounded-md border"
                   >
                     {/* Use native img for blob URLs - next/image doesn't optimize them anyway */}
-                    <img
+                    <Image
                       src={fileWithPreview.preview ?? ""}
                       alt="Preview"
                       className="h-full w-full object-cover"

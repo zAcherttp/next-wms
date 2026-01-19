@@ -37,7 +37,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -277,7 +276,7 @@ export function PickingSessionsTable() {
         },
       },
     ],
-    [setSelectedSessionId, setDetailDialogOpen],
+    [],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);

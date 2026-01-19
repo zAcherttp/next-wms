@@ -60,7 +60,7 @@ function parseExcelFile(file: File): Promise<ParsedBrand[]> {
         }
 
         resolve(brands);
-      } catch (error) {
+      } catch (_error) {
         reject(
           new Error(
             "Failed to parse Excel file. Please check the file format.",
@@ -212,6 +212,7 @@ export function ImportExcelButtonBrands() {
         accept=".xlsx,.xls"
         onChange={handleFileSelect}
         className="hidden"
+        aria-label="Select Excel file to import brands"
       />
       <Button
         variant="outline"

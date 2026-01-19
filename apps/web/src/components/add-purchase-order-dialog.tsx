@@ -133,6 +133,7 @@ export function AddPurchaseOrderDialog({
     initialBranchId,
     initialSupplierId,
     initialProducts,
+    receivingBranchId,
   ]);
 
   // Fetch next PO code when branch is selected
@@ -573,7 +574,7 @@ export function AddPurchaseOrderDialog({
                   <CommandGroup heading="Available Products">
                     {availableProducts.map((product) => (
                       <CommandItem
-                        key={product._id}
+                        key={product.productId}
                         value={`${product.skuCode} ${product.description}`}
                         onSelect={() => handleAddProduct(product)}
                         className="flex flex-col items-start gap-1 py-2"

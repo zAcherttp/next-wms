@@ -118,7 +118,7 @@ export default function Page() {
         adjustmentRequestId: id as Id<"adjustment_requests">,
         approvedByUserId: userId,
       });
-    } catch (error) {
+    } catch (_error) {
       // Error already handled in mutation
     }
   };
@@ -130,7 +130,7 @@ export default function Page() {
         approvedByUserId: userId,
         resolutionNotes: "Rejected by user",
       });
-    } catch (error) {
+    } catch (_error) {
       // Error already handled in mutation
     }
   };

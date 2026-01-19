@@ -72,7 +72,7 @@ function parseExcelFile(file: File): Promise<ParsedCategory[]> {
         }
 
         resolve(categories);
-      } catch (error) {
+      } catch (_error) {
         reject(
           new Error(
             "Failed to parse Excel file. Please check the file format.",
@@ -264,7 +264,7 @@ export function ImportExcelButtonCategories() {
             }
           }
 
-          const newCategoryId = await createCategory({
+          const _newCategoryId = await createCategory({
             organizationId: organizationId as Id<"organizations">,
             name: category.name,
             parentPath,

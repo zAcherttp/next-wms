@@ -154,7 +154,7 @@ function drawPieChart(
     doc.setFont("helvetica", "normal");
     doc.setTextColor(60);
     const label =
-      item.name.length > 12 ? item.name.substring(0, 12) + "..." : item.name;
+      item.name.length > 12 ? `${item.name.substring(0, 12)}...` : item.name;
     doc.text(`${label} (${percentage}%)`, legendX + 6, itemY);
   });
 }
@@ -208,7 +208,7 @@ function drawBarChart(
     doc.setFont("helvetica", "normal");
     doc.setTextColor(60);
     const label =
-      item.name.length > 15 ? item.name.substring(0, 15) + "..." : item.name;
+      item.name.length > 15 ? `${item.name.substring(0, 15)}...` : item.name;
     doc.text(label, chartX - 3, barY + barHeight / 2 + 1, { align: "right" });
 
     // Bar

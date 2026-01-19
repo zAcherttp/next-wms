@@ -101,7 +101,18 @@ extend({ FillGaugeMaterial });
 
 declare module "@react-three/fiber" {
   interface ThreeElements {
-    fillGaugeMaterial: any;
+    fillGaugeMaterial: {
+      uFillLevel: number;
+      uLowColor: THREE.Color;
+      uMidColor: THREE.Color;
+      uHighColor: THREE.Color;
+      uEmptyColor: THREE.Color;
+      uLowThreshold: number;
+      uHighThreshold: number;
+      transparent?: boolean;
+      side?: THREE.Side;
+      depthWrite?: boolean;
+    };
   }
 }
 
@@ -179,7 +190,7 @@ function ShelvesVisual({ rackId, rackRealId, dimensions }: ShelvesVisualProps) {
             {bins.map((bin, binIndex) => {
               const usagePercent =
                 (bin.zoneAttributes.usagePercent as number) ?? 0;
-              const isFull = bin.zoneAttributes.isFull as boolean;
+              // const isFull = bin.zoneAttributes.isFull as boolean;
 
               // Calculate bin center position
               const binOffset =

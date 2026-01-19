@@ -4,14 +4,7 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
-import {
-  ArrowRight,
-  ArrowRightLeft,
-  Boxes,
-  Check,
-  Loader2,
-  X,
-} from "lucide-react";
+import { ArrowRightLeft, Boxes, Loader2, X } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
@@ -25,8 +18,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   Select,
   SelectContent,
@@ -136,7 +127,7 @@ export function CycleCountSessionDetailDialog({
   const [selectedDestinationZone, setSelectedDestinationZone] = useState<
     string | null
   >(null);
-  const [adjustmentReason, setAdjustmentReason] = useState("");
+  const [_adjustmentReason, setAdjustmentReason] = useState("");
   const [reasonId, setReasonId] = useState<string>("");
   const [comments, setComments] = useState<string>("");
 
@@ -373,7 +364,7 @@ export function CycleCountSessionDetailDialog({
     return null;
   }
 
-  const activeZone = session.zones[activeZoneIndex];
+  // const activeZone = session.zones[activeZoneIndex];
   const formattedDate = new Intl.DateTimeFormat("en-US", {
     year: "numeric",
     month: "2-digit",
@@ -1005,12 +996,12 @@ export function CycleCountSessionDetailDialog({
                           <TableHead className="w-10">
                             <Checkbox
                               checked={areAllItemsInZoneSelected(
-                                zone.lineItems,
+                                zone.lineItems as LineItemFromApi[],
                                 zone.zoneId?.toString() ?? "",
                               )}
                               onCheckedChange={(checked) =>
                                 handleSelectAllInZone(
-                                  zone.lineItems,
+                                  zone.lineItems as LineItemFromApi[],
                                   zone.zoneName,
                                   zone.zoneId?.toString() ?? "",
                                   !!checked,
@@ -1046,7 +1037,7 @@ export function CycleCountSessionDetailDialog({
                             </TableCell>
                           </TableRow>
                         ) : (
-                          zone.lineItems.map((item) => (
+                          (zone.lineItems as LineItemFromApi[]).map((item) => (
                             <TableRow
                               key={item._id?.toString()}
                               className={cn(
@@ -1064,7 +1055,7 @@ export function CycleCountSessionDetailDialog({
                                   )}
                                   onCheckedChange={() =>
                                     handleItemToggle(
-                                      item,
+                                      item as LineItemFromApi,
                                       zone.zoneName,
                                       zone.zoneId?.toString() ?? "",
                                     )

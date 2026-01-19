@@ -24,6 +24,7 @@ import { PageWrapper } from "@/components/ui/page-wrapper";
 import { Separator } from "@/components/ui/separator";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { createTimeSeriesData } from "@/lib/utils";
 import { useChartStore } from "@/store/chart";
 import { useDateFilterStore } from "@/store/date-filter";
 
@@ -39,7 +40,6 @@ export default function Page() {
   const projectionStyle = useChartStore((state) => state.projectionStyle);
   const setProjectionStyle = useChartStore((state) => state.setProjectionStyle);
 
-  const selectedPreset = useDateFilterStore((state) => state.selectedPreset);
   const periodLabel = useDateFilterStore((state) => state.periodLabel);
   const dateRange = useDateFilterStore((state) => state.dateRange);
   const updateFromPicker = useDateFilterStore(
@@ -120,32 +120,6 @@ export default function Page() {
       dayLabels.push(label);
     }
 
-    // Group orders by day and status
-    const createTimeSeriesData = (statusCode: string): ChartDataPoint[] => {
-      const countsByDay = new Map<string, number>();
-
-      // Initialize all days with 0
-      dayLabels.forEach((label) => countsByDay.set(label, 0));
-
-      // Count orders by day
-      filteredOrders
-        .filter((o) => o.purchaseOrderStatus?.lookupCode === statusCode)
-        .forEach((order) => {
-          const orderDate = new Date(order.orderedAt);
-          const label = orderDate.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          });
-          countsByDay.set(label, (countsByDay.get(label) ?? 0) + 1);
-        });
-
-      return dayLabels.map((label) => ({
-        label,
-        value: countsByDay.get(label) ?? 0,
-        isProjected: false,
-      }));
-    };
-
     // Count totals by status
     const receivedCount = filteredOrders.filter(
       (o) => o.purchaseOrderStatus?.lookupCode === "RECEIVED",
@@ -164,7 +138,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-2)",
-        data: createTimeSeriesData("RECEIVED"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredOrders,
+          (o) => o.purchaseOrderStatus?.lookupCode === "RECEIVED",
+          (o) => new Date(o.orderedAt),
+        ),
       },
       {
         title: "Pending Orders",
@@ -172,7 +151,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-4)",
-        data: createTimeSeriesData("PENDING"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredOrders,
+          (o) => o.purchaseOrderStatus?.lookupCode === "PENDING",
+          (o) => new Date(o.orderedAt),
+        ),
       },
       {
         title: "Cancelled Orders",
@@ -180,7 +164,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-5)",
-        data: createTimeSeriesData("CANCELLED"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredOrders,
+          (o) => o.purchaseOrderStatus?.lookupCode === "CANCELLED",
+          (o) => new Date(o.orderedAt),
+        ),
       },
     ];
   }, [purchaseOrders, dateRange]);

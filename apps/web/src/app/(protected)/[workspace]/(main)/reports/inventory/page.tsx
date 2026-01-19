@@ -18,8 +18,6 @@ import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   AlertTriangle,
-  ArrowDownRight,
-  ArrowUpRight,
   Boxes,
   Calendar,
   ChevronLeft,
@@ -29,7 +27,6 @@ import {
   Download,
   Package,
   PackageX,
-  Warehouse,
 } from "lucide-react";
 import * as React from "react";
 import {
@@ -68,7 +65,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { exportReportToPDF, formatDateRange } from "@/lib/pdf-export";
@@ -90,7 +87,7 @@ const CHART_COLORS = [
 type InventoryFilter = "all" | "low-stock" | "expiring" | "expired";
 
 export default function InventoryReportPage() {
-  const { userId, organizationId } = useCurrentUser();
+  const { organizationId } = useCurrentUser();
   const { currentBranch } = useBranches({
     organizationId: organizationId as Id<"organizations"> | undefined,
     includeDeleted: false,
@@ -98,7 +95,6 @@ export default function InventoryReportPage() {
 
   // Date range state
   const dateRange = useDateFilterStore((state) => state.dateRange);
-  const periodLabel = useDateFilterStore((state) => state.periodLabel);
   const updateFromPicker = useDateFilterStore(
     (state) => state.updateFromPicker,
   );
@@ -595,16 +591,20 @@ export default function InventoryReportPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name} (${(percent * 100).toFixed(0)}%)`
-                    }
+                    label={({
+                      name,
+                      percent,
+                    }: {
+                      name: string;
+                      percent: number;
+                    }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="quantity"
                   >
                     {categoryChartData.map((entry, index) => (
                       <Cell
-                        key={`cell-${index}`}
+                        key={`cell-${entry.name}`}
                         fill={CHART_COLORS[index % CHART_COLORS.length]}
                       />
                     ))}
@@ -734,9 +734,9 @@ export default function InventoryReportPage() {
               <TableBody>
                 {isItemsPending ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
+                    <TableRow key={i.toString()}>
                       {columns.map((_, j) => (
-                        <TableCell key={j}>
+                        <TableCell key={j.toString()}>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
                       ))}

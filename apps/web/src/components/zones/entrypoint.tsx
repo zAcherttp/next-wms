@@ -47,7 +47,18 @@ extend({ EntryPointMaterial });
 // Add TypeScript declaration
 declare module "@react-three/fiber" {
   interface ThreeElements {
-    entryPointMaterial: any;
+    entryPointMaterial: {
+      uFillLevel: number;
+      uLowColor: THREE.Color;
+      uMidColor: THREE.Color;
+      uHighColor: THREE.Color;
+      uEmptyColor: THREE.Color;
+      uLowThreshold: number;
+      uHighThreshold: number;
+      transparent?: boolean;
+      side?: THREE.Side;
+      depthWrite?: boolean;
+    };
   }
 }
 
@@ -127,7 +138,7 @@ export const Entrypoint: React.FC<{ entrypointId: string }> = ({
   );
 
   // Extract attributes from entity
-  const { position, label } = useMemo(() => {
+  const { position } = useMemo(() => {
     if (!entity?.zoneAttributes) {
       return {
         position: { x: 0, y: 0, z: 0 },

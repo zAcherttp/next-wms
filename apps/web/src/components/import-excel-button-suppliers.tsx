@@ -94,7 +94,7 @@ function parseExcelFile(file: File): Promise<ParsedSupplier[]> {
         }
 
         resolve(suppliers);
-      } catch (error) {
+      } catch (_error) {
         reject(
           new Error(
             "Failed to parse Excel file. Please check the file format.",
@@ -189,7 +189,7 @@ export function ImportExcelButtonSuppliers() {
         }
 
         // Validate lead time
-        if (supplier.leadTimeDays < 0 || isNaN(supplier.leadTimeDays)) {
+        if (supplier.leadTimeDays < 0 || Number.isNaN(supplier.leadTimeDays)) {
           errors.push(`Invalid lead time for "${supplier.name}"`);
           continue;
         }
@@ -286,6 +286,7 @@ export function ImportExcelButtonSuppliers() {
         accept=".xlsx,.xls"
         onChange={handleFileSelect}
         className="hidden"
+        aria-label="Select Excel file to import suppliers"
       />
       <Button
         variant="outline"

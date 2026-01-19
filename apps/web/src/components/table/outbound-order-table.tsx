@@ -39,7 +39,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -523,7 +522,7 @@ export function OutboundOrdersTable() {
   React.useEffect(() => {
     table.getColumn("orderCode")?.setFilterValue(debouncedFilterValue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedFilterValue]);
+  }, [debouncedFilterValue, table]);
 
   const activeFiltersCount =
     sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);

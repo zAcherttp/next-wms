@@ -11,7 +11,6 @@ import {
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { Package } from "lucide-react";
-import * as React from "react";
 import {
   Dialog,
   DialogContent,

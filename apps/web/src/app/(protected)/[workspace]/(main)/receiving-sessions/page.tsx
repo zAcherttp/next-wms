@@ -24,6 +24,7 @@ import { PageWrapper } from "@/components/ui/page-wrapper";
 import { Separator } from "@/components/ui/separator";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { createTimeSeriesData } from "@/lib/utils";
 import { useChartStore } from "@/store/chart";
 import { useDateFilterStore } from "@/store/date-filter";
 
@@ -39,7 +40,6 @@ export default function Page() {
   const projectionStyle = useChartStore((state) => state.projectionStyle);
   const setProjectionStyle = useChartStore((state) => state.setProjectionStyle);
 
-  const selectedPreset = useDateFilterStore((state) => state.selectedPreset);
   const periodLabel = useDateFilterStore((state) => state.periodLabel);
   const dateRange = useDateFilterStore((state) => state.dateRange);
   const updateFromPicker = useDateFilterStore(
@@ -119,32 +119,6 @@ export default function Page() {
       dayLabels.push(label);
     }
 
-    // Group sessions by day and status
-    const createTimeSeriesData = (statusCode: string): ChartDataPoint[] => {
-      const countsByDay = new Map<string, number>();
-
-      // Initialize all days with 0
-      dayLabels.forEach((label) => countsByDay.set(label, 0));
-
-      // Count sessions by day
-      filteredSessions
-        .filter((s) => s.statusCode === statusCode)
-        .forEach((session) => {
-          const sessionDate = new Date(session.receivedAt);
-          const label = sessionDate.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          });
-          countsByDay.set(label, (countsByDay.get(label) ?? 0) + 1);
-        });
-
-      return dayLabels.map((label) => ({
-        label,
-        value: countsByDay.get(label) ?? 0,
-        isProjected: false,
-      }));
-    };
-
     // Count totals by status
     const inProgressCount = filteredSessions.filter(
       (s) => s.statusCode === "IN_PROGRESS",
@@ -163,7 +137,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-1)",
-        data: createTimeSeriesData("IN_PROGRESS"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredSessions,
+          (s) => s.statusCode === "IN_PROGRESS",
+          (s) => new Date(s.receivedAt),
+        ),
       },
       {
         title: "Pending",
@@ -171,7 +150,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-4)",
-        data: createTimeSeriesData("PENDING"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredSessions,
+          (s) => s.statusCode === "PENDING",
+          (s) => new Date(s.receivedAt),
+        ),
       },
       {
         title: "Complete",
@@ -179,7 +163,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-2)",
-        data: createTimeSeriesData("COMPLETE"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredSessions,
+          (s) => s.statusCode === "COMPLETE",
+          (s) => new Date(s.receivedAt),
+        ),
       },
     ];
   }, [receiveSessions, dateRange]);

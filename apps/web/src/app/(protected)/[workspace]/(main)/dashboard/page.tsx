@@ -13,7 +13,6 @@ import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   Activity,
-  AlertTriangle,
   ArrowRight,
   Boxes,
   ChevronLeft,
@@ -26,13 +25,11 @@ import {
   PackageCheck,
   RotateCcw,
   Truck,
-  Warehouse,
 } from "lucide-react";
 import type { Route } from "next";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import * as React from "react";
-import { useMemo } from "react";
+import { useCallback, useMemo } from "react";
 import {
   ChartDataCard,
   type ChartDataPoint,
@@ -40,13 +37,7 @@ import {
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
 import {
   DropdownMenu,
@@ -80,7 +71,7 @@ import {
 } from "@/components/ui/table";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import { cn, getBadgeStyleByStatus } from "@/lib/utils";
+import { getBadgeStyleByStatus } from "@/lib/utils";
 import { useChartStore } from "@/store/chart";
 import { useDateFilterStore } from "@/store/date-filter";
 
@@ -155,7 +146,7 @@ export default function DashboardPage() {
   });
 
   // Format relative time
-  const formatRelativeTime = (timestamp: number) => {
+  const formatRelativeTime = useCallback((timestamp: number) => {
     const now = Date.now();
     const diff = now - timestamp;
     const minutes = Math.floor(diff / 60000);
@@ -166,7 +157,7 @@ export default function DashboardPage() {
     if (minutes < 60) return `${minutes} min ago`;
     if (hours < 24) return `${hours} hour${hours > 1 ? "s" : ""} ago`;
     return `${days} day${days > 1 ? "s" : ""} ago`;
-  };
+  }, []);
 
   // Get icon for entity type
   const getActivityIcon = (entityType: string) => {
@@ -361,7 +352,7 @@ export default function DashboardPage() {
         },
       },
     ],
-    [workspace],
+    [workspace, formatRelativeTime],
   );
 
   const table = useReactTable({
@@ -659,9 +650,9 @@ export default function DashboardPage() {
               <TableBody>
                 {isPending ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
+                    <TableRow key={`skeleton-row-${i.toString()}`}>
                       {columns.map((_, j) => (
-                        <TableCell key={j}>
+                        <TableCell key={`skeleton-cell-${j.toString()}`}>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
                       ))}

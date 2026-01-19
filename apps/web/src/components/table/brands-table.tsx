@@ -46,7 +46,6 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -449,7 +448,7 @@ export function BrandsTable() {
   React.useEffect(() => {
     table.getColumn("name")?.setFilterValue(debouncedFilterValue);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedFilterValue]);
+  }, [debouncedFilterValue, table]);
 
   // Calculate active filters count
   const activeFiltersCount =

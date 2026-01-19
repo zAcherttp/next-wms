@@ -1,5 +1,6 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import type { ChartDataPoint } from "@/components/chart-data-card";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -171,4 +172,34 @@ export function darkenHex(hex: string, amount = 0.25): string {
   const g2 = mix(g);
   const b2 = mix(b);
   return `#${[r2, g2, b2].map((c) => c.toString(16).padStart(2, "0")).join("")}`;
+}
+
+export function createTimeSeriesData<T>(
+  dayLabels: string[],
+  items: T[],
+  filterFn: (item: T) => boolean,
+  getDate: (item: T) => Date,
+): ChartDataPoint[] {
+  const countsByDay = new Map<string, number>();
+
+  // Initialize all days with 0
+  for (const label of dayLabels) {
+    countsByDay.set(label, 0);
+  }
+
+  // Count items by day
+  for (const item of items.filter(filterFn)) {
+    const itemDate = getDate(item);
+    const label = itemDate.toLocaleDateString("en-US", {
+      month: "short",
+      day: "numeric",
+    });
+    countsByDay.set(label, (countsByDay.get(label) ?? 0) + 1);
+  }
+
+  return dayLabels.map((label) => ({
+    label,
+    value: countsByDay.get(label) ?? 0,
+    isProjected: false,
+  }));
 }

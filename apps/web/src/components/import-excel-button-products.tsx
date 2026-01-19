@@ -45,6 +45,10 @@ interface VariantInfo {
   unit?: string;
 }
 
+interface ExistingVariant {
+  skuCode: string;
+}
+
 function parseExcelFile(file: File): Promise<ParsedRow[]> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -140,7 +144,7 @@ function parseExcelFile(file: File): Promise<ParsedRow[]> {
         }
 
         resolve(rows);
-      } catch (error) {
+      } catch (_error) {
         reject(new Error("Failed to parse Excel file"));
       }
     };
@@ -156,9 +160,10 @@ function groupByProduct(rows: ParsedRow[]): Map<string, ProductGroup> {
   for (const row of rows) {
     const key = row.productName.toLowerCase();
 
-    if (!groups.has(key)) {
+    let group = groups.get(key);
+    if (!group) {
       // First row for this product
-      groups.set(key, {
+      group = {
         productName: row.productName,
         categoryName: row.categoryName,
         brandName: row.brandName,
@@ -168,11 +173,11 @@ function groupByProduct(rows: ParsedRow[]): Map<string, ProductGroup> {
         shelfLifeDays: row.shelfLifeDays,
         reorderPoint: row.reorderPoint,
         variants: [],
-      });
+      };
+      groups.set(key, group);
     }
 
     // Add variant
-    const group = groups.get(key)!;
     group.variants.push({
       variantName: row.variantName,
       skuCode: row.skuCode,
@@ -308,7 +313,7 @@ export function ImportExcelButtonProducts() {
       );
       const existingSkus = new Set<string>();
       existingProducts?.forEach((p) => {
-        p.variants.forEach((v: any) => {
+        p.variants.forEach((v: ExistingVariant) => {
           existingSkus.add(v.skuCode.toLowerCase());
         });
       });

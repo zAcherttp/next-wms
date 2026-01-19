@@ -24,6 +24,7 @@ import { PageWrapper } from "@/components/ui/page-wrapper";
 import { Separator } from "@/components/ui/separator";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { createTimeSeriesData } from "@/lib/utils";
 import { useChartStore } from "@/store/chart";
 import { useDateFilterStore } from "@/store/date-filter";
 
@@ -39,7 +40,6 @@ export default function Page() {
   const projectionStyle = useChartStore((state) => state.projectionStyle);
   const setProjectionStyle = useChartStore((state) => state.setProjectionStyle);
 
-  const selectedPreset = useDateFilterStore((state) => state.selectedPreset);
   const periodLabel = useDateFilterStore((state) => state.periodLabel);
   const dateRange = useDateFilterStore((state) => state.dateRange);
   const updateFromPicker = useDateFilterStore(
@@ -119,35 +119,6 @@ export default function Page() {
       dayLabels.push(label);
     }
 
-    // Group sessions by day and status
-    const createTimeSeriesData = (statusValue: string): ChartDataPoint[] => {
-      const countsByDay = new Map<string, number>();
-
-      // Initialize all days with 0
-      dayLabels.forEach((label) => countsByDay.set(label, 0));
-
-      // Count sessions by day
-      filteredSessions
-        .filter(
-          (s) =>
-            s.status?.lookupValue?.toLowerCase() === statusValue.toLowerCase(),
-        )
-        .forEach((session) => {
-          const sessionDate = new Date(session.createdAt);
-          const label = sessionDate.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          });
-          countsByDay.set(label, (countsByDay.get(label) ?? 0) + 1);
-        });
-
-      return dayLabels.map((label) => ({
-        label,
-        value: countsByDay.get(label) ?? 0,
-        isProjected: false,
-      }));
-    };
-
     // Count totals by status
     const inProgressCount = filteredSessions.filter(
       (s) => s.status?.lookupValue?.toLowerCase() === "in progress",
@@ -166,7 +137,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-1)",
-        data: createTimeSeriesData("In Progress"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredSessions,
+          (s) => s.status?.lookupValue?.toLowerCase() === "in progress",
+          (s) => new Date(s.createdAt),
+        ),
       },
       {
         title: "Pending",
@@ -174,7 +150,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-4)",
-        data: createTimeSeriesData("Pending"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredSessions,
+          (s) => s.status?.lookupValue?.toLowerCase() === "pending",
+          (s) => new Date(s.createdAt),
+        ),
       },
       {
         title: "Complete",
@@ -182,7 +163,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-2)",
-        data: createTimeSeriesData("Completed"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredSessions,
+          (s) => s.status?.lookupValue?.toLowerCase() === "completed",
+          (s) => new Date(s.createdAt),
+        ),
       },
     ];
   }, [pickingSessions, dateRange]);
@@ -256,29 +242,25 @@ export default function Page() {
 
       {/* Dashboard Cards - 3 cards with real data */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {isPending ? (
-          <>
-            {[1, 2, 3].map((i) => (
+        {isPending
+          ? [1, 2, 3].map((i) => (
               <div
                 key={i}
                 className="h-32 animate-pulse rounded-xl border bg-card"
               />
+            ))
+          : cardsData.map((card) => (
+              <ChartDataCard
+                key={card.title}
+                title={card.title}
+                value={card.value}
+                changePercent={card.changePercent}
+                isPositive={card.isPositive}
+                periodLabel={periodLabel}
+                data={card.data}
+                color={card.color}
+              />
             ))}
-          </>
-        ) : (
-          cardsData.map((card) => (
-            <ChartDataCard
-              key={card.title}
-              title={card.title}
-              value={card.value}
-              changePercent={card.changePercent}
-              isPositive={card.isPositive}
-              periodLabel={periodLabel}
-              data={card.data}
-              color={card.color}
-            />
-          ))
-        )}
       </div>
       <PickingSessionsTable />
     </PageWrapper>

@@ -23,7 +23,6 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
-  Clock,
   Download,
   Package,
   PackageCheck,
@@ -41,8 +40,6 @@ import {
   CartesianGrid,
   Cell,
   Legend,
-  Line,
-  LineChart,
   Pie,
   PieChart,
   ResponsiveContainer,
@@ -110,7 +107,7 @@ type OutboundFilter =
   | "in-progress";
 
 export default function OutboundReportPage() {
-  const { userId, organizationId } = useCurrentUser();
+  const { organizationId } = useCurrentUser();
   const { currentBranch } = useBranches({
     organizationId: organizationId as Id<"organizations"> | undefined,
     includeDeleted: false,
@@ -661,16 +658,20 @@ export default function OutboundReportPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) =>
-                      `${name} (${(percent * 100).toFixed(0)}%)`
-                    }
+                    label={({
+                      name,
+                      percent,
+                    }: {
+                      name: string;
+                      percent: number;
+                    }) => `${name} (${(percent * 100).toFixed(0)}%)`}
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
                   >
                     {statusChartData.map((entry, index) => (
                       <Cell
-                        key={`cell-${index}`}
+                        key={`cell-${index.toString()}`}
                         fill={
                           STATUS_COLORS[entry.code] ??
                           CHART_COLORS[index % CHART_COLORS.length]
@@ -915,9 +916,9 @@ export default function OutboundReportPage() {
               <TableBody>
                 {isOrdersPending ? (
                   Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
+                    <TableRow key={i.toString()}>
                       {columns.map((_, j) => (
-                        <TableCell key={j}>
+                        <TableCell key={j.toString()}>
                           <Skeleton className="h-4 w-full" />
                         </TableCell>
                       ))}

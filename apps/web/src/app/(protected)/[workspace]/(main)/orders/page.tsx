@@ -24,6 +24,7 @@ import { PageWrapper } from "@/components/ui/page-wrapper";
 import { Separator } from "@/components/ui/separator";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { createTimeSeriesData } from "@/lib/utils";
 import { useChartStore } from "@/store/chart";
 import { useDateFilterStore } from "@/store/date-filter";
 
@@ -39,7 +40,6 @@ export default function Page() {
   const projectionStyle = useChartStore((state) => state.projectionStyle);
   const setProjectionStyle = useChartStore((state) => state.setProjectionStyle);
 
-  const selectedPreset = useDateFilterStore((state) => state.selectedPreset);
   const periodLabel = useDateFilterStore((state) => state.periodLabel);
   const dateRange = useDateFilterStore((state) => state.dateRange);
   const updateFromPicker = useDateFilterStore(
@@ -148,32 +148,6 @@ export default function Page() {
       }
     };
 
-    // Group orders by day and status group
-    const createTimeSeriesData = (statusGroup: string): ChartDataPoint[] => {
-      const countsByDay = new Map<string, number>();
-
-      // Initialize all days with 0
-      dayLabels.forEach((label) => countsByDay.set(label, 0));
-
-      // Count orders by day
-      filteredOrders
-        .filter((order) => matchesStatusGroup(order, statusGroup))
-        .forEach((order) => {
-          const orderDate = new Date(order.orderDate);
-          const label = orderDate.toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-          });
-          countsByDay.set(label, (countsByDay.get(label) ?? 0) + 1);
-        });
-
-      return dayLabels.map((label) => ({
-        label,
-        value: countsByDay.get(label) ?? 0,
-        isProjected: false,
-      }));
-    };
-
     // Count totals by status group
     const pendingCount = filteredOrders.filter((o) =>
       matchesStatusGroup(o, "pending"),
@@ -195,7 +169,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-4)",
-        data: createTimeSeriesData("pending"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredOrders,
+          (order) => matchesStatusGroup(order, "pending"),
+          (order) => new Date(order.orderDate),
+        ),
       },
       {
         title: "In Progress",
@@ -203,7 +182,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-1)",
-        data: createTimeSeriesData("in_progress"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredOrders,
+          (order) => matchesStatusGroup(order, "in_progress"),
+          (order) => new Date(order.orderDate),
+        ),
       },
       {
         title: "Ready to Ship",
@@ -211,7 +195,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-3)",
-        data: createTimeSeriesData("ready_to_ship"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredOrders,
+          (order) => matchesStatusGroup(order, "ready_to_ship"),
+          (order) => new Date(order.orderDate),
+        ),
       },
       {
         title: "Shipped",
@@ -219,7 +208,12 @@ export default function Page() {
         changePercent: 0,
         isPositive: true,
         color: "var(--chart-2)",
-        data: createTimeSeriesData("shipped"),
+        data: createTimeSeriesData(
+          dayLabels,
+          filteredOrders,
+          (order) => matchesStatusGroup(order, "shipped"),
+          (order) => new Date(order.orderDate),
+        ),
       },
     ];
   }, [outboundOrders, dateRange]);
@@ -296,29 +290,25 @@ export default function Page() {
 
       {/* Dashboard Cards - 4 cards with real data */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {isPending ? (
-          <>
-            {[1, 2, 3, 4].map((i) => (
+        {isPending
+          ? [1, 2, 3, 4].map((i) => (
               <div
                 key={i}
                 className="h-32 animate-pulse rounded-xl border bg-card"
               />
+            ))
+          : cardsData.map((card) => (
+              <ChartDataCard
+                key={card.title}
+                title={card.title}
+                value={card.value}
+                changePercent={card.changePercent}
+                isPositive={card.isPositive}
+                periodLabel={periodLabel}
+                data={card.data}
+                color={card.color}
+              />
             ))}
-          </>
-        ) : (
-          cardsData.map((card) => (
-            <ChartDataCard
-              key={card.title}
-              title={card.title}
-              value={card.value}
-              changePercent={card.changePercent}
-              isPositive={card.isPositive}
-              periodLabel={periodLabel}
-              data={card.data}
-              color={card.color}
-            />
-          ))
-        )}
       </div>
       <OutboundOrdersTable />
     </PageWrapper>

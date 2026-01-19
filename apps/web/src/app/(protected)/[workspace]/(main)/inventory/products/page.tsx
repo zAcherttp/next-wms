@@ -11,10 +11,8 @@ import {
   Layers,
   Package,
   PackageX,
-  RefreshCw,
 } from "lucide-react";
 import { ProductInventoryTable } from "@/components/table/product-inventory-table";
-import { Button } from "@/components/ui/button";
 import { PageWrapper } from "@/components/ui/page-wrapper";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -52,11 +50,7 @@ export default function ProductsInventoryPage() {
   const { currentBranch } = useBranches({ organizationId });
 
   // Fetch stats data
-  const {
-    data: stats,
-    isLoading: isStatsLoading,
-    refetch: refetchStats,
-  } = useQuery({
+  const { data: stats, isLoading: isStatsLoading } = useQuery({
     ...convexQuery(
       api.products.getProductInventoryStats,
       organizationId

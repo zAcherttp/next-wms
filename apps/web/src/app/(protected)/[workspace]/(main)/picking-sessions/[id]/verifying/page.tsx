@@ -16,6 +16,22 @@ import {
 import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
 import { toast } from "sonner";
+
+type PickingSessionItem = {
+  _id: Id<"picking_session_details">;
+  skuCode: string;
+  productName: string | null;
+  quantityRequired: number;
+  quantityPicked: number;
+  batchId?: Id<"inventory_batches">;
+  location: {
+    zoneId: Id<"storage_zones">;
+    zoneName: string;
+    zonePath: string;
+    zoneType: string;
+  } | null;
+};
+
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -41,7 +57,8 @@ export default function PickingVerifyingPage() {
   const [skuInput, setSkuInput] = React.useState("");
   const [isPickDialogOpen, setIsPickDialogOpen] = React.useState(false);
   const [isLocationDialogOpen, setIsLocationDialogOpen] = React.useState(false);
-  const [selectedItem, setSelectedItem] = React.useState<any | null>(null);
+  const [selectedItem, setSelectedItem] =
+    React.useState<PickingSessionItem | null>(null);
   const [pickAmount, setPickAmount] = React.useState(0);
   const [pickNote, setPickNote] = React.useState("");
 
@@ -164,12 +181,12 @@ export default function PickingVerifyingPage() {
     }
   };
 
-  const handleViewLocation = (item: any) => {
+  const handleViewLocation = (item: PickingSessionItem) => {
     setSelectedItem(item);
     setIsLocationDialogOpen(true);
   };
 
-  const handleRecordClick = (item: any) => {
+  const handleRecordClick = (item: PickingSessionItem) => {
     setSelectedItem(item);
     setPickAmount(item.quantityRequired - item.quantityPicked);
     setIsPickDialogOpen(true);

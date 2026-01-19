@@ -90,7 +90,7 @@ function parseExcelFile(file: File): Promise<ParsedExcelData> {
         resolve({
           products,
         });
-      } catch (error) {
+      } catch (_error) {
         reject(
           new Error(
             "Failed to parse Excel file. Please check the file format.",

@@ -228,6 +228,12 @@ export default function VerifyingPage() {
           setFoundItem(item);
           setIsDialogOpen(true);
         }}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            setFoundItem(item);
+            setIsDialogOpen(true);
+          }
+        }}
       >
         Record: {item.quantityReceived}
       </div>

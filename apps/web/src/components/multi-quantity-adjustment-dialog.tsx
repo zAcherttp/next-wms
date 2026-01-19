@@ -52,10 +52,10 @@ interface MultiQuantityAdjustmentDialogProps {
 }
 
 // Type for zone with items
-type ZoneWithItems = {
-  _id: string;
-  name: string;
-};
+// type ZoneWithItems = {
+//   _id: string;
+//   name: string;
+// };
 
 // Type for inventory batch/item
 type InventoryItem = {
@@ -440,21 +440,21 @@ export function MultiQuantityAdjustmentDialog({
   ]);
 
   // Get helper data
-  const selectedZones = React.useMemo(
-    () => zones?.filter((z) => selectedZoneIds.includes(z._id)) ?? [],
-    [zones, selectedZoneIds],
-  );
+  // const selectedZones = React.useMemo(
+  //   () => zones?.filter((z) => selectedZoneIds.includes(z._id)) ?? [],
+  //   [zones, selectedZoneIds],
+  // );
 
   const currentZone = zones?.find((z) => z._id === currentZoneId);
   const currentSelectedItems = selectedItemsByZone.get(currentZoneId) ?? [];
 
-  const totalSelectedItems = React.useMemo(() => {
-    let count = 0;
-    selectedItemsByZone.forEach((items) => {
-      count += items.length;
-    });
-    return count;
-  }, [selectedItemsByZone]);
+  // const totalSelectedItems = React.useMemo(() => {
+  //   let count = 0;
+  //   selectedItemsByZone.forEach((items) => {
+  //     count += items.length;
+  //   });
+  //   return count;
+  // }, [selectedItemsByZone]);
 
   const itemsWithVariance = adjustmentItems.filter(
     (item) => item.countedQuantity !== item.expectedQuantity,
