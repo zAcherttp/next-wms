@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PageWrapper } from "@/components/ui/page-wrapper";
 import { Separator } from "@/components/ui/separator";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -187,7 +188,7 @@ export default function Page() {
   }, [pickingSessions, dateRange]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageWrapper>
       {/* Header with date picker and chart settings */}
       <div className="flex flex-row items-center justify-between">
         <DateRangePicker
@@ -280,6 +281,6 @@ export default function Page() {
         )}
       </div>
       <PickingSessionsTable />
-    </div>
+    </PageWrapper>
   );
 }

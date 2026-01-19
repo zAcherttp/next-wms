@@ -103,7 +103,6 @@ function ActionsCell({
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-
           <DropdownMenuItem
             onClick={() => onEdit(product.productId as Id<"products">)}
           >

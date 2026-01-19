@@ -336,7 +336,6 @@ export function PurchaseOrdersTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-
                 <DropdownMenuItem
                   onClick={() =>
                     navigator.clipboard.writeText(purchaseOrder.code)
@@ -535,7 +534,7 @@ export function PurchaseOrdersTable() {
         <div className="space-x-2">
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.firstPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -543,7 +542,7 @@ export function PurchaseOrdersTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -551,7 +550,7 @@ export function PurchaseOrdersTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -559,7 +558,7 @@ export function PurchaseOrdersTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.lastPage()}
             disabled={!table.getCanNextPage()}
           >

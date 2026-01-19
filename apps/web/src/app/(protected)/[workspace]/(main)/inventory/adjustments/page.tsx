@@ -11,6 +11,7 @@ import { MultiQuantityAdjustmentDialog } from "@/components/multi-quantity-adjus
 import { NewAdjustmentRequestDialog } from "@/components/new-adjustment-request-dialog";
 import { LocationAdjustmentsTable } from "@/components/table/location-adjustments-table";
 import { QuantityAdjustmentsTable } from "@/components/table/quantity-adjustments-table";
+import { PageWrapper } from "@/components/ui/page-wrapper";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -18,13 +19,12 @@ import { useCurrentUser } from "@/hooks/use-current-user";
 interface StatCardProps {
   title: string;
   value: string | number;
-  bgColor: string;
   textColor: string;
 }
 
-function StatCard({ title, value, bgColor, textColor }: StatCardProps) {
+function StatCard({ title, value, textColor }: StatCardProps) {
   return (
-    <div className={`flex flex-col gap-2 rounded-lg border p-4 ${bgColor}`}>
+    <div className={"flex flex-col gap-2 rounded-lg border bg-card p-4"}>
       <span className="text-muted-foreground text-sm">{title}</span>
       <div className={`font-bold text-3xl ${textColor}`}>{value}</div>
     </div>
@@ -136,7 +136,7 @@ export default function Page() {
   };
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <PageWrapper>
       {/* Dialogs - Rendered conditionally to avoid unnecessary data fetching */}
       {isNewRequestDialogOpen && (
         <NewAdjustmentRequestDialog
@@ -163,37 +163,33 @@ export default function Page() {
         <StatCard
           title="Total Quantity Requests"
           value={displayStats.totalQuantityRequests}
-          bgColor="bg-card"
           textColor="text-foreground"
         />
         <StatCard
           title="Pending Approval"
           value={displayStats.pendingApproval}
-          bgColor="bg-yellow-500/5"
           textColor="text-yellow-600"
         />
         <StatCard
           title="Approved"
           value={displayStats.approved}
-          bgColor="bg-green-500/5"
           textColor="text-green-600"
         />
         <StatCard
           title="Rejected"
           value={displayStats.rejected}
-          bgColor="bg-red-500/5"
           textColor="text-red-600"
         />
       </div>
 
       {/* Tabs */}
-      <Tabs defaultValue="quantity" className="w-full">
+      <Tabs defaultValue="quantity" className="w-full gap-0">
         <TabsList className="grid w-full max-w-md grid-cols-2">
           <TabsTrigger value="quantity">Quantity Adjustments</TabsTrigger>
           <TabsTrigger value="location">Location Adjustments</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="quantity" className="mt-6">
+        <TabsContent value="quantity" className="mt-4">
           {/* Quantity Adjustments Table */}
           <QuantityAdjustmentsTable
             onApprove={handleApprove}
@@ -202,7 +198,7 @@ export default function Page() {
           />
         </TabsContent>
 
-        <TabsContent value="location" className="mt-6">
+        <TabsContent value="location" className="mt-4">
           {/* Location Adjustments Table */}
           <LocationAdjustmentsTable
             onApprove={handleApprove}
@@ -211,6 +207,6 @@ export default function Page() {
           />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageWrapper>
   );
 }

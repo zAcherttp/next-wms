@@ -251,7 +251,10 @@ export function AddReceiveSessionDialog({
               <Label htmlFor="assigned-worker">
                 Assigned Worker <span className="text-destructive">*</span>
               </Label>
-              <Select value={selectedWorkerId} onValueChange={setSelectedWorkerId}>
+              <Select
+                value={selectedWorkerId}
+                onValueChange={setSelectedWorkerId}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select an assigned worker" />
                 </SelectTrigger>
@@ -262,11 +265,12 @@ export function AddReceiveSessionDialog({
                       <span className="ml-2">Loading...</span>
                     </div>
                   )}
-                  {!isLoadingUsers && (!organizationUsers || organizationUsers.length === 0) && (
-                    <div className="py-4 text-center text-muted-foreground text-sm">
-                      No workers available
-                    </div>
-                  )}
+                  {!isLoadingUsers &&
+                    (!organizationUsers || organizationUsers.length === 0) && (
+                      <div className="py-4 text-center text-muted-foreground text-sm">
+                        No workers available
+                      </div>
+                    )}
                   {!isLoadingUsers &&
                     organizationUsers &&
                     organizationUsers.length > 0 &&
@@ -287,7 +291,10 @@ export function AddReceiveSessionDialog({
             <Button variant="outline" onClick={() => setOpen(false)}>
               Cancel
             </Button>
-            <Button onClick={handleConfirmClick} disabled={!selectedPOId || !selectedWorkerId}>
+            <Button
+              onClick={handleConfirmClick}
+              disabled={!selectedPOId || !selectedWorkerId}
+            >
               Create Session
             </Button>
           </DialogFooter>

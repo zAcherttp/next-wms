@@ -268,7 +268,6 @@ export function LocationAdjustmentsTable({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-
               <DropdownMenuItem
                 onClick={() =>
                   navigator.clipboard.writeText(adjustment.requestCode)
@@ -387,7 +386,7 @@ export function LocationAdjustmentsTable({
 
       {/* Table */}
       <div className="rounded-md border">
-        <Table>
+        <Table className="bg-card">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -456,7 +455,7 @@ export function LocationAdjustmentsTable({
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
@@ -464,7 +463,7 @@ export function LocationAdjustmentsTable({
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -476,7 +475,7 @@ export function LocationAdjustmentsTable({
           </span>
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -484,7 +483,7 @@ export function LocationAdjustmentsTable({
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
           >

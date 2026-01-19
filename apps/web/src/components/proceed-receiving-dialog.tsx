@@ -17,6 +17,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -26,7 +27,6 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -93,7 +93,9 @@ export function ProceedReceivingDialog({
     },
     onError: (error) => {
       toast.error(
-        error instanceof Error ? error.message : "Failed to create receive session"
+        error instanceof Error
+          ? error.message
+          : "Failed to create receive session",
       );
       setConfirmOpen(false);
     },
@@ -118,7 +120,7 @@ export function ProceedReceivingDialog({
 
   // Get the selected worker's name for confirmation
   const selectedWorker = organizationUsers?.find(
-    (user) => user._id === selectedWorkerId
+    (user) => user._id === selectedWorkerId,
   );
 
   return (
@@ -131,7 +133,8 @@ export function ProceedReceivingDialog({
           <DialogHeader>
             <DialogTitle>Proceed Receiving</DialogTitle>
             <DialogDescription>
-              Create a receive session for this purchase order and assign a worker.
+              Create a receive session for this purchase order and assign a
+              worker.
             </DialogDescription>
           </DialogHeader>
 
@@ -166,7 +169,10 @@ export function ProceedReceivingDialog({
               <Label htmlFor="assigned-worker">
                 Assigned Worker <span className="text-destructive">*</span>
               </Label>
-              <Select value={selectedWorkerId} onValueChange={setSelectedWorkerId}>
+              <Select
+                value={selectedWorkerId}
+                onValueChange={setSelectedWorkerId}
+              >
                 <SelectTrigger className="w-full">
                   <SelectValue placeholder="Select an assigned worker" />
                 </SelectTrigger>
@@ -177,11 +183,12 @@ export function ProceedReceivingDialog({
                       <span className="ml-2">Loading...</span>
                     </div>
                   )}
-                  {!isLoadingUsers && (!organizationUsers || organizationUsers.length === 0) && (
-                    <div className="py-4 text-center text-muted-foreground text-sm">
-                      No workers available
-                    </div>
-                  )}
+                  {!isLoadingUsers &&
+                    (!organizationUsers || organizationUsers.length === 0) && (
+                      <div className="py-4 text-center text-muted-foreground text-sm">
+                        No workers available
+                      </div>
+                    )}
                   {!isLoadingUsers &&
                     organizationUsers &&
                     organizationUsers.length > 0 &&
@@ -220,7 +227,8 @@ export function ProceedReceivingDialog({
               <strong>{purchaseOrder.supplier?.name ?? "Unknown"}</strong>.
               <br />
               <br />
-              Assigned worker: <strong>{selectedWorker?.fullName ?? "Unknown"}</strong>
+              Assigned worker:{" "}
+              <strong>{selectedWorker?.fullName ?? "Unknown"}</strong>
               <br />
               <br />
               This will create a work session and copy all items from the

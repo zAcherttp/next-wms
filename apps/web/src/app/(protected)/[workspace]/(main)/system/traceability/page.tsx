@@ -9,6 +9,7 @@ import {
   DateRangePicker,
   getPresetDateRange,
 } from "@/components/ui/date-range-picker";
+import { PageWrapper } from "@/components/ui/page-wrapper";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
@@ -31,7 +32,7 @@ export default function TraceabilityPage() {
   const dateTo = dateRange.to?.getTime();
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageWrapper>
       {/* Header: DateRangePicker on left, Tabs on right */}
       <div className="flex flex-row items-center justify-between">
         <DateRangePicker
@@ -72,6 +73,6 @@ export default function TraceabilityPage() {
           onGlobalFilterChange={setFilterValue}
         />
       )}
-    </div>
+    </PageWrapper>
   );
 }

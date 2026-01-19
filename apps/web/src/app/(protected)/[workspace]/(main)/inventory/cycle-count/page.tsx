@@ -7,6 +7,7 @@ import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { ChartDataCard } from "@/components/chart-data-card";
 import { CycleCountSessionsTable } from "@/components/table/cycle-count-sessions-table";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+import { PageWrapper } from "@/components/ui/page-wrapper";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDateFilterStore } from "@/store/date-filter";
@@ -41,7 +42,7 @@ export default function Page() {
   });
 
   return (
-    <div className="flex flex-col gap-6 p-4">
+    <PageWrapper>
       {/* Header with date picker */}
       <div className="flex flex-row items-center justify-between">
         <DateRangePicker
@@ -95,6 +96,6 @@ export default function Page() {
 
       {/* Sessions Table */}
       <CycleCountSessionsTable />
-    </div>
+    </PageWrapper>
   );
 }

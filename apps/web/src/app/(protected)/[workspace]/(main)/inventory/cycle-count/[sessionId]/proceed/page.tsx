@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PageWrapper } from "@/components/ui/page-wrapper";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
@@ -282,7 +283,7 @@ export default function CycleCountProceedPage() {
   };
 
   return (
-    <div className="mx-auto flex max-w-lg flex-col gap-4 p-4">
+    <PageWrapper>
       {/* Back Button */}
       <Button variant="ghost" size="sm" onClick={handleBack} className="w-fit">
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -674,6 +675,6 @@ export default function CycleCountProceedPage() {
           </DialogContent>
         </Dialog>
       )}
-    </div>
+    </PageWrapper>
   );
 }

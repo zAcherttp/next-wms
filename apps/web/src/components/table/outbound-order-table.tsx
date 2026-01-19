@@ -408,7 +408,6 @@ export function OutboundOrdersTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-
                 <DropdownMenuItem
                   onClick={() =>
                     navigator.clipboard.writeText(outboundOrder.orderCode)
@@ -640,7 +639,7 @@ export function OutboundOrdersTable() {
         <div className="space-x-2">
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.firstPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -648,7 +647,7 @@ export function OutboundOrdersTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -656,7 +655,7 @@ export function OutboundOrdersTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -664,7 +663,7 @@ export function OutboundOrdersTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.lastPage()}
             disabled={!table.getCanNextPage()}
           >

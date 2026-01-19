@@ -244,7 +244,6 @@ export function CycleCountSessionsTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-
                 {status === "active" ||
                 status === "pending" ||
                 status === "in progress" ? (
@@ -449,7 +448,7 @@ export function CycleCountSessionsTable() {
         <div className="space-x-2">
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.firstPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -457,7 +456,7 @@ export function CycleCountSessionsTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -465,7 +464,7 @@ export function CycleCountSessionsTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -473,7 +472,7 @@ export function CycleCountSessionsTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.lastPage()}
             disabled={!table.getCanNextPage()}
           >

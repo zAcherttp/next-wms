@@ -286,7 +286,6 @@ function ActionsCell({ brand }: { brand: BrandWithProductCount }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-
             <DropdownMenuItem onClick={() => setEditOpen(true)}>
               Edit name
             </DropdownMenuItem>

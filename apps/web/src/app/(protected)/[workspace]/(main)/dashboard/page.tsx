@@ -66,6 +66,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
+import { PageWrapper } from "@/components/ui/page-wrapper";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -376,7 +377,7 @@ export default function DashboardPage() {
   });
 
   return (
-    <div className="mb-20 flex flex-col gap-4">
+    <PageWrapper>
       {/* Header with date picker and chart settings */}
       <div className="flex flex-row items-center justify-between">
         <DateRangePicker
@@ -696,7 +697,7 @@ export default function DashboardPage() {
           <div className="flex items-center justify-end space-x-2 pt-4">
             <Button
               variant="outline"
-              size="icon"
+              size="icon-sm"
               onClick={() => table.previousPage()}
               disabled={!table.getCanPreviousPage()}
             >
@@ -704,7 +705,7 @@ export default function DashboardPage() {
             </Button>
             <Button
               variant="outline"
-              size="icon"
+              size="icon-sm"
               onClick={() => table.nextPage()}
               disabled={!table.getCanNextPage()}
             >
@@ -713,6 +714,6 @@ export default function DashboardPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageWrapper>
   );
 }

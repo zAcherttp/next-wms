@@ -89,7 +89,7 @@ function StatCard({ label, value, className, valueClassName }: StatCardProps) {
         className,
       )}
     >
-      <CardContent >
+      <CardContent>
         <p className="mb-3 font-medium text-muted-foreground text-xs uppercase tracking-wider">
           {label}
         </p>
@@ -192,7 +192,12 @@ export default function ProductInventoryDetailPage() {
       <div className="shrink-0 border-b bg-background px-6 py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" asChild aria-label="Go back to products list">
+            <Button
+              variant="ghost"
+              size="icon"
+              asChild
+              aria-label="Go back to products list"
+            >
               <Link href={`/${workspace}/inventory/products` as Route}>
                 <ArrowLeft className="h-5 w-5" />
               </Link>
@@ -525,7 +530,10 @@ export default function ProductInventoryDetailPage() {
                                   {isExpired && (
                                     <Badge
                                       variant="outline"
-                                      className={cn("h-5 text-[10px]", getBadgeStyleByStatus("cancelled"))}
+                                      className={cn(
+                                        "h-5 text-[10px]",
+                                        getBadgeStyleByStatus("cancelled"),
+                                      )}
                                     >
                                       Expired
                                     </Badge>
@@ -533,7 +541,10 @@ export default function ProductInventoryDetailPage() {
                                   {isExpiringSoon && !isExpired && (
                                     <Badge
                                       variant="outline"
-                                      className={cn("h-5 text-[10px]", getBadgeStyleByStatus("pending"))}
+                                      className={cn(
+                                        "h-5 text-[10px]",
+                                        getBadgeStyleByStatus("pending"),
+                                      )}
                                     >
                                       Expiring
                                     </Badge>

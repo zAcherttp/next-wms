@@ -272,7 +272,6 @@ export function QuantityAdjustmentsTable({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-
               <DropdownMenuItem
                 onClick={() =>
                   navigator.clipboard.writeText(adjustment.requestCode)
@@ -391,7 +390,7 @@ export function QuantityAdjustmentsTable({
 
       {/* Table */}
       <div className="rounded-md border">
-        <Table>
+        <Table className="bg-card">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -460,7 +459,7 @@ export function QuantityAdjustmentsTable({
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
@@ -468,7 +467,7 @@ export function QuantityAdjustmentsTable({
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -480,7 +479,7 @@ export function QuantityAdjustmentsTable({
           </span>
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -488,7 +487,7 @@ export function QuantityAdjustmentsTable({
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
           >

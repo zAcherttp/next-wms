@@ -1,7 +1,8 @@
 "use client";
 
 import { BadgeCheck, Bell, ChevronsUpDown, LogOut } from "lucide-react";
-import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { useParams, useRouter } from "next/navigation";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
@@ -26,7 +27,10 @@ export function NavUser() {
   const user = session?.user ?? null;
 
   const router = useRouter();
+  const params = useParams();
   const { isMobile } = useSidebar();
+
+  const workspace = params.workspace as string;
 
   const handleLogOut = async () => {
     signOut({
@@ -90,13 +94,11 @@ export function NavUser() {
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem>
-                  <BadgeCheck />
-                  Account
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Bell />
-                  Notifications
+                <DropdownMenuItem asChild>
+                  <Link href={`/${workspace}/settings/profile`}>
+                    <BadgeCheck />
+                    Account
+                  </Link>
                 </DropdownMenuItem>
               </DropdownMenuGroup>
               <DropdownMenuSeparator />

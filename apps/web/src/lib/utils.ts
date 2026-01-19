@@ -77,13 +77,13 @@ export function getBadgeStyleByStatus(status: string): string {
     // 1. Pause / Wait States
     case "waiting":
     case "pending":
-      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60 w-20";
+      return "bg-yellow-500/10 text-yellow-500 border-yellow-500/60";
 
     // 2. Gatekeeping States (Administrative)
     // distinct from "Completed" to show it's ready for the next step
     case "approved":
     case "accepted":
-      return "bg-cyan-500/10 text-cyan-600 border-cyan-500/60 w-20";
+      return "bg-cyan-500/10 text-cyan-500 border-cyan-500/60";
 
     // 3. Ongoing / Neutral States
     case "inbound":
@@ -92,7 +92,7 @@ export function getBadgeStyleByStatus(status: string): string {
     case "receiving":
     case "picking":
     case "processing":
-      return "bg-blue-500/10 text-blue-600 border-blue-500/60 w-20";
+      return "bg-blue-500/10 text-blue-500 border-blue-500/60";
 
     // 4. Success / Final States
     case "completed":
@@ -100,28 +100,28 @@ export function getBadgeStyleByStatus(status: string): string {
     case "received":
     case "confirmed":
     case "picked":
-      return "bg-green-500/10 text-green-600 border-green-500/60 w-20";
+      return "bg-green-500/10 text-green-500 border-green-500/60";
 
     // 5. Exception / Rework States
     // "Returned" is rarely "Active" - it usually implies a revision is needed
     case "returned":
     case "loading":
-      return "bg-orange-500/10 text-orange-600 border-orange-500/60 w-20";
+      return "bg-orange-500/10 text-orange-500 border-orange-500/60";
 
     // 6. Failure States
     case "rejected":
     case "cancelled":
     case "return requested":
-      return "bg-red-500/10 text-red-600 border-red-500/60 w-20";
+      return "bg-red-500/10 text-red-500 border-red-500/60";
 
     // 7. Shipped / Archived States
     case "shipped":
     case "delivered":
-      return "bg-slate-600/15 text-slate-700 border-slate-600/60 w-20";
+      return "bg-slate-600/15 text-slate-500 border-slate-600/60";
 
     // 8. Neutral / Default
     default:
-      return "bg-slate-500/10 text-slate-600 border-slate-500/60 w-20";
+      return "bg-slate-500/10 text-slate-500 border-slate-500/60";
   }
 }
 

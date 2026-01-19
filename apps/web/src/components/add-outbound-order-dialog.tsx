@@ -195,7 +195,9 @@ export function AddOutboundOrderDialog({
         branchId: currentBranch._id,
         userId: userId as Id<"users">,
         requestedShipDate: requestedShipDate?.getTime(),
-        assignedWorkerId: selectedWorkerId ? selectedWorkerId as Id<"users"> : undefined,
+        assignedWorkerId: selectedWorkerId
+          ? (selectedWorkerId as Id<"users">)
+          : undefined,
         items: products.map((p) => ({
           variantId: p.variantId,
           quantity: p.quantity,
@@ -266,7 +268,10 @@ export function AddOutboundOrderDialog({
           {/* Assigned Worker Dropdown */}
           <div className="space-y-2">
             <Label>Assigned Worker</Label>
-            <Select value={selectedWorkerId} onValueChange={setSelectedWorkerId}>
+            <Select
+              value={selectedWorkerId}
+              onValueChange={setSelectedWorkerId}
+            >
               <SelectTrigger className="w-50">
                 <SelectValue placeholder="Select worker" />
               </SelectTrigger>
@@ -277,11 +282,12 @@ export function AddOutboundOrderDialog({
                     <span className="ml-2">Loading...</span>
                   </div>
                 )}
-                {!isLoadingUsers && (!organizationUsers || organizationUsers.length === 0) && (
-                  <div className="py-4 text-center text-muted-foreground text-sm">
-                    No workers available
-                  </div>
-                )}
+                {!isLoadingUsers &&
+                  (!organizationUsers || organizationUsers.length === 0) && (
+                    <div className="py-4 text-center text-muted-foreground text-sm">
+                      No workers available
+                    </div>
+                  )}
                 {!isLoadingUsers &&
                   organizationUsers &&
                   organizationUsers.length > 0 &&

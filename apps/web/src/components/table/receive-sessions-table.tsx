@@ -491,7 +491,7 @@ export function ReceiveSessionsTable() {
         <div className="space-x-2">
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.firstPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -499,7 +499,7 @@ export function ReceiveSessionsTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -507,7 +507,7 @@ export function ReceiveSessionsTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -515,7 +515,7 @@ export function ReceiveSessionsTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.lastPage()}
             disabled={!table.getCanNextPage()}
           >

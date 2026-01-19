@@ -285,7 +285,6 @@ export const columns: ColumnDef<Branch>[] = [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-
               <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
                 Details
               </DropdownMenuItem>

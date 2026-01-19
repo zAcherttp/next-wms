@@ -222,7 +222,6 @@ export const columns: ColumnDef<Member>[] = [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-
               <DropdownMenuItem
                 onClick={() =>
                   navigator.clipboard.writeText(member.user?.email ?? "")

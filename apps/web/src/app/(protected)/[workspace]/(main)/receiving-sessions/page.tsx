@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PageWrapper } from "@/components/ui/page-wrapper";
 import { Separator } from "@/components/ui/separator";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
@@ -184,7 +185,7 @@ export default function Page() {
   }, [receiveSessions, dateRange]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <PageWrapper>
       {/* Header with date picker and chart settings */}
       <div className="flex flex-row items-center justify-between">
         <DateRangePicker
@@ -255,31 +256,27 @@ export default function Page() {
 
       {/* Dashboard Cards - 3 cards with real data */}
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {isPending ? (
-          <>
-            {[1, 2, 3].map((i) => (
+        {isPending
+          ? [1, 2, 3].map((i) => (
               <div
                 key={i}
                 className="h-32 animate-pulse rounded-xl border bg-card"
               />
+            ))
+          : cardsData.map((card) => (
+              <ChartDataCard
+                key={card.title}
+                title={card.title}
+                value={card.value}
+                changePercent={card.changePercent}
+                isPositive={card.isPositive}
+                periodLabel={periodLabel}
+                data={card.data}
+                color={card.color}
+              />
             ))}
-          </>
-        ) : (
-          cardsData.map((card) => (
-            <ChartDataCard
-              key={card.title}
-              title={card.title}
-              value={card.value}
-              changePercent={card.changePercent}
-              isPositive={card.isPositive}
-              periodLabel={periodLabel}
-              data={card.data}
-              color={card.color}
-            />
-          ))
-        )}
       </div>
       <ReceiveSessionsTable />
-    </div>
+    </PageWrapper>
   );
 }

@@ -530,7 +530,6 @@ function ActionsCell({ supplier }: { supplier: SupplierTableItem }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-
             <DropdownMenuItem onClick={() => setEditOpen(true)}>
               Edit supplier
             </DropdownMenuItem>

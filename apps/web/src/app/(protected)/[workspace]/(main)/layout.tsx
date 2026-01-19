@@ -15,7 +15,7 @@ export default async function Layout({
       <AppSidebar />
       <SidebarInset className="flex h-screen flex-col" suppressHydrationWarning>
         <MainHeader />
-        <ScrollArea className="flex-1 overflow-y-auto px-6">
+        <ScrollArea className="flex-1 overflow-y-auto px-4">
           {children}
         </ScrollArea>
       </SidebarInset>

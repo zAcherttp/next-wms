@@ -55,6 +55,8 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
+// Colors for charts
+import { PageWrapper } from "@/components/ui/page-wrapper";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
@@ -72,7 +74,6 @@ import type { InboundReportSession } from "@/lib/types";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 import { useDateFilterStore } from "@/store/date-filter";
 
-// Colors for charts
 const CHART_COLORS = [
   "#2563eb", // Blue
   "#16a34a", // Green
@@ -390,7 +391,7 @@ export default function InboundReportPage() {
   }, [summary]);
 
   return (
-    <div className="flex flex-col gap-6">
+    <PageWrapper>
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -862,7 +863,7 @@ export default function InboundReportPage() {
             <div className="flex items-center gap-2">
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.setPageIndex(0)}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -870,7 +871,7 @@ export default function InboundReportPage() {
               </Button>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -882,7 +883,7 @@ export default function InboundReportPage() {
               </span>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
               >
@@ -890,7 +891,7 @@ export default function InboundReportPage() {
               </Button>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.setPageIndex(table.getPageCount() - 1)}
                 disabled={!table.getCanNextPage()}
               >
@@ -900,6 +901,6 @@ export default function InboundReportPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageWrapper>
   );
 }

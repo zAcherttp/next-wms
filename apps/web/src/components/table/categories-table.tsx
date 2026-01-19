@@ -386,7 +386,6 @@ function ActionsCell({ category }: { category: CategoryItem }) {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-
             <DropdownMenuItem onClick={() => setEditOpen(true)}>
               Edit name
             </DropdownMenuItem>

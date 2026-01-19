@@ -299,7 +299,6 @@ export function ReturnRequestsTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-
                 <DropdownMenuItem
                   onClick={() =>
                     navigator.clipboard.writeText(returnRequest.requestCode)

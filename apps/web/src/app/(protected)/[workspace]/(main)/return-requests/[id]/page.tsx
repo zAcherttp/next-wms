@@ -354,7 +354,7 @@ export default function ReturnRequestDetailPage() {
             <div className="space-x-2">
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.firstPage()}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -362,7 +362,7 @@ export default function ReturnRequestDetailPage() {
               </Button>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -370,7 +370,7 @@ export default function ReturnRequestDetailPage() {
               </Button>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
               >
@@ -378,7 +378,7 @@ export default function ReturnRequestDetailPage() {
               </Button>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.lastPage()}
                 disabled={!table.getCanNextPage()}
               >

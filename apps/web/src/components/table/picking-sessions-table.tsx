@@ -244,7 +244,6 @@ export function PickingSessionsTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-
                 <DropdownMenuItem
                   onClick={() =>
                     navigator.clipboard.writeText(session.sessionCode)
