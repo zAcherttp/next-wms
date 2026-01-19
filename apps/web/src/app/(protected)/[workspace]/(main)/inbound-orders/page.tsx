@@ -185,7 +185,7 @@ export default function Page() {
   }, [purchaseOrders, dateRange]);
 
   return (
-    <div className="flex flex-col gap-4">
+    <div className="flex flex-col gap-4 mb-20">
       {/* Header with date picker and chart settings */}
       <div className="flex flex-row items-center justify-between">
         <DateRangePicker

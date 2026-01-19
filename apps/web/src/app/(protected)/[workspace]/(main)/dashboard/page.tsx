@@ -107,7 +107,7 @@ type RecentActivity = {
 };
 
 export default function DashboardPage() {
-  const { userId, organizationId } = useCurrentUser();
+  const { organizationId } = useCurrentUser();
   const params = useParams();
   const workspace = params.workspace as string;
 
@@ -123,7 +123,6 @@ export default function DashboardPage() {
   const setProjectionStyle = useChartStore((state) => state.setProjectionStyle);
 
   // Date range state - use local state for stable API calls
-  const selectedPreset = useDateFilterStore((state) => state.selectedPreset);
   const periodLabel = useDateFilterStore((state) => state.periodLabel);
   const dateRange = useDateFilterStore((state) => state.dateRange);
   const updateFromPicker = useDateFilterStore(
@@ -325,7 +324,7 @@ export default function DashboardPage() {
       },
       {
         accessorKey: "createdAt",
-        header: <div className="text-center">Created</div>,
+        header: () => <div className="text-center">Created</div>,
         cell: ({ row }) => {
           const timestamp = row.getValue("createdAt") as number;
           return (
@@ -621,12 +620,12 @@ export default function DashboardPage() {
       {/* Recent Orders Table */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <div>
-            <CardTitle>Recent Orders</CardTitle>
-            <CardDescription>
-              Latest inbound and outbound orders
-            </CardDescription>
-          </div>
+          <CardTitle className="flex items-center gap-4">
+            <div className="rounded-sm border-2 bg-muted p-1.5">
+              <ListTodo className="size-5" />
+            </div>
+            Recent Orders
+          </CardTitle>
           <Link href={`/${workspace}/inbound-orders`}>
             <Button variant="outline" size="sm">
               View All
