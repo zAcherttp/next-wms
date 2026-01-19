@@ -28,6 +28,7 @@ import type { Route } from "next";
 import Link from "next/link";
 import * as React from "react";
 import { AddPickingSessionDialog } from "@/components/add-picking-session-dialog";
+import { PickingSessionDetailDialog } from "@/components/picking-session-detail-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
@@ -69,7 +70,28 @@ type PickingSession = {
   createdAt: number;
 };
 
-export const columns: ColumnDef<PickingSession>[] = [
+export function PickingSessionsTable() {
+  const { organizationId } = useCurrentUser();
+  const { currentBranch } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: false,
+  });
+
+  const { data: sessions, isLoading } = useQuery({
+    ...convexQuery(
+      api.pickingSessions.listPickingSessions,
+      currentBranch ? { branchId: currentBranch._id } : "skip",
+    ),
+    enabled: !!currentBranch,
+  });
+
+  // Dialog state
+  const [selectedSessionId, setSelectedSessionId] =
+    React.useState<Id<"picking_sessions"> | null>(null);
+  const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
+
+  const columns: ColumnDef<PickingSession>[] = React.useMemo(
+    () => [
   {
     accessorKey: "sessionCode",
     header: "Session ID",
@@ -223,7 +245,14 @@ export const columns: ColumnDef<PickingSession>[] = [
               Copy Session ID
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>View details</DropdownMenuItem>
+            <DropdownMenuItem
+              onClick={() => {
+                setSelectedSessionId(session._id);
+                setDetailDialogOpen(true);
+              }}
+            >
+              View details
+            </DropdownMenuItem>
             {(status === "pending" || status === "in progress") && (
               <DropdownMenuItem asChild>
                 <Link
@@ -238,24 +267,12 @@ export const columns: ColumnDef<PickingSession>[] = [
       );
     },
   },
-];
-
-export function PickingSessionsTable() {
-  const { organizationId } = useCurrentUser();
-  const { currentBranch } = useBranches({
-    organizationId: organizationId as Id<"organizations"> | undefined,
-    includeDeleted: false,
-  });
-
-  const { data: sessions, isLoading } = useQuery({
-    ...convexQuery(
-      api.pickingSessions.listPickingSessions,
-      currentBranch ? { branchId: currentBranch._id } : "skip",
-    ),
-    enabled: !!currentBranch,
-  });
+],
+    [setSelectedSessionId, setDetailDialogOpen],
+  );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
+
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
@@ -422,6 +439,11 @@ export function PickingSessionsTable() {
           </Button>
         </div>
       </div>
+      <PickingSessionDetailDialog
+        sessionId={selectedSessionId}
+        open={detailDialogOpen}
+        onOpenChange={setDetailDialogOpen}
+      />
     </div>
   );
 }

@@ -1,6 +1,12 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { MoreHorizontal } from "lucide-react";
+import { useMemo } from "react";
+import type { ChartDataPoint } from "@/components/chart-data-card";
 import { ChartDataCard } from "@/components/chart-data-card";
 import { PickingSessionsTable } from "@/components/table/picking-sessions-table";
 import { Button } from "@/components/ui/button";
@@ -15,14 +21,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
-import {
-  dashboardCardsData,
-  defaultChartData,
-} from "@/mock/data/dashboard-charts";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useChartStore } from "@/store/chart";
 import { useDateFilterStore } from "@/store/date-filter";
 
 export default function Page() {
+  const { organizationId } = useCurrentUser();
+  const { currentBranch } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: false,
+  });
+
   const lineType = useChartStore((state) => state.lineType);
   const setLineType = useChartStore((state) => state.setLineType);
   const projectionStyle = useChartStore((state) => state.projectionStyle);
@@ -30,14 +40,153 @@ export default function Page() {
 
   const selectedPreset = useDateFilterStore((state) => state.selectedPreset);
   const periodLabel = useDateFilterStore((state) => state.periodLabel);
+  const dateRange = useDateFilterStore((state) => state.dateRange);
   const updateFromPicker = useDateFilterStore(
     (state) => state.updateFromPicker,
   );
 
-  // Get chart data based on selected preset, fallback to default for custom range
-  const cardsData = selectedPreset
-    ? dashboardCardsData[selectedPreset]
-    : defaultChartData;
+  // Fetch picking sessions for current branch
+  const { data: pickingSessions, isPending } = useQuery({
+    ...convexQuery(
+      api.pickingSessions.listPickingSessions,
+      currentBranch
+        ? {
+            branchId: currentBranch._id,
+          }
+        : "skip",
+    ),
+    enabled: !!currentBranch,
+  });
+
+  // Compute card data from picking sessions
+  const cardsData = useMemo(() => {
+    const emptyChartData: ChartDataPoint[] = [];
+
+    if (!pickingSessions || pickingSessions.length === 0) {
+      return [
+        {
+          title: "In Progress",
+          value: 0,
+          changePercent: 0,
+          isPositive: true,
+          color: "var(--chart-1)",
+          data: emptyChartData,
+        },
+        {
+          title: "Pending",
+          value: 0,
+          changePercent: 0,
+          isPositive: true,
+          color: "var(--chart-4)",
+          data: emptyChartData,
+        },
+        {
+          title: "Complete",
+          value: 0,
+          changePercent: 0,
+          isPositive: true,
+          color: "var(--chart-2)",
+          data: emptyChartData,
+        },
+      ];
+    }
+
+    // Determine date range
+    const now = new Date();
+    const fromDate =
+      dateRange?.from ?? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const toDate = dateRange?.to ?? now;
+
+    // Filter by date range
+    const filteredSessions = pickingSessions.filter((session) => {
+      const sessionDate = new Date(session.createdAt);
+      return sessionDate >= fromDate && sessionDate <= toDate;
+    });
+
+    // Generate date labels for the range
+    const dayLabels: string[] = [];
+    const dayMs = 24 * 60 * 60 * 1000;
+    const diffDays =
+      Math.ceil((toDate.getTime() - fromDate.getTime()) / dayMs) + 1;
+
+    for (let i = 0; i < diffDays; i++) {
+      const date = new Date(fromDate.getTime() + i * dayMs);
+      const label = date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
+      dayLabels.push(label);
+    }
+
+    // Group sessions by day and status
+    const createTimeSeriesData = (
+      statusValue: string,
+    ): ChartDataPoint[] => {
+      const countsByDay = new Map<string, number>();
+
+      // Initialize all days with 0
+      dayLabels.forEach((label) => countsByDay.set(label, 0));
+
+      // Count sessions by day
+      filteredSessions
+        .filter(
+          (s) =>
+            s.status?.lookupValue?.toLowerCase() === statusValue.toLowerCase(),
+        )
+        .forEach((session) => {
+          const sessionDate = new Date(session.createdAt);
+          const label = sessionDate.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
+          countsByDay.set(label, (countsByDay.get(label) ?? 0) + 1);
+        });
+
+      return dayLabels.map((label) => ({
+        label,
+        value: countsByDay.get(label) ?? 0,
+        isProjected: false,
+      }));
+    };
+
+    // Count totals by status
+    const inProgressCount = filteredSessions.filter(
+      (s) => s.status?.lookupValue?.toLowerCase() === "in progress",
+    ).length;
+    const pendingCount = filteredSessions.filter(
+      (s) => s.status?.lookupValue?.toLowerCase() === "pending",
+    ).length;
+    const completeCount = filteredSessions.filter(
+      (s) => s.status?.lookupValue?.toLowerCase() === "completed",
+    ).length;
+
+    return [
+      {
+        title: "In Progress",
+        value: inProgressCount,
+        changePercent: 0,
+        isPositive: true,
+        color: "var(--chart-1)",
+        data: createTimeSeriesData("In Progress"),
+      },
+      {
+        title: "Pending",
+        value: pendingCount,
+        changePercent: 0,
+        isPositive: true,
+        color: "var(--chart-4)",
+        data: createTimeSeriesData("Pending"),
+      },
+      {
+        title: "Complete",
+        value: completeCount,
+        changePercent: 0,
+        isPositive: true,
+        color: "var(--chart-2)",
+        data: createTimeSeriesData("Completed"),
+      },
+    ];
+  }, [pickingSessions, dateRange]);
 
   return (
     <div className="flex flex-col gap-4">
@@ -106,20 +255,31 @@ export default function Page() {
         </DropdownMenu>
       </div>
 
-      {/* Dashboard Cards - data changes based on selected date range */}
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {cardsData.map((card) => (
-          <ChartDataCard
-            key={card.title}
-            title={card.title}
-            value={card.value}
-            changePercent={card.changePercent}
-            isPositive={card.isPositive}
-            periodLabel={periodLabel}
-            data={card.data}
-            color={card.color}
-          />
-        ))}
+      {/* Dashboard Cards - 3 cards with real data */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {isPending ? (
+          <>
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-32 animate-pulse rounded-xl border bg-card"
+              />
+            ))}
+          </>
+        ) : (
+          cardsData.map((card) => (
+            <ChartDataCard
+              key={card.title}
+              title={card.title}
+              value={card.value}
+              changePercent={card.changePercent}
+              isPositive={card.isPositive}
+              periodLabel={periodLabel}
+              data={card.data}
+              color={card.color}
+            />
+          ))
+        )}
       </div>
       <PickingSessionsTable />
     </div>

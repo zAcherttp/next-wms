@@ -60,7 +60,7 @@ const data = {
       isActive: true,
       items: [
         {
-          title: "Orders",
+          title: "Outbound Orders",
           url: "/orders",
         },
         {
