@@ -107,6 +107,9 @@ function JoinPageContent() {
             </span>
             <CreateOrganizationForm
               onSuccess={(orgSlug) => {
+                authClient.organization.setActive({
+                  organizationSlug: orgSlug,
+                });
                 setShowCreateForm(false);
                 router.push(`/${orgSlug}/dashboard`);
               }}

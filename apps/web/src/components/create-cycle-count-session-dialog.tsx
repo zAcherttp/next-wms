@@ -89,7 +89,7 @@ export const CreateCycleCountSessionDialog = React.memo(
       ...convexQuery(api.cycleCount.getOrganizationUsers, {
         organizationId: organizationId as Id<"organizations">,
       }),
-      enabled: !!organizationId,
+      enabled: !!organizationId && organizationId !== "",
     });
 
     // Fetch cycle count lookups
