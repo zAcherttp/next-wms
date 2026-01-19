@@ -43,6 +43,7 @@ export function useCurrentUser() {
 
   return {
     // Session data (from Better Auth)
+    authOrganization: activeOrganization,
     session,
     authId,
 

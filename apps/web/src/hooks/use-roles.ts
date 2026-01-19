@@ -28,3 +28,18 @@ export function useUpdateRole() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["roles"] }),
   });
 }
+
+export type DeleteRoleData = {
+  roleId: string;
+  roleName?: string;
+  organizationId: string;
+};
+
+export function useDeleteRole() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (data: DeleteRoleData) =>
+      authClient.organization.deleteRole(data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["roles"] }),
+  });
+}

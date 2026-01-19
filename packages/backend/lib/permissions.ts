@@ -19,8 +19,8 @@ const statement = {
   // Include default Better Auth statements for organization management
   ...defaultStatements,
 
-  // Role management (for dynamic access control)
-  role: ["create", "read", "update", "delete"],
+  // Master Data management (formerly Role management)
+  masterData: ["create", "read", "update", "delete"],
 
   // Settings access control
   settings: ["profile", "security", "admin", "members", "roles"],
@@ -32,7 +32,10 @@ const statement = {
   warehouse: ["create", "read", "update", "delete"],
 
   // Domain-specific: Reports
-  reports: ["view", "export"],
+  reports: ["read", "export"], // Changed view to read
+
+  // Domain-specific: System
+  system: ["read"],
 } as const;
 
 /**
@@ -44,8 +47,8 @@ export const ac: AccessControl = createAccessControl(statement);
  * Owner role - Full access to everything
  */
 export const owner = ac.newRole({
-  // Full role management
-  role: ["create", "read", "update", "delete"],
+  // Full masterData access
+  masterData: ["create", "read", "update", "delete"],
   // All settings access
   settings: ["profile", "security", "admin", "members", "roles"],
   // Full inventory access
@@ -53,7 +56,9 @@ export const owner = ac.newRole({
   // Full warehouse access
   warehouse: ["create", "read", "update", "delete"],
   // Full reports access
-  reports: ["view", "export"],
+  reports: ["read", "export"],
+  // Full system access
+  system: ["read"],
   // Include default owner permissions
   ...ownerAc.statements,
 });
@@ -62,8 +67,8 @@ export const owner = ac.newRole({
  * Admin role - Most access except dangerous operations
  */
 export const admin = ac.newRole({
-  // Can manage roles
-  role: ["create", "read", "update", "delete"],
+  // Can manage masterData
+  masterData: ["create", "read", "update", "delete"],
   // All settings except some admin functions
   settings: ["profile", "security", "admin", "members", "roles"],
   // Full inventory access
@@ -71,7 +76,9 @@ export const admin = ac.newRole({
   // Full warehouse access
   warehouse: ["create", "read", "update", "delete"],
   // Full reports access
-  reports: ["view", "export"],
+  reports: ["read", "export"],
+  // Full system access
+  system: ["read"],
   // Include default admin permissions
   ...adminAc.statements,
 });
@@ -80,16 +87,17 @@ export const admin = ac.newRole({
  * Member role - Basic access for regular users
  */
 export const member = ac.newRole({
-  // Can view roles
-  role: ["read"],
+  // Can read masterData
+  masterData: ["read"],
   // Basic settings access
   settings: ["profile", "security"],
   // Can read inventory
   inventory: ["read"],
   // Can read warehouses
   warehouse: ["read"],
-  // Can view reports
-  reports: ["view"],
+  // Can read reports
+  reports: ["read"],
+  // No system access by default
   // Include default member permissions
   ...memberAc.statements,
 });
@@ -139,16 +147,25 @@ export const permissionDisplayConfig = {
       manage: ["create", "update", "delete"],
     },
   },
-  role: {
-    label: "Roles",
+  masterData: {
+    label: "Master Data",
     permissions: {
-      create: { label: "Create roles", description: "Create new custom roles" },
-      read: {
-        label: "View roles",
-        description: "See role list and permissions",
+      create: {
+        label: "Create master data",
+        description: "Create new master data items",
       },
-      update: { label: "Update roles", description: "Modify role permissions" },
-      delete: { label: "Delete roles", description: "Remove custom roles" },
+      read: {
+        label: "View master data",
+        description: "See master data list and details",
+      },
+      update: {
+        label: "Update master data",
+        description: "Modify master data items",
+      },
+      delete: {
+        label: "Delete master data",
+        description: "Remove master data items",
+      },
     },
     groups: {
       manage: ["create", "update", "delete"],
@@ -234,8 +251,17 @@ export const permissionDisplayConfig = {
   reports: {
     label: "Reports",
     permissions: {
-      view: { label: "View reports", description: "Access report dashboards" },
+      read: { label: "View reports", description: "Access report dashboards" },
       export: { label: "Export reports", description: "Download report data" },
+    },
+  },
+  system: {
+    label: "System",
+    permissions: {
+      read: {
+        label: "View traceability",
+        description: "View system traceability logs",
+      },
     },
   },
 } as const;

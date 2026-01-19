@@ -32,55 +32,47 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import { useRoles } from "@/hooks/use-roles";
+import { useMembers } from "@/hooks/use-members";
+import { useRoles, useUpdateRole } from "@/hooks/use-roles";
 import { useActiveOrganization } from "@/lib/auth/client";
 import { fuzzyMatch } from "@/lib/utils";
 import { AddMemberDialog } from "./components/add-member-dialog";
 import { CreateRoleDialog } from "./components/create-role-dialog";
 import { RolesAction } from "./components/roles-action";
 
-const MOCK_MEMBERS = [
-  {
-    user: {
-      _id: "1",
-      image: undefined,
-      fullName: "John Doe",
-      email: "john.doe@example.com",
-      role: "owner",
-    },
-  },
-  {
-    user: {
-      _id: "2",
-      image: undefined,
-      fullName: "Jane Smith",
-      email: "jane.smith@example.com",
-      role: "admin",
-    },
-  },
-  {
-    user: {
-      _id: "3",
-      image: undefined,
-      fullName: "Bob Johnson",
-      email: "bob.johnson@example.com",
-      role: "member",
-    },
-  },
-  {
-    user: {
-      _id: "4",
-      image: undefined,
-      fullName: "Bob Johnson 2",
-      email: "bob.johnson2@example.com",
-      role: "member",
-    },
-  },
-];
+const SearchInput = ({
+  value,
+  onChange,
+  placeholder,
+  count,
+}: {
+  value: string;
+  onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  placeholder: string;
+  count: number;
+}) => (
+  <InputGroup>
+    <InputGroupInput
+      placeholder={placeholder}
+      value={value}
+      onChange={onChange}
+    />
+    <InputGroupAddon>
+      <Search />
+    </InputGroupAddon>
+    {value && (
+      <InputGroupAddon align="inline-end">{count} results</InputGroupAddon>
+    )}
+  </InputGroup>
+);
 
 export default function RolesSettingsPage() {
   const { data: activeOrganization } = useActiveOrganization();
   const { data } = useRoles(activeOrganization?.id);
+  const { data: membersData } = useMembers({
+    organizationId: activeOrganization?.id,
+  });
+
   const [setRoleSearchQuery, roleSearchQuery, roleSearchQueryDebounced] =
     useDebouncedInput("");
   const [
@@ -91,6 +83,8 @@ export default function RolesSettingsPage() {
   const [setMemberSearchQuery, memberSearchQuery, memberSearchQueryDebounced] =
     useDebouncedInput("");
   const [tabsValue, setTabsValue] = useState("permissions");
+  const [isSaving, setIsSaving] = useState(false);
+  const updateRoleMutation = useUpdateRole();
 
   const roles = data?.data;
 
@@ -101,7 +95,8 @@ export default function RolesSettingsPage() {
       id: role.id,
       name: role.role,
       role: {
-        statements: {} as RoleStatements, // Custom roles will have their own statements
+        // Map permission from API to statements format
+        statements: (role.permission || {}) as RoleStatements,
       },
       isDefault: false,
     }));
@@ -117,16 +112,21 @@ export default function RolesSettingsPage() {
   );
 
   const filteredMembers = useMemo(() => {
-    const m = selectedRole
-      ? MOCK_MEMBERS.filter((mem) => mem.user.role === selectedRole.id)
-      : MOCK_MEMBERS;
+    const roleSlug = selectedRole?.isDefault
+      ? selectedRole.id
+      : selectedRole?.name;
+
+    const m =
+      selectedRole && roleSlug
+        ? membersData?.members?.filter((mem) => mem.role === roleSlug)
+        : membersData?.members || [];
     if (!memberSearchQueryDebounced.trim()) return m;
-    return m.filter(
+    return (m ?? []).filter(
       (mem) =>
-        fuzzyMatch(memberSearchQueryDebounced, mem.user.fullName) ||
+        fuzzyMatch(memberSearchQueryDebounced, mem.user.name) ||
         fuzzyMatch(memberSearchQueryDebounced, mem.user.email),
     );
-  }, [memberSearchQueryDebounced, selectedRole]);
+  }, [memberSearchQueryDebounced, selectedRole, membersData?.members]);
 
   const selectedRolePermissions = useMemo<RoleStatements>(
     () => selectedRole?.role.statements || {},
@@ -191,11 +191,49 @@ export default function RolesSettingsPage() {
   );
 
   // Handler for saving changes
-  const handleSaveChanges = useCallback(() => {
-    // TODO: Implement API call to save permission changes
-    toast.success("Changes saved successfully");
-    // After saving, the initialSwitchState should be updated via data refetch
-  }, []);
+  const handleSaveChanges = useCallback(async () => {
+    if (!selectedRole || selectedRole.isDefault || !activeOrganization?.id) {
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Convert permission switch state to the API format
+      const permission: Record<string, string[]> = {};
+      for (const [resource, permissions] of Object.entries(
+        permissionSwitchState,
+      )) {
+        const enabledPermissions = Object.entries(permissions || {})
+          .filter(([, enabled]) => enabled)
+          .map(([key]) => key);
+        if (enabledPermissions.length > 0) {
+          permission[resource] = enabledPermissions;
+        }
+      }
+
+      await updateRoleMutation.mutateAsync({
+        data: {
+          roleId: selectedRole.id,
+          organizationId: activeOrganization.id,
+          data: {
+            permission,
+          },
+        },
+      });
+
+      toast.success("Changes saved successfully");
+    } catch (error) {
+      toast.error("Failed to save changes");
+      console.error("Error saving role permissions:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [
+    selectedRole,
+    activeOrganization?.id,
+    permissionSwitchState,
+    updateRoleMutation,
+  ]);
 
   // Handler for canceling changes
   const handleCancelChanges = useCallback(() => {
@@ -245,32 +283,6 @@ export default function RolesSettingsPage() {
     [filteredPermissions],
   );
 
-  const SearchInput = ({
-    value,
-    onChange,
-    placeholder,
-    count,
-  }: {
-    value: string;
-    onChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-    placeholder: string;
-    count: number;
-  }) => (
-    <InputGroup>
-      <InputGroupInput
-        placeholder={placeholder}
-        value={value}
-        onChange={onChange}
-      />
-      <InputGroupAddon>
-        <Search />
-      </InputGroupAddon>
-      {value && (
-        <InputGroupAddon align="inline-end">{count} results</InputGroupAddon>
-      )}
-    </InputGroup>
-  );
-
   return (
     <Setting>
       <SettingHeader
@@ -288,7 +300,7 @@ export default function RolesSettingsPage() {
                 placeholder="Search..."
                 count={filteredRoles.length}
               />
-              <CreateRoleDialog />
+              <CreateRoleDialog customRoles={customRoles} />
             </div>
             <ScrollArea className="h-75 lg:h-[calc(100vh-20rem)]">
               <div className="space-y-2">
@@ -306,13 +318,15 @@ export default function RolesSettingsPage() {
                       </ItemDescription>
                     </ItemContent>
                     <ItemActions>
-                      <RolesAction roleId={role.id} />
+                      <RolesAction roleId={role.id} roleName={role.name} />
                     </ItemActions>
                   </Item>
                 ))}
                 {!filteredRoles.length && (
                   <p className="p-4 text-center text-muted-foreground text-sm">
-                    No roles found matching "{roleSearchQuery}"
+                    {roleSearchQuery
+                      ? `No roles found matching "${roleSearchQuery}"`
+                      : "No roles found"}
                   </p>
                 )}
               </div>
@@ -350,10 +364,19 @@ export default function RolesSettingsPage() {
                 count={
                   tabsValue === "permissions"
                     ? filteredPermissionCount
-                    : filteredMembers.length
+                    : filteredMembers?.length || 0
                 }
               />
-              {tabsValue === "members" && <AddMemberDialog />}
+              {tabsValue === "members" && (
+                <AddMemberDialog
+                  selectedRoleId={
+                    selectedRole?.isDefault
+                      ? selectedRole.id
+                      : selectedRole?.name
+                  }
+                  selectedRoleName={selectedRole?.name}
+                />
+              )}
             </div>
 
             <TabsContent
@@ -407,7 +430,9 @@ export default function RolesSettingsPage() {
                   })}
                   {!filteredPermissions.length && (
                     <p className="p-4 text-center text-muted-foreground text-sm">
-                      No permissions found matching "{permissionSearchQuery}"
+                      {permissionSearchQuery
+                        ? `No permissions found matching "${permissionSearchQuery}"`
+                        : "No permissions found"}
                     </p>
                   )}
                 </div>
@@ -415,10 +440,16 @@ export default function RolesSettingsPage() {
               {/* Save/Cancel buttons for custom roles with modifications */}
               {isModified && (
                 <div className="mt-4 flex justify-end gap-2 border-t pt-4">
-                  <Button variant="outline" onClick={handleCancelChanges}>
+                  <Button
+                    variant="outline"
+                    onClick={handleCancelChanges}
+                    disabled={isSaving}
+                  >
                     Cancel
                   </Button>
-                  <Button onClick={handleSaveChanges}>Save Changes</Button>
+                  <Button onClick={handleSaveChanges} disabled={isSaving}>
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </Button>
                 </div>
               )}
             </TabsContent>
@@ -429,21 +460,21 @@ export default function RolesSettingsPage() {
             >
               <ScrollArea className="h-[calc(100vh-18rem)]">
                 <div className="space-y-2 py-4">
-                  {filteredMembers.map((member) => {
-                    const initials = member.user.fullName
+                  {filteredMembers?.map((member) => {
+                    const initials = member.user.name
                       .split(" ")
                       .map((n) => n[0])
                       .join("")
                       .toUpperCase();
                     return (
-                      <Item key={member.user._id} className="py-2">
+                      <Item key={member.user.id} className="py-2">
                         <ItemContent>
                           <div className="flex items-center gap-3">
                             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10 font-medium text-primary text-sm">
                               {initials}
                             </div>
                             <div className="flex flex-col">
-                              <ItemTitle>{member.user.fullName}</ItemTitle>
+                              <ItemTitle>{member.user.name}</ItemTitle>
                               <ItemDescription>
                                 {member.user.email}
                               </ItemDescription>
@@ -452,18 +483,24 @@ export default function RolesSettingsPage() {
                         </ItemContent>
                         <ItemActions>
                           <MembersAction
-                            memberId={member.user._id}
-                            memberName={member.user.fullName}
-                            roleId={selectedRole?.id || "N/A"}
+                            memberId={member.id}
+                            memberName={member.user.name}
+                            roleId={
+                              selectedRole?.isDefault
+                                ? selectedRole.id
+                                : selectedRole?.name || "N/A"
+                            }
                             roleName={selectedRole?.name || "N/A"}
                           />
                         </ItemActions>
                       </Item>
                     );
                   })}
-                  {!filteredMembers.length && (
+                  {!filteredMembers?.length && (
                     <p className="p-4 text-center text-muted-foreground text-sm">
-                      No members found matching "{memberSearchQuery}"
+                      {memberSearchQuery
+                        ? `No members found matching "${memberSearchQuery}"`
+                        : "No members found"}
                     </p>
                   )}
                 </div>

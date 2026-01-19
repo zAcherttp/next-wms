@@ -85,7 +85,7 @@ export default function SignInForm() {
   });
 
   return (
-    <Card className="min-w-md">
+    <Card className="w-full sm:w-[400px]">
       <CardHeader>
         <CardTitle className="text-lg md:text-xl">Sign In</CardTitle>
         <CardDescription className="text-xs md:text-sm">
@@ -142,16 +142,16 @@ export default function SignInForm() {
                   field.state.meta.isTouched && !field.state.meta.isValid;
 
                 return (
-                  <Field data-invalid={isInvalid} className="gap-2">
-                    <div className="flex items-center">
-                      <FieldLabel htmlFor={field.name}>Password</FieldLabel>
-                      <Link
-                        href="#"
-                        className="ml-auto inline-block text-sm underline"
-                      >
-                        Forgot your password?
-                      </Link>
-                    </div>
+                  <Field
+                    data-invalid={isInvalid}
+                    className="grid grid-cols-[1fr_auto] gap-2"
+                  >
+                    <FieldLabel
+                      htmlFor={field.name}
+                      className="col-start-1 row-start-1"
+                    >
+                      Password
+                    </FieldLabel>
                     <Input
                       id={field.name}
                       name={field.name}
@@ -162,9 +162,19 @@ export default function SignInForm() {
                       aria-invalid={isInvalid}
                       placeholder="••••••••"
                       autoComplete="current-password"
+                      className="col-span-2 row-start-2"
                     />
+                    <Link
+                      href="#"
+                      className="col-start-2 row-start-1 ml-auto inline-block text-sm underline"
+                    >
+                      Forgot your password?
+                    </Link>
                     {isInvalid && (
-                      <FieldError errors={field.state.meta.errors} />
+                      <FieldError
+                        errors={field.state.meta.errors}
+                        className="col-span-2 row-start-3"
+                      />
                     )}
                   </Field>
                 );
