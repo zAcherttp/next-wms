@@ -44,7 +44,6 @@ interface UnitConversion {
   unitName: string;
   conversionValue: number;
   baseUnit: string;
-  price: number;
   barcode: string;
 }
 
@@ -58,8 +57,6 @@ interface ProductVariant {
   id: string;
   name: string;
   sku: string;
-  costPrice: number;
-  sellingPrice: number;
   barcode: string;
 }
 
@@ -94,8 +91,7 @@ function UnitAttributeDialog({
         id: Date.now().toString(),
         unitName: "",
         conversionValue: 1,
-        baseUnit: baseUnit || "cái",
-        price: 0,
+        baseUnit: baseUnit || "piece",
         barcode: "",
       },
     ]);
@@ -172,8 +168,6 @@ function UnitAttributeDialog({
         ? `${productName} - ${combo.join(" - ")}`
         : combo.join(" - "),
       sku: `${skuPrefix}-${combo.join("-").toUpperCase().replace(/\s/g, "")}`,
-      costPrice: 50000,
-      sellingPrice: 100000,
       barcode: "",
     }));
     setVariants(newVariants);
@@ -193,45 +187,43 @@ function UnitAttributeDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>THIẾT LẬP ĐƠN VỊ & THUỘC TÍNH</DialogTitle>
+          <DialogTitle>UNIT & ATTRIBUTE SETUP</DialogTitle>
         </DialogHeader>
 
         <Tabs defaultValue="units" className="w-full">
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="units">Đơn vị quy đổi</TabsTrigger>
-            <TabsTrigger value="attributes">Thuộc tính</TabsTrigger>
+            <TabsTrigger value="units">Unit Conversions</TabsTrigger>
+            <TabsTrigger value="attributes">Attributes</TabsTrigger>
           </TabsList>
 
           <TabsContent value="units" className="space-y-4">
             <p className="text-muted-foreground text-sm">
-              &gt; Đơn vị cơ bản: [ {baseUnit || "cái"} ] (Lấy từ màn hình
-              trước)
+              &gt; Base Unit: [ {baseUnit || "piece"} ] (From previous screen)
             </p>
 
             <div className="space-y-2">
               <h4 className="font-semibold text-amber-600">
-                1. DANH SÁCH ĐƠN VỊ QUY ĐỔI
+                1. UNIT CONVERSION LIST
               </h4>
               <p className="text-muted-foreground text-sm">
-                (Thêm các đơn vị lớn hơn như Thùng, Hộp, Lốc)
+                (Add larger units like Box, Case, Pack)
               </p>
 
               <div className="space-y-2">
-                <div className="grid grid-cols-[1fr_1.5fr_1fr_1fr_auto] gap-3 font-medium text-sm">
-                  <span>Tên đơn vị</span>
-                  <span>Giá trị quy đổi</span>
-                  <span>Giá bán</span>
-                  <span>Mã vạch</span>
+                <div className="grid grid-cols-[1fr_1.5fr_1fr_auto] gap-3 font-medium text-sm">
+                  <span>Unit Name</span>
+                  <span>Conversion Value</span>
+                  <span>Barcode</span>
                   <span />
                 </div>
 
                 {unitConversions.map((unit) => (
                   <div
                     key={unit.id}
-                    className="grid grid-cols-[1fr_1.5fr_1fr_1fr_auto] gap-3"
+                    className="grid grid-cols-[1fr_1.5fr_1fr_auto] gap-3"
                   >
                     <Input
-                      placeholder="Hộp"
+                      placeholder="Box"
                       value={unit.unitName}
                       onChange={(e) =>
                         setUnitConversions(
@@ -263,23 +255,9 @@ function UnitAttributeDialog({
                         }
                       />
                       <span className="whitespace-nowrap">
-                        {baseUnit || "cái"}
+                        {baseUnit || "piece"}
                       </span>
                     </div>
-                    <Input
-                      type="number"
-                      placeholder="120C"
-                      value={unit.price || ""}
-                      onChange={(e) =>
-                        setUnitConversions(
-                          unitConversions.map((u) =>
-                            u.id === unit.id
-                              ? { ...u, price: Number(e.target.value) }
-                              : u,
-                          ),
-                        )
-                      }
-                    />
                     <Input
                       placeholder="SCAN..."
                       value={unit.barcode}
@@ -308,7 +286,7 @@ function UnitAttributeDialog({
                   className="text-amber-600"
                   onClick={addUnitConversion}
                 >
-                  + Thêm đơn vị tính mới
+                  + Add New Unit
                 </Button>
               </div>
             </div>
@@ -317,10 +295,10 @@ function UnitAttributeDialog({
           <TabsContent value="attributes" className="space-y-4">
             <div className="space-y-2">
               <h4 className="font-semibold text-amber-600">
-                2. THUỘC TÍNH SẢN PHẨM (tạo nhiều biến thể)
+                2. PRODUCT ATTRIBUTES (create multiple variants)
               </h4>
               <p className="text-muted-foreground text-sm">
-                (Dùng cho hàng thời trang, điện thoại...)
+                (For fashion items, phones, etc.)
               </p>
 
               <div className="space-y-4">
@@ -332,10 +310,10 @@ function UnitAttributeDialog({
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-sm">
-                          Thuộc tính {idx + 1}:
+                          Attribute {idx + 1}:
                         </span>
                         <Input
-                          placeholder="Màu sắc, Size..."
+                          placeholder="Color, Size..."
                           value={attr.name}
                           onChange={(e) =>
                             setAttributes(
@@ -360,7 +338,7 @@ function UnitAttributeDialog({
 
                     <div className="space-y-2">
                       <span className="text-muted-foreground text-sm">
-                        Các giá trị:
+                        Values:
                       </span>
                       <div className="flex flex-wrap gap-2">
                         {attr.values.map((value) => (
@@ -391,7 +369,7 @@ function UnitAttributeDialog({
                           </span>
                         ))}
                         <Input
-                          placeholder="Nhập giá trị rồi nhấn Enter"
+                          placeholder="Enter value and press Enter"
                           className="w-48"
                           onKeyDown={(e) => {
                             if (e.key === "Enter" || e.key === ",") {
@@ -414,7 +392,7 @@ function UnitAttributeDialog({
                         />
                       </div>
                       <p className="text-muted-foreground text-xs">
-                        💡 Nhập giá trị và nhấn Enter hoặc dấu phẩy để thêm
+                        💡 Enter value and press Enter or comma to add
                       </p>
                     </div>
                   </div>
@@ -425,7 +403,7 @@ function UnitAttributeDialog({
                   className="text-amber-600"
                   onClick={addAttribute}
                 >
-                  + Thêm thuộc tính mới
+                  + Add New Attribute
                 </Button>
               </div>
             </div>
@@ -433,16 +411,14 @@ function UnitAttributeDialog({
             {variants.length > 0 && (
               <div className="space-y-2">
                 <h4 className="font-semibold">
-                  &gt; DANH SÁCH PHIÊN BẢN ({variants.length} phiên bản)
+                  &gt; VARIANT LIST ({variants.length} variants)
                 </h4>
                 <div className="max-h-64 overflow-y-auto rounded border">
                   <table className="w-full text-sm">
                     <thead className="sticky top-0 bg-muted">
                       <tr>
-                        <th className="p-2 text-left">Tên phiên bản</th>
-                        <th className="p-2 text-left">Mã SKU</th>
-                        <th className="p-2 text-left">Giá vốn</th>
-                        <th className="p-2 text-left">Giá bán</th>
+                        <th className="p-2 text-left">Variant Name</th>
+                        <th className="p-2 text-left">SKU Code</th>
                         <th className="p-2 text-left">Barcode</th>
                       </tr>
                     </thead>
@@ -457,34 +433,6 @@ function UnitAttributeDialog({
                               value={variant.sku}
                               onChange={(e) =>
                                 updateVariant(variant.id, "sku", e.target.value)
-                              }
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="p-1">
-                            <Input
-                              type="number"
-                              value={variant.costPrice}
-                              onChange={(e) =>
-                                updateVariant(
-                                  variant.id,
-                                  "costPrice",
-                                  Number(e.target.value),
-                                )
-                              }
-                              className="h-8"
-                            />
-                          </td>
-                          <td className="p-1">
-                            <Input
-                              type="number"
-                              value={variant.sellingPrice}
-                              onChange={(e) =>
-                                updateVariant(
-                                  variant.id,
-                                  "sellingPrice",
-                                  Number(e.target.value),
-                                )
                               }
                               className="h-8"
                             />
@@ -515,9 +463,9 @@ function UnitAttributeDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Bỏ qua
+            Cancel
           </Button>
-          <Button onClick={() => onOpenChange(false)}>Xác nhận & Lưu</Button>
+          <Button onClick={() => onOpenChange(false)}>Confirm & Save</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -559,8 +507,6 @@ export function CreateProductDialog() {
   // Default variant (when no attributes)
   const [defaultSku, setDefaultSku] = React.useState("");
   const [defaultBarcode, setDefaultBarcode] = React.useState("");
-  const [defaultCostPrice, setDefaultCostPrice] = React.useState(0);
-  const [defaultSellingPrice, setDefaultSellingPrice] = React.useState(0);
   const [baseUnitId, setBaseUnitId] = React.useState<string>("");
 
   // Unit conversions & attributes (managed by sub-dialog)
@@ -581,8 +527,6 @@ export function CreateProductDialog() {
     setReorderPoint(undefined);
     setDefaultSku("");
     setDefaultBarcode("");
-    setDefaultCostPrice(0);
-    setDefaultSellingPrice(0);
     setBaseUnitId("");
     setUnitConversions([]);
     setAttributes([]);
@@ -593,37 +537,37 @@ export function CreateProductDialog() {
     e.preventDefault();
 
     if (!organizationId) {
-      toast.error("Không tìm thấy tổ chức");
+      toast.error("Organization not found");
       return;
     }
 
     if (!name.trim()) {
-      toast.error("Vui lòng nhập tên sản phẩm");
+      toast.error("Please enter product name");
       return;
     }
 
     if (!categoryId) {
-      toast.error("Vui lòng chọn danh mục");
+      toast.error("Please select category");
       return;
     }
 
     if (!brandId) {
-      toast.error("Vui lòng chọn thương hiệu");
+      toast.error("Please select brand");
       return;
     }
 
     if (!storageRequirementId) {
-      toast.error("Vui lòng chọn yêu cầu lưu trữ");
+      toast.error("Please select storage requirement");
       return;
     }
 
     if (!trackingMethodId) {
-      toast.error("Vui lòng chọn phương thức theo dõi");
+      toast.error("Please select tracking method");
       return;
     }
 
     if (!baseUnitId) {
-      toast.error("Vui lòng chọn đơn vị cơ bản");
+      toast.error("Please select base unit");
       return;
     }
 
@@ -640,8 +584,8 @@ export function CreateProductDialog() {
       variantsToCreate = variants.map((v) => ({
         skuCode: v.sku,
         description: v.name,
-        costPrice: v.costPrice,
-        sellingPrice: v.sellingPrice,
+        costPrice: 0,
+        sellingPrice: 0,
         unitOfMeasureId: baseUnitId as Id<"system_lookups">,
         temperatureSensitive: false,
         isActive: true,
@@ -659,7 +603,7 @@ export function CreateProductDialog() {
     } else {
       // Create single default variant
       if (!defaultSku.trim()) {
-        toast.error("Vui lòng nhập mã SKU");
+        toast.error("Please enter SKU code");
         return;
       }
 
@@ -667,8 +611,8 @@ export function CreateProductDialog() {
         {
           skuCode: defaultSku,
           description: name,
-          costPrice: defaultCostPrice,
-          sellingPrice: defaultSellingPrice,
+          costPrice: 0,
+          sellingPrice: 0,
           unitOfMeasureId: baseUnitId as Id<"system_lookups">,
           temperatureSensitive: false,
           isActive: true,
@@ -701,13 +645,13 @@ export function CreateProductDialog() {
         variants: variantsToCreate,
       });
 
-      toast.success("Tạo sản phẩm thành công!");
+      toast.success("Product created successfully!");
       resetForm();
       setOpen(false);
     } catch (error) {
       console.error("Failed to create product:", error);
       toast.error(
-        `Tạo sản phẩm thất bại: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `Failed to create product: ${error instanceof Error ? error.message : "Unknown error"}`,
       );
     }
   };
@@ -728,18 +672,18 @@ export function CreateProductDialog() {
         <DialogContent className="max-h-[90vh] max-w-lg overflow-y-auto">
           <form onSubmit={handleSubmit}>
             <DialogHeader>
-              <DialogTitle>Thêm sản phẩm mới</DialogTitle>
+              <DialogTitle>Add New Product</DialogTitle>
             </DialogHeader>
 
             <div className="grid gap-4 py-4">
               {/* Name */}
               <div className="grid gap-2">
                 <Label htmlFor="name">
-                  Tên sản phẩm <span className="text-destructive">*</span>
+                  Product Name <span className="text-destructive">*</span>
                 </Label>
                 <Input
                   id="name"
-                  placeholder="Nhập tên sản phẩm..."
+                  placeholder="Enter product name..."
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   required
@@ -748,10 +692,10 @@ export function CreateProductDialog() {
 
               {/* Description */}
               <div className="grid gap-2">
-                <Label htmlFor="description">Mô tả</Label>
+                <Label htmlFor="description">Description</Label>
                 <Textarea
                   id="description"
-                  placeholder="Nhập mô tả sản phẩm..."
+                  placeholder="Enter product description..."
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   rows={2}
@@ -762,11 +706,11 @@ export function CreateProductDialog() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>
-                    Danh mục <span className="text-destructive">*</span>
+                    Category <span className="text-destructive">*</span>
                   </Label>
                   <Select value={categoryId} onValueChange={setCategoryId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn danh mục..." />
+                      <SelectValue placeholder="Select category..." />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((cat) => (
@@ -779,11 +723,11 @@ export function CreateProductDialog() {
                 </div>
                 <div className="grid gap-2">
                   <Label>
-                    Thương hiệu <span className="text-destructive">*</span>
+                    Brand <span className="text-destructive">*</span>
                   </Label>
                   <Select value={brandId} onValueChange={setBrandId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn thương hiệu..." />
+                      <SelectValue placeholder="Select brand..." />
                     </SelectTrigger>
                     <SelectContent>
                       {brands.map((brand) => (
@@ -800,14 +744,14 @@ export function CreateProductDialog() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>
-                    Yêu cầu lưu trữ <span className="text-destructive">*</span>
+                    Storage Requirements <span className="text-destructive">*</span>
                   </Label>
                   <Select
                     value={storageRequirementId}
                     onValueChange={setStorageRequirementId}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn..." />
+                      <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
                       {storageRequirements.map((item) => (
@@ -820,7 +764,7 @@ export function CreateProductDialog() {
                 </div>
                 <div className="grid gap-2">
                   <Label>
-                    Phương thức theo dõi{" "}
+                    Tracking Method{" "}
                     <span className="text-destructive">*</span>
                   </Label>
                   <Select
@@ -828,7 +772,7 @@ export function CreateProductDialog() {
                     onValueChange={setTrackingMethodId}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn..." />
+                      <SelectValue placeholder="Select..." />
                     </SelectTrigger>
                     <SelectContent>
                       {trackingMethods.map((item) => (
@@ -845,11 +789,11 @@ export function CreateProductDialog() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>
-                    Đơn vị cơ bản <span className="text-destructive">*</span>
+                    Base Unit <span className="text-destructive">*</span>
                   </Label>
                   <Select value={baseUnitId} onValueChange={setBaseUnitId}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Chọn đơn vị..." />
+                      <SelectValue placeholder="Select unit..." />
                     </SelectTrigger>
                     <SelectContent>
                       {unitsOfMeasure.map((item) => (
@@ -861,10 +805,10 @@ export function CreateProductDialog() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Hạn sử dụng (ngày)</Label>
+                  <Label>Expiry Date (days)</Label>
                   <Input
                     type="number"
-                    placeholder="Số ngày..."
+                    placeholder="Number of days..."
                     value={shelfLifeDays ?? ""}
                     onChange={(e) =>
                       setShelfLifeDays(
@@ -878,10 +822,10 @@ export function CreateProductDialog() {
 
               {/* Reorder Point */}
               <div className="grid gap-2">
-                <Label>Điểm đặt hàng lại</Label>
+                <Label>Reorder Point</Label>
                 <Input
                   type="number"
-                  placeholder="Số lượng tối thiểu..."
+                  placeholder="Minimum quantity..."
                   value={reorderPoint ?? ""}
                   onChange={(e) =>
                     setReorderPoint(
@@ -896,16 +840,16 @@ export function CreateProductDialog() {
               {variants.length === 0 && (
                 <div className="rounded-md border p-4">
                   <h4 className="mb-3 font-semibold">
-                    Thông tin phiên bản mặc định
+                    Default Variant Information
                   </h4>
                   <div className="grid gap-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
                         <Label>
-                          Mã SKU <span className="text-destructive">*</span>
+                          SKU Code <span className="text-destructive">*</span>
                         </Label>
                         <Input
-                          placeholder="Nhập mã SKU..."
+                          placeholder="Enter SKU code..."
                           value={defaultSku}
                           onChange={(e) => setDefaultSku(e.target.value)}
                         />
@@ -913,35 +857,9 @@ export function CreateProductDialog() {
                       <div className="grid gap-2">
                         <Label>Barcode</Label>
                         <Input
-                          placeholder="Nhập mã vạch..."
+                          placeholder="Enter barcode..."
                           value={defaultBarcode}
                           onChange={(e) => setDefaultBarcode(e.target.value)}
-                        />
-                      </div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="grid gap-2">
-                        <Label>Giá vốn</Label>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={defaultCostPrice || ""}
-                          onChange={(e) =>
-                            setDefaultCostPrice(Number(e.target.value))
-                          }
-                          min={0}
-                        />
-                      </div>
-                      <div className="grid gap-2">
-                        <Label>Giá bán</Label>
-                        <Input
-                          type="number"
-                          placeholder="0"
-                          value={defaultSellingPrice || ""}
-                          onChange={(e) =>
-                            setDefaultSellingPrice(Number(e.target.value))
-                          }
-                          min={0}
                         />
                       </div>
                     </div>
@@ -953,10 +871,10 @@ export function CreateProductDialog() {
               {variants.length > 0 && (
                 <div className="rounded-md border border-amber-200 bg-amber-50 p-4">
                   <h4 className="mb-2 font-semibold text-amber-800">
-                    Đã tạo {variants.length} phiên bản từ thuộc tính
+                    Created {variants.length} variants from attributes
                   </h4>
                   <p className="text-amber-700 text-sm">
-                    Các phiên bản sẽ được tạo tự động khi lưu sản phẩm.
+                    Variants will be automatically created when saving product.
                   </p>
                 </div>
               )}
@@ -969,7 +887,7 @@ export function CreateProductDialog() {
                 onClick={() => setUnitAttributeOpen(true)}
               >
                 <Settings2 className="mr-2 h-4 w-4" />
-                Quản lý Đơn vị & Thuộc tính ({variants.length} phiên bản)
+                Manage Units & Attributes ({variants.length} variants)
               </Button>
             </div>
 
@@ -980,7 +898,7 @@ export function CreateProductDialog() {
                 onClick={() => setOpen(false)}
                 disabled={createProductMutation.isPending}
               >
-                Hủy
+                Cancel
               </Button>
               <Button
                 type="submit"
@@ -990,10 +908,10 @@ export function CreateProductDialog() {
                 {createProductMutation.isPending ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Đang lưu...
+                    Saving...
                   </>
                 ) : (
-                  "Lưu sản phẩm"
+                  "Save Product"
                 )}
               </Button>
             </DialogFooter>

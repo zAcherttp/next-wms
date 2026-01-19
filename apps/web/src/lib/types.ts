@@ -423,3 +423,115 @@ export type OutboundOrderDetailed = {
   totalQuantityPicked: number;
   totalQuantityPacked: number;
 };
+
+// ============================================================================
+// REPORT TYPES
+// ============================================================================
+
+/**
+ * Inbound report summary KPIs
+ */
+export type InboundReportKPIs = {
+  totalSessions: number;
+  totalItemsReceived: number;
+  avgItemsPerSession: number;
+  overallAccuracyRate: number;
+};
+
+/**
+ * Inbound report session item for the table
+ */
+export type InboundReportSession = {
+  _id: Id<"receive_sessions">;
+  receiveSessionCode: string;
+  receivedAt: number;
+  purchaseOrderCode: string;
+  supplierName: string;
+  status: string;
+  statusCode: string;
+  itemCount: number;
+  totalReceived: number;
+  totalExpected: number;
+  variance: number;
+  accuracyRate: number;
+};
+
+/**
+ * Inventory report summary KPIs
+ */
+export type InventoryReportKPIs = {
+  totalSKUs: number;
+  totalQuantity: number;
+  totalValue: number;
+  expiringSoonCount: number;
+  expiredCount: number;
+  lowStockCount: number;
+};
+
+/**
+ * Inventory report item for the table
+ */
+export type InventoryReportItem = {
+  _id: Id<"inventory_batches">;
+  skuCode: string;
+  productName: string;
+  categoryName: string;
+  zoneName: string;
+  quantity: number;
+  costPrice: number;
+  value: number;
+  expiresAt?: number;
+  status: string;
+  supplierBatchNumber?: string;
+  isExpiringSoon: boolean;
+  isExpired: boolean;
+  isLowStock: boolean;
+};
+
+/**
+ * Outbound report summary KPIs
+ */
+export type OutboundReportKPIs = {
+  totalOrders: number;
+  totalItemsShipped: number;
+  avgItemsPerOrder: number;
+  overallFulfillmentRate: number;
+  avgPickingTimeMinutes: number;
+  totalPickingSessions: number;
+};
+
+/**
+ * Outbound report order item for the table
+ */
+export type OutboundReportOrder = {
+  _id: Id<"outbound_orders">;
+  orderCode: string;
+  orderDate: number;
+  requestedShipDate?: number;
+  trackingNumber?: string;
+  createdByName: string;
+  status: string;
+  statusCode: string;
+  itemCount: number;
+  totalRequested: number;
+  totalPicked: number;
+  totalPacked: number;
+  fulfillmentRate: number;
+};
+
+/**
+ * Chart breakdown item (for status, category, etc.)
+ */
+export type ChartBreakdownItem = {
+  name: string;
+  value: number;
+  code?: string;
+};
+
+/**
+ * Daily trend data point
+ */
+export type DailyTrendPoint = {
+  date: string;
+  value: number;
+};

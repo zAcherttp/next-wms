@@ -14,10 +14,12 @@ import {
   Filter,
   MoreHorizontal,
   Plus,
+  Settings2,
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -59,6 +61,7 @@ import {
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
+import { ImportExcelButtonCategories } from "@/components/import-excel-button-categories";
 
 // Category type with hierarchy
 export type CategoryItem = Doc<"categories"> & {
@@ -435,9 +438,11 @@ function ActionsCell({ category }: { category: CategoryItem }) {
 function CategoryRow({
   category,
   level = 0,
+  columnVisibility,
 }: {
   category: CategoryItem;
   level?: number;
+  columnVisibility: { path: boolean };
 }) {
   const hasChildren = category.children && category.children.length > 0;
   const [isExpanded, setIsExpanded] = React.useState(false);
@@ -486,9 +491,11 @@ function CategoryRow({
             )}
           </div>
         </TableCell>
-        <TableCell>
-          <div className="text-muted-foreground text-sm">{category.path}</div>
-        </TableCell>
+        {columnVisibility.path && (
+          <TableCell>
+            <div className="text-muted-foreground text-sm">{category.path}</div>
+          </TableCell>
+        )}
         <TableCell>
           <ActionsCell category={category} />
         </TableCell>
@@ -496,7 +503,12 @@ function CategoryRow({
       {hasChildren &&
         isExpanded &&
         category.children?.map((child) => (
-          <CategoryRow key={child._id} category={child} level={level + 1} />
+          <CategoryRow 
+            key={child._id} 
+            category={child} 
+            level={level + 1}
+            columnVisibility={columnVisibility}
+          />
         ))}
     </>
   );
@@ -556,6 +568,11 @@ export function CategoriesTable() {
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
 
+  // Column visibility
+  const [columnVisibility, setColumnVisibility] = React.useState({
+    path: true,
+  });
+
   // Filter categories by name
   const filteredCategories = React.useMemo(() => {
     if (!debouncedFilterValue) return hierarchicalCategories;
@@ -599,7 +616,40 @@ export function CategoriesTable() {
             <Filter />
           </InputGroupAddon>
         </InputGroup>
-        <CreateCategoryDialog />
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          {/* Column Visibility Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Settings2 className="mr-1 size-4" />
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                className="capitalize"
+                onSelect={(e) => e.preventDefault()}
+              >
+                <Checkbox
+                  checked={columnVisibility.path}
+                  onCheckedChange={(value) =>
+                    setColumnVisibility({ ...columnVisibility, path: !!value })
+                  }
+                  className="mr-2"
+                />
+                Path
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Import Excel Button */}
+          <ImportExcelButtonCategories />
+
+          {/* Create Category Button */}
+          <CreateCategoryDialog />
+        </div>
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table className="bg-card">
@@ -608,9 +658,11 @@ export function CategoriesTable() {
               <TableHead>
                 <span className="font-medium">Name</span>
               </TableHead>
-              <TableHead>
-                <span className="font-medium">Path</span>
-              </TableHead>
+              {columnVisibility.path && (
+                <TableHead>
+                  <span className="font-medium">Path</span>
+                </TableHead>
+              )}
               <TableHead className="text-right">
                 <span className="font-medium">Actions</span>
               </TableHead>
@@ -619,7 +671,11 @@ export function CategoriesTable() {
           <TableBody>
             {paginatedCategories.length ? (
               paginatedCategories.map((category) => (
-                <CategoryRow key={category._id} category={category} />
+                <CategoryRow 
+                  key={category._id} 
+                  category={category}
+                  columnVisibility={columnVisibility}
+                />
               ))
             ) : (
               <TableRow>
