@@ -78,8 +78,8 @@ import {
 } from "@/components/ui/tabs";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import type { OutboundReportOrder } from "@/lib/types";
 import { exportReportToPDF, formatDateRange } from "@/lib/pdf-export";
+import type { OutboundReportOrder } from "@/lib/types";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 import { useDateFilterStore } from "@/store/date-filter";
 
@@ -118,14 +118,15 @@ export default function OutboundReportPage() {
   const dateRange = useDateFilterStore((state) => state.dateRange);
   const periodLabel = useDateFilterStore((state) => state.periodLabel);
   const updateFromPicker = useDateFilterStore(
-    (state) => state.updateFromPicker
+    (state) => state.updateFromPicker,
   );
 
   // Filter state
   const [filter, setFilter] = React.useState<OutboundFilter>("all");
 
   // Calculate date range timestamps
-  const startDate = dateRange.from?.getTime() ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const startDate =
+    dateRange.from?.getTime() ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
   const endDate = dateRange.to?.getTime() ?? Date.now();
 
   // Fetch report summary
@@ -138,7 +139,7 @@ export default function OutboundReportPage() {
             startDate,
             endDate,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!currentBranch,
   });
@@ -153,7 +154,7 @@ export default function OutboundReportPage() {
             startDate,
             endDate,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!currentBranch,
   });
@@ -183,7 +184,7 @@ export default function OutboundReportPage() {
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -225,7 +226,7 @@ export default function OutboundReportPage() {
                 (status) => ({
                   label: status,
                   value: status,
-                })
+                }),
               )
             : [];
 
@@ -302,7 +303,7 @@ export default function OutboundReportPage() {
                   ? "text-green-600"
                   : rate >= 80
                     ? "text-yellow-600"
-                    : "text-red-600"
+                    : "text-red-600",
               )}
             >
               {rate}%
@@ -323,7 +324,7 @@ export default function OutboundReportPage() {
         },
       },
     ],
-    [orders]
+    [orders],
   );
 
   const table = useReactTable({
@@ -379,7 +380,7 @@ export default function OutboundReportPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Outbound Report</h1>
+          <h1 className="font-bold text-2xl tracking-tight">Outbound Report</h1>
           <p className="text-muted-foreground">
             Track order fulfillment and shipping performance
           </p>
@@ -457,7 +458,7 @@ export default function OutboundReportPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Orders</CardTitle>
+            <CardTitle className="font-medium text-sm">Total Orders</CardTitle>
             <ShoppingCart className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -465,10 +466,10 @@ export default function OutboundReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="font-bold text-2xl">
                   {summary?.kpis.totalOrders ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">{periodLabel}</p>
+                <p className="text-muted-foreground text-xs">{periodLabel}</p>
               </>
             )}
           </CardContent>
@@ -476,7 +477,7 @@ export default function OutboundReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Items Shipped</CardTitle>
+            <CardTitle className="font-medium text-sm">Items Shipped</CardTitle>
             <Truck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -484,10 +485,10 @@ export default function OutboundReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="font-bold text-2xl">
                   {summary?.kpis.totalItemsShipped?.toLocaleString() ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   {summary?.kpis.avgItemsPerOrder ?? 0} avg per order
                 </p>
               </>
@@ -497,7 +498,7 @@ export default function OutboundReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="font-medium text-sm">
               Avg Items/Order
             </CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
@@ -507,10 +508,10 @@ export default function OutboundReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="font-bold text-2xl">
                   {summary?.kpis.avgItemsPerOrder ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">items per order</p>
+                <p className="text-muted-foreground text-xs">items per order</p>
               </>
             )}
           </CardContent>
@@ -518,7 +519,7 @@ export default function OutboundReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="font-medium text-sm">
               Fulfillment Rate
             </CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
@@ -529,7 +530,7 @@ export default function OutboundReportPage() {
             ) : (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold">
+                  <span className="font-bold text-2xl">
                     {summary?.kpis.overallFulfillmentRate ?? 100}%
                   </span>
                   {(summary?.kpis.overallFulfillmentRate ?? 100) >= 95 ? (
@@ -538,7 +539,7 @@ export default function OutboundReportPage() {
                     <ArrowDownRight className="h-4 w-4 text-red-600" />
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   packed vs requested
                 </p>
               </>
@@ -548,7 +549,7 @@ export default function OutboundReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="font-medium text-sm">
               Picking Sessions
             </CardTitle>
             <PackageCheck className="h-4 w-4 text-muted-foreground" />
@@ -558,10 +559,10 @@ export default function OutboundReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="font-bold text-2xl">
                   {summary?.kpis.totalPickingSessions ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   total pick sessions
                 </p>
               </>
@@ -571,9 +572,7 @@ export default function OutboundReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
-              Avg Pick Time
-            </CardTitle>
+            <CardTitle className="font-medium text-sm">Avg Pick Time</CardTitle>
             <Timer className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -581,14 +580,14 @@ export default function OutboundReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="font-bold text-2xl">
                   {summary?.kpis.avgPickingTimeMinutes ?? 0}
-                  <span className="text-sm font-normal text-muted-foreground">
+                  <span className="font-normal text-muted-foreground text-sm">
                     {" "}
                     min
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   per picking session
                 </p>
               </>
@@ -674,16 +673,8 @@ export default function OutboundReportPage() {
                       x2="0"
                       y2="1"
                     >
-                      <stop
-                        offset="5%"
-                        stopColor="#2563eb"
-                        stopOpacity={0.8}
-                      />
-                      <stop
-                        offset="95%"
-                        stopColor="#2563eb"
-                        stopOpacity={0}
-                      />
+                      <stop offset="5%" stopColor="#2563eb" stopOpacity={0.8} />
+                      <stop offset="95%" stopColor="#2563eb" stopOpacity={0} />
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" />
@@ -748,7 +739,7 @@ export default function OutboundReportPage() {
                       return (
                         <div className="rounded-lg border bg-background p-2 shadow-sm">
                           <div className="font-medium">{data.skuCode}</div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-muted-foreground text-sm">
                             {data.productName}
                           </div>
                           <div className="mt-1 font-medium">
@@ -840,7 +831,7 @@ export default function OutboundReportPage() {
                           ? null
                           : flexRender(
                               header.column.columnDef.header,
-                              header.getContext()
+                              header.getContext(),
                             )}
                       </TableHead>
                     ))}
@@ -868,7 +859,7 @@ export default function OutboundReportPage() {
                         <TableCell key={cell.id}>
                           {flexRender(
                             cell.column.columnDef.cell,
-                            cell.getContext()
+                            cell.getContext(),
                           )}
                         </TableCell>
                       ))}
@@ -890,7 +881,7 @@ export default function OutboundReportPage() {
 
           {/* Pagination */}
           <div className="flex items-center justify-between py-4">
-            <div className="text-sm text-muted-foreground">
+            <div className="text-muted-foreground text-sm">
               Showing{" "}
               {table.getState().pagination.pageIndex *
                 table.getState().pagination.pageSize +
@@ -899,7 +890,7 @@ export default function OutboundReportPage() {
               {Math.min(
                 (table.getState().pagination.pageIndex + 1) *
                   table.getState().pagination.pageSize,
-                table.getFilteredRowModel().rows.length
+                table.getFilteredRowModel().rows.length,
               )}{" "}
               of {table.getFilteredRowModel().rows.length} orders
             </div>

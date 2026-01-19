@@ -137,8 +137,8 @@ function DimensionsInput({
   disabled?: boolean;
 }) {
   return (
-    <div className="grid grid-cols-2 gap-2">
-      {(["width", "depth"] as const).map((dim) => (
+    <div className="grid grid-cols-4 gap-2">
+      {(["width", "height", "depth", "length"] as const).map((dim) => (
         <div key={dim} className="flex flex-col gap-1">
           <Label className="text-muted-foreground text-xs capitalize">
             {dim[0]}

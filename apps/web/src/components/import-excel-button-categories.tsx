@@ -74,7 +74,9 @@ function parseExcelFile(file: File): Promise<ParsedCategory[]> {
         resolve(categories);
       } catch (error) {
         reject(
-          new Error("Failed to parse Excel file. Please check the file format."),
+          new Error(
+            "Failed to parse Excel file. Please check the file format.",
+          ),
         );
       }
     };

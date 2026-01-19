@@ -6,6 +6,10 @@ import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { CalendarIcon, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
+import {
+  ImportExcelButtonOutbound,
+  type ResolvedImportData,
+} from "@/components/import-excel-button-outbound";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import {
@@ -42,10 +46,6 @@ import {
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
-import {
-  ImportExcelButtonOutbound,
-  type ResolvedImportData,
-} from "@/components/import-excel-button-outbound";
 
 interface ProductItem {
   id: string;
@@ -124,13 +124,13 @@ export function AddOutboundOrderDialog({
 
     // Fetch available quantities for imported products
     const importedProducts: ProductItem[] = [];
-    
+
     for (const product of data.products) {
       // Check if this SKU is already in the products list
       const existingProduct = products.find(
         (p) => p.variantId === product.variantId,
       );
-      
+
       if (existingProduct) {
         // Update quantity of existing product
         handleUpdateProductQuantity(
@@ -152,7 +152,10 @@ export function AddOutboundOrderDialog({
             skuCode: product.skuCode,
             productName: product.description,
             availableQuantity: availableSku.availableQuantity,
-            quantity: Math.min(product.quantity, availableSku.availableQuantity),
+            quantity: Math.min(
+              product.quantity,
+              availableSku.availableQuantity,
+            ),
           };
           importedProducts.push(newProduct);
         }
@@ -316,38 +319,40 @@ export function AddOutboundOrderDialog({
                   Add product <Plus className="ml-1 size-4" />
                 </Button>
               </PopoverTrigger>
-            <PopoverContent className="w-87.5 p-0" align="start">
-              <Command>
-                <CommandInput placeholder="Search SKU code or name..." />
-                <CommandList>
-                  <CommandEmpty>No SKU found.</CommandEmpty>
-                  <CommandGroup heading="Available SKUs">
-                    {filteredSkus.map((sku) => (
-                      <CommandItem
-                        key={sku.variantId}
-                        value={`${sku.skuCode} ${sku.productName}`}
-                        onSelect={() => handleAddProduct(sku)}
-                        className="flex flex-col items-start gap-1 py-2"
-                      >
-                        <div className="flex w-full items-center justify-between">
-                          <span className="font-medium text-blue-600">
-                            {sku.skuCode}
+              <PopoverContent className="w-87.5 p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Search SKU code or name..." />
+                  <CommandList>
+                    <CommandEmpty>No SKU found.</CommandEmpty>
+                    <CommandGroup heading="Available SKUs">
+                      {filteredSkus.map((sku) => (
+                        <CommandItem
+                          key={sku.variantId}
+                          value={`${sku.skuCode} ${sku.productName}`}
+                          onSelect={() => handleAddProduct(sku)}
+                          className="flex flex-col items-start gap-1 py-2"
+                        >
+                          <div className="flex w-full items-center justify-between">
+                            <span className="font-medium text-blue-600">
+                              {sku.skuCode}
+                            </span>
+                            <span className="text-muted-foreground text-xs">
+                              Avail: {sku.availableQuantity}
+                            </span>
+                          </div>
+                          <span className="text-muted-foreground text-sm">
+                            {sku.productName}
                           </span>
-                          <span className="text-muted-foreground text-xs">
-                            Avail: {sku.availableQuantity}
-                          </span>
-                        </div>
-                        <span className="text-muted-foreground text-sm">
-                          {sku.productName}
-                        </span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </CommandList>
-              </Command>
-            </PopoverContent>
-          </Popover>
-          <ImportExcelButtonOutbound onImportComplete={handleImportComplete} />
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <ImportExcelButtonOutbound
+              onImportComplete={handleImportComplete}
+            />
           </div>
         </div>
 

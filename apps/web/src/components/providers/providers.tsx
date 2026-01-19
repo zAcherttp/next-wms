@@ -2,7 +2,7 @@
 
 import { NuqsAdapter } from "nuqs/adapters/next/app";
 import { ConvexClientProvider } from "@/components/providers/convex-client-providers";
-import { Toaster } from "../ui/sonner";
+import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "./theme-provider";
 
 interface ProvidersProps {
@@ -19,7 +19,7 @@ export default function Providers({ children }: ProvidersProps) {
         disableTransitionOnChange={false}
       >
         <NuqsAdapter>{children}</NuqsAdapter>
-        <Toaster richColors />
+        <Toaster richColors position={"bottom-center"} />
       </ThemeProvider>
     </ConvexClientProvider>
   );

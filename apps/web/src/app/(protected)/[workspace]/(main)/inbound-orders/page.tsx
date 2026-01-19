@@ -6,8 +6,8 @@ import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { MoreHorizontal } from "lucide-react";
 import { useMemo } from "react";
-import { ChartDataCard } from "@/components/chart-data-card";
 import type { ChartDataPoint } from "@/components/chart-data-card";
+import { ChartDataCard } from "@/components/chart-data-card";
 import { PurchaseOrdersTable } from "@/components/table/purchase-order-table";
 import { Button } from "@/components/ui/button";
 import { DateRangePicker } from "@/components/ui/date-range-picker";
@@ -62,7 +62,7 @@ export default function Page() {
   // Compute card data from purchase orders
   const cardsData = useMemo(() => {
     const emptyChartData: ChartDataPoint[] = [];
-    
+
     if (!purchaseOrders || purchaseOrders.length === 0) {
       return [
         {
@@ -94,7 +94,8 @@ export default function Page() {
 
     // Determine date range
     const now = new Date();
-    const fromDate = dateRange?.from ?? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const fromDate =
+      dateRange?.from ?? new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
     const toDate = dateRange?.to ?? now;
 
     // Filter by date range
@@ -106,27 +107,34 @@ export default function Page() {
     // Generate date labels for the range
     const dayLabels: string[] = [];
     const dayMs = 24 * 60 * 60 * 1000;
-    const diffDays = Math.ceil((toDate.getTime() - fromDate.getTime()) / dayMs) + 1;
-    
+    const diffDays =
+      Math.ceil((toDate.getTime() - fromDate.getTime()) / dayMs) + 1;
+
     for (let i = 0; i < diffDays; i++) {
       const date = new Date(fromDate.getTime() + i * dayMs);
-      const label = date.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+      const label = date.toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      });
       dayLabels.push(label);
     }
 
     // Group orders by day and status
     const createTimeSeriesData = (statusCode: string): ChartDataPoint[] => {
       const countsByDay = new Map<string, number>();
-      
+
       // Initialize all days with 0
       dayLabels.forEach((label) => countsByDay.set(label, 0));
-      
+
       // Count orders by day
       filteredOrders
         .filter((o) => o.purchaseOrderStatus?.lookupCode === statusCode)
         .forEach((order) => {
           const orderDate = new Date(order.orderedAt);
-          const label = orderDate.toLocaleDateString("en-US", { month: "short", day: "numeric" });
+          const label = orderDate.toLocaleDateString("en-US", {
+            month: "short",
+            day: "numeric",
+          });
           countsByDay.set(label, (countsByDay.get(label) ?? 0) + 1);
         });
 
