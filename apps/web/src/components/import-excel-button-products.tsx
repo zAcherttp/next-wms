@@ -212,8 +212,10 @@ export function ImportExcelButtonProducts() {
   });
 
   const { data: systemLookups } = useQuery({
-    ...convexQuery(api.systemLookups.list, {}),
-    enabled: true,
+    ...convexQuery(api.systemLookups.list, {
+      organizationId: organizationId as Id<"organizations">,
+    }),
+    enabled: !!organizationId,
   });
 
   // Mutation
@@ -266,7 +268,9 @@ export function ImportExcelButtonProducts() {
 
       // Debug: Log systemLookups
       console.log("Total systemLookups:", systemLookups?.length);
-      const storageLookups = systemLookups?.filter(l => l.lookupType === "StorageRequirement");
+      const storageLookups = systemLookups?.filter(
+        (l) => l.lookupType === "StorageRequirement",
+      );
       console.log("Storage lookups found:", storageLookups);
 
       systemLookups?.forEach((lookup) => {
@@ -334,7 +338,9 @@ export function ImportExcelButtonProducts() {
         }
 
         // Check storage
-        console.log(`Looking for storage: "${group.storage}" (lowercase: "${group.storage.toLowerCase()}")`);
+        console.log(
+          `Looking for storage: "${group.storage}" (lowercase: "${group.storage.toLowerCase()}")`,
+        );
         const storageId = storageMap.get(group.storage.toLowerCase());
         if (!storageId) {
           errors.push(`Storage "${group.storage}" not found`);
@@ -412,7 +418,10 @@ export function ImportExcelButtonProducts() {
           successCount++;
           existingProductNames.add(group.productName.toLowerCase());
         } catch (error) {
-          console.error(`Failed to create product "${group.productName}":`, error);
+          console.error(
+            `Failed to create product "${group.productName}":`,
+            error,
+          );
           errorCount++;
         }
       }

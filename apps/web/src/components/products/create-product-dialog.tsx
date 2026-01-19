@@ -744,7 +744,8 @@ export function CreateProductDialog() {
               <div className="grid grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label>
-                    Storage Requirements <span className="text-destructive">*</span>
+                    Storage Requirements{" "}
+                    <span className="text-destructive">*</span>
                   </Label>
                   <Select
                     value={storageRequirementId}
@@ -764,8 +765,7 @@ export function CreateProductDialog() {
                 </div>
                 <div className="grid gap-2">
                   <Label>
-                    Tracking Method{" "}
-                    <span className="text-destructive">*</span>
+                    Tracking Method <span className="text-destructive">*</span>
                   </Label>
                   <Select
                     value={trackingMethodId}

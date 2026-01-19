@@ -8,6 +8,7 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { useCurrentUser } from "@/hooks/use-current-user";
 
 // Lookup type constants (matching backend)
 export const LOOKUP_TYPES = {
@@ -68,8 +69,16 @@ export type SystemLookup = {
  * Get all lookups of a specific type
  */
 export function useSystemLookups(lookupType: LookupType) {
+  const { organizationId } = useCurrentUser();
+
   const queryResult = useQuery({
-    ...convexQuery(api.systemLookups.getByType, { lookupType }),
+    ...convexQuery(
+      api.systemLookups.getByType,
+      organizationId
+        ? { organizationId: organizationId as Id<"organizations">, lookupType }
+        : "skip",
+    ),
+    enabled: !!organizationId,
   });
 
   return {
@@ -83,8 +92,16 @@ export function useSystemLookups(lookupType: LookupType) {
  * Useful for forms that need multiple dropdowns
  */
 export function useMultipleSystemLookups(lookupTypes: LookupType[]) {
+  const { organizationId } = useCurrentUser();
+
   const queryResult = useQuery({
-    ...convexQuery(api.systemLookups.getMultipleTypes, { lookupTypes }),
+    ...convexQuery(
+      api.systemLookups.getMultipleTypes,
+      organizationId
+        ? { organizationId: organizationId as Id<"organizations">, lookupTypes }
+        : "skip",
+    ),
+    enabled: !!organizationId,
   });
 
   return {
@@ -100,11 +117,20 @@ export function useSystemLookupByCode(
   lookupType: LookupType,
   lookupCode: string,
 ) {
+  const { organizationId } = useCurrentUser();
+
   const queryResult = useQuery({
-    ...convexQuery(api.systemLookups.getByTypeAndCode, {
-      lookupType,
-      lookupCode,
-    }),
+    ...convexQuery(
+      api.systemLookups.getByTypeAndCode,
+      organizationId
+        ? {
+            organizationId: organizationId as Id<"organizations">,
+            lookupType,
+            lookupCode,
+          }
+        : "skip",
+    ),
+    enabled: !!organizationId,
   });
 
   return {

@@ -32,8 +32,6 @@ import { AddPurchaseOrderDialog } from "@/components/add-purchase-order-dialog";
 import { PurchaseOrderDetailDialog } from "@/components/purchase-order-detail-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,6 +42,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -123,7 +123,9 @@ export function PurchaseOrdersTable() {
         purchaseOrderId: orderToCancel.id,
         userId: userId as Id<"users">,
       });
-      toast.success(`Purchase order ${orderToCancel.code} cancelled successfully`);
+      toast.success(
+        `Purchase order ${orderToCancel.code} cancelled successfully`,
+      );
     } catch (error) {
       toast.error(
         error instanceof Error

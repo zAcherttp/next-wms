@@ -80,11 +80,11 @@ export function AddPurchaseOrderDialog({
   onOpenChange,
 }: AddPurchaseOrderDialogProps) {
   const [internalOpen, setInternalOpen] = React.useState(false);
-  
+
   // Use external control if provided, otherwise use internal state
   const open = onOpenChange ? defaultOpen : internalOpen;
   const setOpen = onOpenChange ?? setInternalOpen;
-  
+
   const [receivingBranchId, setReceivingBranchId] = React.useState<string>("");
   const [supplierId, setSupplierId] = React.useState<string>("");
   const [products, setProducts] = React.useState<PurchaseOrderProductItem[]>(
@@ -107,12 +107,12 @@ export function AddPurchaseOrderDialog({
       } else if (currentBranch && !receivingBranchId) {
         setReceivingBranchId(currentBranch._id);
       }
-      
+
       // Set supplier from import
       if (initialSupplierId) {
         setSupplierId(initialSupplierId);
       }
-      
+
       // Set products from import
       if (initialProducts && initialProducts.length > 0) {
         const mappedProducts: PurchaseOrderProductItem[] = initialProducts.map(
@@ -122,12 +122,18 @@ export function AddPurchaseOrderDialog({
             skuCode: p.skuCode,
             description: p.description,
             quantity: p.quantity,
-          })
+          }),
         );
         setProducts(mappedProducts);
       }
     }
-  }, [open, currentBranch, initialBranchId, initialSupplierId, initialProducts]);
+  }, [
+    open,
+    currentBranch,
+    initialBranchId,
+    initialSupplierId,
+    initialProducts,
+  ]);
 
   // Fetch next PO code when branch is selected
   const { data: nextPoCode } = useQuery({
@@ -321,15 +327,14 @@ export function AddPurchaseOrderDialog({
               }
               // Set products from import
               if (data.products && data.products.length > 0) {
-                const mappedProducts: PurchaseOrderProductItem[] = data.products.map(
-                  (p, index) => ({
+                const mappedProducts: PurchaseOrderProductItem[] =
+                  data.products.map((p, index) => ({
                     id: `import-${index}-${Date.now()}`,
                     variantId: p.variantId as Id<"product_variants">,
                     skuCode: p.skuCode,
                     description: p.description,
                     quantity: p.quantity,
-                  })
-                );
+                  }));
                 setProducts(mappedProducts);
                 toast.success(`Imported ${mappedProducts.length} products`);
               }
@@ -338,8 +343,8 @@ export function AddPurchaseOrderDialog({
         </DialogHeader>
 
         {/* Form Fields */}
-        <div className="flex  flex-row gap-4 w-full">
-          <div className="space-y-2 flex-1">
+        <div className="flex w-full flex-row gap-4">
+          <div className="flex-1 space-y-2">
             <Label htmlFor="po-id">
               PO-ID<span className="text-destructive">*</span>
             </Label>
@@ -350,7 +355,7 @@ export function AddPurchaseOrderDialog({
               className="w-full bg-muted"
             />
           </div>
-          <div className="space-y-2 flex-1">
+          <div className="flex-1 space-y-2">
             <Label htmlFor="receiving-branch">
               Receiving Branch<span className="text-destructive">*</span>
             </Label>
@@ -373,7 +378,7 @@ export function AddPurchaseOrderDialog({
             </Select>
           </div>
 
-          <div className="space-y-2 flex-1">
+          <div className="flex-1 space-y-2">
             <Label htmlFor="supplier">
               Supplier <span className="text-destructive">*</span>
             </Label>

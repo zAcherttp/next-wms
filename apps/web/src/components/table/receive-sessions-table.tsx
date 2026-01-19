@@ -280,7 +280,7 @@ export function ReceiveSessionsTable() {
           <div className="text-center">
             <Badge
               className={cn(
-                "min-w-24 w-fit justify-center whitespace-nowrap rounded-sm text-center text-xs",
+                "w-fit min-w-24 justify-center whitespace-nowrap rounded-sm text-center text-xs",
                 getBadgeStyleByStatus(row.getValue("status")),
               )}
               variant={"outline"}

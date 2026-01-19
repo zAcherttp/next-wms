@@ -1,8 +1,10 @@
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   AlertTriangle,
   AlignHorizontalDistributeCenter,
   Box,
   DoorOpen,
+  Eye,
   Layers,
   LayoutGrid,
   LogIn,
@@ -21,10 +23,14 @@ import {
   ContextMenu,
   ContextMenuContent,
   ContextMenuItem,
+  ContextMenuSeparator,
   ContextMenuTrigger,
 } from "@/components/ui/context-menu";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { ZoneDetailsDialog } from "@/components/zones/zone-details-dialog";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import {
   BLOCK_UI_SCHEMAS,
   type BlockType,
@@ -62,8 +68,19 @@ export function EntityBrowser() {
   // State for right-clicked item context
   const [contextItem, setContextItem] = useState<StorageEntity | null>(null);
 
+  // State for zone details dialog
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedZoneForDetails, setSelectedZoneForDetails] = useState<{
+    id: Id<"storage_zones"> | null;
+    name: string;
+  }>({ id: null, name: "" });
+
   // TreeView ref
   const treeViewRef = useRef<TreeViewRef>(null);
+
+  // Get current branch
+  const { organizationId } = useCurrentUser();
+  const { currentBranch } = useBranches({ organizationId });
 
   // Store state
   const entities = useLayoutStore((s) => s.entities);
@@ -305,6 +322,27 @@ export function EntityBrowser() {
           ) : (
             <ContextMenuItem disabled>No actions available</ContextMenuItem>
           )}
+          {/* View Details option for zones with real IDs */}
+          {contextEntity?._id && (
+            <>
+              <ContextMenuSeparator />
+              <ContextMenuItem
+                onClick={() => {
+                  setSelectedZoneForDetails({
+                    id: contextEntity._id as Id<"storage_zones">,
+                    name:
+                      (contextEntity.zoneAttributes.name as string) ||
+                      contextEntity.storageBlockType,
+                  });
+                  setDetailsDialogOpen(true);
+                  setContextItem(null);
+                }}
+              >
+                <Eye className="mr-2 h-4 w-4" />
+                View Details
+              </ContextMenuItem>
+            </>
+          )}
         </ContextMenuContent>
       </ContextMenu>
 
@@ -312,6 +350,15 @@ export function EntityBrowser() {
       <div className="border-t bg-muted/30 px-3 py-2 text-muted-foreground text-xs">
         {entities.size} items total
       </div>
+
+      {/* Zone Details Dialog */}
+      <ZoneDetailsDialog
+        zoneId={selectedZoneForDetails.id}
+        zoneName={selectedZoneForDetails.name}
+        branchId={currentBranch?._id ?? null}
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+      />
     </div>
   );
 }

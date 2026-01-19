@@ -69,11 +69,15 @@ export function ReturnRequestsTable() {
   });
 
   const { data: returnRequests, isLoading } = useQuery({
-    ...convexQuery(api.returnRequest.listWithDetails, {
-      organizationId: organizationId as string,
-      branchId: currentBranch?._id as string,
-    }),
-    enabled: !!organizationId && !!currentBranch,
+    ...convexQuery(
+      api.returnRequest.listWithDetails,
+      organizationId && currentBranch
+        ? {
+            organizationId: organizationId as string,
+            branchId: currentBranch._id as string,
+          }
+        : "skip",
+    ),
   });
 
   // Mutations for approve and reject

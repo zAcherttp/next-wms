@@ -18,6 +18,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
+import { ImportExcelButtonCategories } from "@/components/import-excel-button-categories";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -37,12 +38,12 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -61,7 +62,6 @@ import {
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import { ImportExcelButtonCategories } from "@/components/import-excel-button-categories";
 
 // Category type with hierarchy
 export type CategoryItem = Doc<"categories"> & {
@@ -503,9 +503,9 @@ function CategoryRow({
       {hasChildren &&
         isExpanded &&
         category.children?.map((child) => (
-          <CategoryRow 
-            key={child._id} 
-            category={child} 
+          <CategoryRow
+            key={child._id}
+            category={child}
             level={level + 1}
             columnVisibility={columnVisibility}
           />
@@ -578,7 +578,7 @@ export function CategoriesTable() {
     if (!debouncedFilterValue) return hierarchicalCategories;
     const lowerFilter = debouncedFilterValue.toLowerCase();
     return hierarchicalCategories.filter((cat) =>
-      cat.name.toLowerCase().includes(lowerFilter)
+      cat.name.toLowerCase().includes(lowerFilter),
     );
   }, [hierarchicalCategories, debouncedFilterValue]);
 
@@ -671,8 +671,8 @@ export function CategoriesTable() {
           <TableBody>
             {paginatedCategories.length ? (
               paginatedCategories.map((category) => (
-                <CategoryRow 
-                  key={category._id} 
+                <CategoryRow
+                  key={category._id}
                   category={category}
                   columnVisibility={columnVisibility}
                 />

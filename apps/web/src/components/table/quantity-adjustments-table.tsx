@@ -26,6 +26,7 @@ import {
   Filter,
   Loader2,
   MoreHorizontal,
+  Plus,
   XCircle,
 } from "lucide-react";
 import * as React from "react";
@@ -83,11 +84,13 @@ const statusFilterOptions = [
 interface QuantityAdjustmentsTableProps {
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
+  onNewRequest: () => void;
 }
 
 export function QuantityAdjustmentsTable({
   onApprove,
   onReject,
+  onNewRequest,
 }: QuantityAdjustmentsTableProps) {
   const { organizationId } = useCurrentUser();
   const { currentBranch } = useBranches({ organizationId });
@@ -379,6 +382,10 @@ export function QuantityAdjustmentsTable({
             }
             variant="multi-select"
           />
+          <Button size="sm" onClick={onNewRequest}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Adjustment
+          </Button>
         </div>
       </div>
 

@@ -64,10 +64,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
-import type { InboundReportSession } from "@/lib/types";
 import { exportReportToPDF, formatDateRange } from "@/lib/pdf-export";
+import type { InboundReportSession } from "@/lib/types";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 import { useDateFilterStore } from "@/store/date-filter";
 
@@ -91,6 +92,8 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "#dc2626", // Red
 };
 
+type InboundFilter = "all" | "completed" | "pending" | "in-progress";
+
 export default function InboundReportPage() {
   const { userId, organizationId } = useCurrentUser();
   const { currentBranch } = useBranches({
@@ -102,11 +105,15 @@ export default function InboundReportPage() {
   const dateRange = useDateFilterStore((state) => state.dateRange);
   const periodLabel = useDateFilterStore((state) => state.periodLabel);
   const updateFromPicker = useDateFilterStore(
-    (state) => state.updateFromPicker
+    (state) => state.updateFromPicker,
   );
 
+  // Filter state
+  const [filter, setFilter] = React.useState<InboundFilter>("all");
+
   // Calculate date range timestamps
-  const startDate = dateRange.from?.getTime() ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
+  const startDate =
+    dateRange.from?.getTime() ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
   const endDate = dateRange.to?.getTime() ?? Date.now();
 
   // Fetch report summary
@@ -119,7 +126,7 @@ export default function InboundReportPage() {
             startDate,
             endDate,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!currentBranch,
   });
@@ -134,15 +141,35 @@ export default function InboundReportPage() {
             startDate,
             endDate,
           }
-        : "skip"
+        : "skip",
     ),
     enabled: !!currentBranch,
   });
 
+  // Client-side filtering for better performance
+  const filteredSessions = React.useMemo(() => {
+    if (!sessions) return [];
+    if (filter === "all") return sessions;
+
+    return sessions.filter((session) => {
+      const statusCode = session.statusCode.toUpperCase();
+      switch (filter) {
+        case "completed":
+          return statusCode === "COMPLETED";
+        case "pending":
+          return statusCode === "PENDING" || statusCode === "DRAFT";
+        case "in-progress":
+          return statusCode === "IN_PROGRESS" || statusCode === "RECEIVING";
+        default:
+          return true;
+      }
+    });
+  }, [sessions, filter]);
+
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
-    []
+    [],
   );
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
@@ -167,12 +194,12 @@ export default function InboundReportPage() {
         accessorKey: "supplierName",
         header: ({ column }) => {
           const suppliers = sessions
-            ? Array.from(
-                new Set(sessions.map((s) => s.supplierName))
-              ).map((name) => ({
-                label: name,
-                value: name,
-              }))
+            ? Array.from(new Set(sessions.map((s) => s.supplierName))).map(
+                (name) => ({
+                  label: name,
+                  value: name,
+                }),
+              )
             : [];
 
           const currentFilter = column.getFilterValue() as string[] | undefined;
@@ -214,12 +241,12 @@ export default function InboundReportPage() {
         accessorKey: "status",
         header: ({ column }) => {
           const statuses = sessions
-            ? Array.from(
-                new Set(sessions.map((s) => s.status))
-              ).map((status) => ({
-                label: status,
-                value: status,
-              }))
+            ? Array.from(new Set(sessions.map((s) => s.status))).map(
+                (status) => ({
+                  label: status,
+                  value: status,
+                }),
+              )
             : [];
 
           const currentFilter = column.getFilterValue() as string[] | undefined;
@@ -288,7 +315,7 @@ export default function InboundReportPage() {
                   ? "text-green-600"
                   : variance < 0
                     ? "text-red-600"
-                    : ""
+                    : "",
               )}
             >
               {variance > 0 ? `+${variance}` : variance}
@@ -309,7 +336,7 @@ export default function InboundReportPage() {
                   ? "text-green-600"
                   : accuracy >= 95
                     ? "text-yellow-600"
-                    : "text-red-600"
+                    : "text-red-600",
               )}
             >
               {accuracy}%
@@ -318,11 +345,11 @@ export default function InboundReportPage() {
         },
       },
     ],
-    [sessions]
+    [sessions],
   );
 
   const table = useReactTable({
-    data: sessions ?? [],
+    data: filteredSessions,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -367,7 +394,7 @@ export default function InboundReportPage() {
       {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Inbound Report</h1>
+          <h1 className="font-bold text-2xl tracking-tight">Inbound Report</h1>
           <p className="text-muted-foreground">
             Analyze receiving operations and supplier performance
           </p>
@@ -388,20 +415,78 @@ export default function InboundReportPage() {
             variant="outline"
             size="sm"
             onClick={() => {
-              if (!sessions) return;
+              if (filteredSessions.length === 0) return;
               exportReportToPDF({
                 title: "Inbound Report",
                 subtitle: "Receiving Operations & Supplier Performance",
                 dateRange: formatDateRange(dateRange.from, dateRange.to),
                 branchName: currentBranch?.name,
                 kpis: [
-                  { label: "Total Sessions", value: summary?.kpis.totalSessions ?? 0 },
-                  { label: "Items Received", value: summary?.kpis.totalItemsReceived?.toLocaleString() ?? "0" },
-                  { label: "Avg Items/Session", value: summary?.kpis.avgItemsPerSession ?? 0 },
-                  { label: "Accuracy Rate", value: `${summary?.kpis.overallAccuracyRate ?? 100}%` },
+                  {
+                    label: "Total Sessions",
+                    value: summary?.kpis.totalSessions ?? 0,
+                  },
+                  {
+                    label: "Items Received",
+                    value:
+                      summary?.kpis.totalItemsReceived?.toLocaleString() ?? "0",
+                  },
+                  {
+                    label: "Avg Items/Session",
+                    value: summary?.kpis.avgItemsPerSession ?? 0,
+                  },
+                  {
+                    label: "Accuracy Rate",
+                    value: `${summary?.kpis.overallAccuracyRate ?? 100}%`,
+                  },
                 ],
-                tableHeaders: ["Session ID", "PO Code", "Supplier", "Received Date", "Status", "SKUs", "Received", "Expected", "Variance", "Accuracy"],
-                tableData: sessions.map((s) => [
+                tableHeaders: [
+                  "Session ID",
+                  "PO Code",
+                  "Supplier",
+                  "Received Date",
+                  "Status",
+                  "SKUs",
+                  "Received",
+                  "Expected",
+                  "Variance",
+                  "Accuracy",
+                ],
+                pieChart:
+                  statusChartData.length > 0
+                    ? {
+                        title: "Status Breakdown",
+                        data: statusChartData.map((item) => ({
+                          name: item.name,
+                          value: item.value,
+                          color: STATUS_COLORS[item.code] || undefined,
+                        })),
+                      }
+                    : undefined,
+                barChart:
+                  supplierChartData.length > 0
+                    ? {
+                        title: "Top Suppliers by Items Received",
+                        data: supplierChartData.map((item) => ({
+                          name: item.name,
+                          value: item.items,
+                        })),
+                        valueLabel: "Items Received",
+                      }
+                    : undefined,
+                tableHeaders: [
+                  "Session ID",
+                  "PO Code",
+                  "Supplier",
+                  "Received Date",
+                  "Status",
+                  "SKUs",
+                  "Received",
+                  "Expected",
+                  "Variance",
+                  "Accuracy",
+                ],
+                tableData: filteredSessions.map((s) => [
                   s.receiveSessionCode,
                   s.purchaseOrderCode,
                   s.supplierName,
@@ -416,7 +501,7 @@ export default function InboundReportPage() {
                 fileName: `inbound-report-${new Date().toISOString().split("T")[0]}`,
               });
             }}
-            disabled={!sessions || sessions.length === 0}
+            disabled={filteredSessions.length === 0}
           >
             <Download className="mr-2 h-4 w-4" />
             Export
@@ -428,7 +513,7 @@ export default function InboundReportPage() {
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="font-medium text-sm">
               Total Sessions
             </CardTitle>
             <Package className="h-4 w-4 text-muted-foreground" />
@@ -438,10 +523,10 @@ export default function InboundReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="font-bold text-2xl">
                   {summary?.kpis.totalSessions ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">{periodLabel}</p>
+                <p className="text-muted-foreground text-xs">{periodLabel}</p>
               </>
             )}
           </CardContent>
@@ -449,7 +534,7 @@ export default function InboundReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="font-medium text-sm">
               Items Received
             </CardTitle>
             <PackageCheck className="h-4 w-4 text-muted-foreground" />
@@ -459,10 +544,10 @@ export default function InboundReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="font-bold text-2xl">
                   {summary?.kpis.totalItemsReceived?.toLocaleString() ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   {summary?.kpis.avgItemsPerSession ?? 0} avg per session
                 </p>
               </>
@@ -472,7 +557,7 @@ export default function InboundReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="font-medium text-sm">
               Avg Items/Session
             </CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
@@ -482,10 +567,12 @@ export default function InboundReportPage() {
               <Skeleton className="h-8 w-24" />
             ) : (
               <>
-                <div className="text-2xl font-bold">
+                <div className="font-bold text-2xl">
                   {summary?.kpis.avgItemsPerSession ?? 0}
                 </div>
-                <p className="text-xs text-muted-foreground">items per session</p>
+                <p className="text-muted-foreground text-xs">
+                  items per session
+                </p>
               </>
             )}
           </CardContent>
@@ -493,7 +580,7 @@ export default function InboundReportPage() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">
+            <CardTitle className="font-medium text-sm">
               Receiving Accuracy
             </CardTitle>
             <Target className="h-4 w-4 text-muted-foreground" />
@@ -504,7 +591,7 @@ export default function InboundReportPage() {
             ) : (
               <>
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl font-bold">
+                  <span className="font-bold text-2xl">
                     {summary?.kpis.overallAccuracyRate ?? 100}%
                   </span>
                   {(summary?.kpis.overallAccuracyRate ?? 100) >= 100 ? (
@@ -513,7 +600,7 @@ export default function InboundReportPage() {
                     <ArrowDownRight className="h-4 w-4 text-red-600" />
                   )}
                 </div>
-                <p className="text-xs text-muted-foreground">
+                <p className="text-muted-foreground text-xs">
                   received vs expected
                 </p>
               </>
@@ -578,9 +665,7 @@ export default function InboundReportPage() {
         <Card>
           <CardHeader>
             <CardTitle>Top Suppliers by Volume</CardTitle>
-            <CardDescription>
-              Items received from top suppliers
-            </CardDescription>
+            <CardDescription>Items received from top suppliers</CardDescription>
           </CardHeader>
           <CardContent>
             {isSummaryPending ? (
@@ -630,10 +715,71 @@ export default function InboundReportPage() {
       {/* Detailed Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Receive Sessions</CardTitle>
-          <CardDescription>
-            Detailed list of all receive sessions in the selected period
-          </CardDescription>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>Receive Sessions</CardTitle>
+              <CardDescription>
+                Detailed list of all receive sessions in the selected period
+              </CardDescription>
+            </div>
+            <Tabs
+              value={filter}
+              onValueChange={(v) => setFilter(v as InboundFilter)}
+            >
+              <TabsList>
+                <TabsTrigger value="all">All Sessions</TabsTrigger>
+                <TabsTrigger value="completed">
+                  Completed
+                  {summary?.statusBreakdown.find(
+                    (s) => s.statusCode === "COMPLETED",
+                  )?.count ? (
+                    <Badge variant="secondary" className="ml-1">
+                      {
+                        summary.statusBreakdown.find(
+                          (s) => s.statusCode === "COMPLETED",
+                        )?.count
+                      }
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+                <TabsTrigger value="in-progress">
+                  In Progress
+                  {summary?.statusBreakdown.find(
+                    (s) =>
+                      s.statusCode === "IN_PROGRESS" ||
+                      s.statusCode === "RECEIVING",
+                  )?.count ? (
+                    <Badge variant="secondary" className="ml-1">
+                      {summary.statusBreakdown
+                        .filter(
+                          (s) =>
+                            s.statusCode === "IN_PROGRESS" ||
+                            s.statusCode === "RECEIVING",
+                        )
+                        .reduce((sum, s) => sum + s.count, 0)}
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+                <TabsTrigger value="pending">
+                  Pending
+                  {summary?.statusBreakdown.find(
+                    (s) =>
+                      s.statusCode === "PENDING" || s.statusCode === "DRAFT",
+                  )?.count ? (
+                    <Badge variant="secondary" className="ml-1">
+                      {summary.statusBreakdown
+                        .filter(
+                          (s) =>
+                            s.statusCode === "PENDING" ||
+                            s.statusCode === "DRAFT",
+                        )
+                        .reduce((sum, s) => sum + s.count, 0)}
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -647,7 +793,7 @@ export default function InboundReportPage() {
                           ? null
                           : flexRender(
                               header.column.columnDef.header,
-                              header.getContext()
+                              header.getContext(),
                             )}
                       </TableHead>
                     ))}
@@ -675,7 +821,7 @@ export default function InboundReportPage() {
                         <TableCell key={cell.id}>
                           {flexRender(
                             cell.column.columnDef.cell,
-                            cell.getContext()
+                            cell.getContext(),
                           )}
                         </TableCell>
                       ))}
@@ -697,7 +843,7 @@ export default function InboundReportPage() {
 
           {/* Pagination */}
           <div className="flex items-center justify-between py-4">
-            <div className="text-sm text-muted-foreground">
+            <div className="text-muted-foreground text-sm">
               Showing{" "}
               {table.getState().pagination.pageIndex *
                 table.getState().pagination.pageSize +
@@ -706,7 +852,7 @@ export default function InboundReportPage() {
               {Math.min(
                 (table.getState().pagination.pageIndex + 1) *
                   table.getState().pagination.pageSize,
-                table.getFilteredRowModel().rows.length
+                table.getFilteredRowModel().rows.length,
               )}{" "}
               of {table.getFilteredRowModel().rows.length} sessions
             </div>
