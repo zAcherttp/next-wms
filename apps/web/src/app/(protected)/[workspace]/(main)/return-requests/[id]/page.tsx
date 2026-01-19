@@ -89,15 +89,17 @@ const columns: ColumnDef<DetailItem>[] = [
     header: "Reason",
     cell: ({ row }) => {
       const reason = row.getValue("reason.lookupValue") as string;
-      const notes = row.original.customReasonNotes;
+      return <div className="font-medium">{reason ?? "-"}</div>;
+    },
+  },
+  {
+    accessorKey: "customReasonNotes",
+    header: "Notes",
+    cell: ({ row }) => {
+      const notes = row.getValue("customReasonNotes") as string | undefined;
       return (
-        <div className="max-w-50">
-          <div className="font-medium">{reason ?? "-"}</div>
-          {notes && (
-            <div className="truncate text-muted-foreground text-xs">
-              {notes}
-            </div>
-          )}
+        <div className="max-w-[300px] text-sm">
+          {notes || "-"}
         </div>
       );
     },
