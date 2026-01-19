@@ -309,8 +309,10 @@ export default defineSchema({
     branchId: v.id("branches"),
     receivedAt: v.number(),
     receiveSessionStatusTypeId: v.id("system_lookups"),
+    assignedWorkerId: v.optional(v.id("users")),
     notes: v.optional(v.string()),
   })
+    .index("assignedWorkerId", ["assignedWorkerId"])
     .index("purchaseOrderId", ["purchaseOrderId"])
     .index("branchId", ["branchId"])
     .index("receiveSessionCode", ["receiveSessionCode"])
@@ -483,7 +485,9 @@ export default defineSchema({
     outboundStatusTypeId: v.id("system_lookups"),
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
+    assignedWorkerId: v.optional(v.id("users")),
   })
+    .index("assignedWorkerId", ["assignedWorkerId"])
     .index("organizationId", ["organizationId"])
     .index("branchId", ["branchId"])
     .index("orderCode", ["orderCode"])
