@@ -97,11 +97,7 @@ const columns: ColumnDef<DetailItem>[] = [
     header: "Notes",
     cell: ({ row }) => {
       const notes = row.getValue("customReasonNotes") as string | undefined;
-      return (
-        <div className="max-w-[300px] text-sm">
-          {notes || "-"}
-        </div>
-      );
+      return <div className="max-w-[300px] text-sm">{notes || "-"}</div>;
     },
   },
 ];

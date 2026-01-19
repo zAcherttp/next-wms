@@ -92,182 +92,191 @@ export function PickingSessionsTable() {
 
   const columns: ColumnDef<PickingSession>[] = React.useMemo(
     () => [
-  {
-    accessorKey: "sessionCode",
-    header: "Session ID",
-    cell: ({ row }) => (
-      <TableCellFirst>{row.getValue("sessionCode")}</TableCellFirst>
-    ),
-  },
-  {
-    accessorKey: "outboundOrderCode",
-    header: "Linked Order",
-    cell: ({ row }) => (
-      <div className="font-medium text-primary">
-        {row.getValue("outboundOrderCode") ?? "-"}
-      </div>
-    ),
-  },
-  {
-    accessorKey: "assignedUser",
-    header: "Assigned To",
-    cell: ({ row }) => {
-      const user = row.getValue("assignedUser") as { fullName: string } | null;
-      return <div>{user?.fullName ?? "-"}</div>;
-    },
-  },
-  {
-    accessorKey: "progress",
-    header: () => <div className="text-center">Progress</div>,
-    cell: ({ row }) => {
-      const required = row.original.totalRequired;
-      const picked = row.original.totalPicked;
-      const percent = required > 0 ? Math.round((picked / required) * 100) : 0;
-      return (
-        <div className="text-center">
-          <span className="font-medium">
-            {picked}/{required}
-          </span>
-          <span className="ml-1 text-muted-foreground">({percent}%)</span>
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "createdAt",
-    header: ({ column }) => {
-      const sortOptions = [
-        { label: "Default", value: "default" },
-        { label: "Ascending", value: "asc" },
-        { label: "Descending", value: "desc" },
-      ];
+      {
+        accessorKey: "sessionCode",
+        header: "Session ID",
+        cell: ({ row }) => (
+          <TableCellFirst>{row.getValue("sessionCode")}</TableCellFirst>
+        ),
+      },
+      {
+        accessorKey: "outboundOrderCode",
+        header: "Linked Order",
+        cell: ({ row }) => (
+          <div className="font-medium text-primary">
+            {row.getValue("outboundOrderCode") ?? "-"}
+          </div>
+        ),
+      },
+      {
+        accessorKey: "assignedUser",
+        header: "Assigned To",
+        cell: ({ row }) => {
+          const user = row.getValue("assignedUser") as {
+            fullName: string;
+          } | null;
+          return <div>{user?.fullName ?? "-"}</div>;
+        },
+      },
+      {
+        accessorKey: "progress",
+        header: () => <div className="text-center">Progress</div>,
+        cell: ({ row }) => {
+          const required = row.original.totalRequired;
+          const picked = row.original.totalPicked;
+          const percent =
+            required > 0 ? Math.round((picked / required) * 100) : 0;
+          return (
+            <div className="text-center">
+              <span className="font-medium">
+                {picked}/{required}
+              </span>
+              <span className="ml-1 text-muted-foreground">({percent}%)</span>
+            </div>
+          );
+        },
+      },
+      {
+        accessorKey: "createdAt",
+        header: ({ column }) => {
+          const sortOptions = [
+            { label: "Default", value: "default" },
+            { label: "Ascending", value: "asc" },
+            { label: "Descending", value: "desc" },
+          ];
 
-      const currentSort = column.getIsSorted();
-      const currentValue = currentSort ? String(currentSort) : "default";
+          const currentSort = column.getIsSorted();
+          const currentValue = currentSort ? String(currentSort) : "default";
 
-      return (
-        <div className="flex items-center justify-end">
-          <FilterPopover
-            label="Created at"
-            options={sortOptions}
-            currentValue={currentValue}
-            onChange={(value) => {
-              if (value === "default" || !value) {
-                column.clearSorting();
-              } else {
-                column.toggleSorting(value === "desc", false);
-              }
-            }}
-            isSort
-          />
-        </div>
-      );
-    },
-    cell: ({ row }) => {
-      const timestamp = row.getValue("createdAt") as number;
-      const formatted = new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "2-digit",
-        day: "2-digit",
-        hour: "2-digit",
-        minute: "2-digit",
-      }).format(new Date(timestamp));
+          return (
+            <div className="flex items-center justify-end">
+              <FilterPopover
+                label="Created at"
+                options={sortOptions}
+                currentValue={currentValue}
+                onChange={(value) => {
+                  if (value === "default" || !value) {
+                    column.clearSorting();
+                  } else {
+                    column.toggleSorting(value === "desc", false);
+                  }
+                }}
+                isSort
+              />
+            </div>
+          );
+        },
+        cell: ({ row }) => {
+          const timestamp = row.getValue("createdAt") as number;
+          const formatted = new Intl.DateTimeFormat("en-US", {
+            year: "numeric",
+            month: "2-digit",
+            day: "2-digit",
+            hour: "2-digit",
+            minute: "2-digit",
+          }).format(new Date(timestamp));
 
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
-  },
-  {
-    accessorKey: "status",
-    header: ({ column }) => {
-      const statusFilterOptions = [
-        { label: "All", value: "all" },
-        { label: "Pending", value: "pending" },
-        { label: "In Progress", value: "in progress" },
-        { label: "Completed", value: "completed" },
-      ];
+          return <div className="text-right font-medium">{formatted}</div>;
+        },
+      },
+      {
+        accessorKey: "status",
+        header: ({ column }) => {
+          const statusFilterOptions = [
+            { label: "All", value: "all" },
+            { label: "Pending", value: "pending" },
+            { label: "In Progress", value: "in progress" },
+            { label: "Completed", value: "completed" },
+          ];
 
-      const currentFilter = column.getFilterValue() as string | undefined;
+          const currentFilter = column.getFilterValue() as string | undefined;
 
-      return (
-        <div className="flex items-center justify-center">
-          <FilterPopover
-            label="Status"
-            options={statusFilterOptions}
-            currentValue={currentFilter}
-            onChange={(value) => column.setFilterValue(value)}
-          />
-        </div>
-      );
-    },
-    filterFn: (row, id, value) => {
-      if (!value || value === "all") return true;
-      const status = row.getValue(id) as { lookupValue: string } | null;
-      return status?.lookupValue.toLowerCase() === value.toLowerCase();
-    },
-    cell: ({ row }) => {
-      const status = row.getValue("status") as { lookupValue: string } | null;
-      const statusValue = status?.lookupValue ?? "Unknown";
-      return (
-        <div className="text-center">
-          <Badge
-            className={cn(
-              "w-24 justify-center rounded-sm text-center text-xs",
-              getBadgeStyleByStatus(statusValue),
-            )}
-            variant={"outline"}
-          >
-            {statusValue}
-          </Badge>
-        </div>
-      );
-    },
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const session = row.original;
-      const status = session.status?.lookupValue?.toLowerCase();
+          return (
+            <div className="flex items-center justify-center">
+              <FilterPopover
+                label="Status"
+                options={statusFilterOptions}
+                currentValue={currentFilter}
+                onChange={(value) => column.setFilterValue(value)}
+              />
+            </div>
+          );
+        },
+        filterFn: (row, id, value) => {
+          if (!value || value === "all") return true;
+          const status = row.getValue(id) as { lookupValue: string } | null;
+          return status?.lookupValue.toLowerCase() === value.toLowerCase();
+        },
+        cell: ({ row }) => {
+          const status = row.getValue("status") as {
+            lookupValue: string;
+          } | null;
+          const statusValue = status?.lookupValue ?? "Unknown";
+          return (
+            <div className="text-center">
+              <Badge
+                className={cn(
+                  "w-24 justify-center rounded-sm text-center text-xs",
+                  getBadgeStyleByStatus(statusValue),
+                )}
+                variant={"outline"}
+              >
+                {statusValue}
+              </Badge>
+            </div>
+          );
+        },
+      },
+      {
+        id: "actions",
+        enableHiding: false,
+        cell: ({ row }) => {
+          const session = row.original;
+          const status = session.status?.lookupValue?.toLowerCase();
 
-      return (
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size={"icon-sm"}>
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-            <DropdownMenuItem
-              onClick={() => navigator.clipboard.writeText(session.sessionCode)}
-            >
-              Copy Session ID
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              onClick={() => {
-                setSelectedSessionId(session._id);
-                setDetailDialogOpen(true);
-              }}
-            >
-              View details
-            </DropdownMenuItem>
-            {(status === "pending" || status === "in progress") && (
-              <DropdownMenuItem asChild>
-                <Link
-                  href={`picking-sessions/${session._id}/verifying` as Route}
+          return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size={"icon-sm"}>
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                <DropdownMenuItem
+                  onClick={() =>
+                    navigator.clipboard.writeText(session.sessionCode)
+                  }
                 >
-                  Proceed
-                </Link>
-              </DropdownMenuItem>
-            )}
-          </DropdownMenuContent>
-        </DropdownMenu>
-      );
-    },
-  },
-],
+                  Copy Session ID
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  onClick={() => {
+                    setSelectedSessionId(session._id);
+                    setDetailDialogOpen(true);
+                  }}
+                >
+                  View details
+                </DropdownMenuItem>
+                {(status === "pending" || status === "in progress") && (
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href={
+                        `picking-sessions/${session._id}/verifying` as Route
+                      }
+                    >
+                      Proceed
+                    </Link>
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          );
+        },
+      },
+    ],
     [setSelectedSessionId, setDetailDialogOpen],
   );
 

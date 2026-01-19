@@ -119,9 +119,7 @@ export default function Page() {
     }
 
     // Group sessions by day and status
-    const createTimeSeriesData = (
-      statusValue: string,
-    ): ChartDataPoint[] => {
+    const createTimeSeriesData = (statusValue: string): ChartDataPoint[] => {
       const countsByDay = new Map<string, number>();
 
       // Initialize all days with 0

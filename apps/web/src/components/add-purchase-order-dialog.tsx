@@ -162,7 +162,10 @@ export function AddPurchaseOrderDialog({
   // Clear products when supplier changes
   const previousSupplierIdRef = React.useRef<string>(supplierId);
   React.useEffect(() => {
-    if (previousSupplierIdRef.current !== supplierId && previousSupplierIdRef.current !== "") {
+    if (
+      previousSupplierIdRef.current !== supplierId &&
+      previousSupplierIdRef.current !== ""
+    ) {
       // Supplier changed, clear the products list
       setProducts([]);
     }
@@ -182,7 +185,9 @@ export function AddPurchaseOrderDialog({
 
   // Filter out already selected products (use variantId from getProductVariantsBySupplier response)
   const availableProducts =
-    productVariants?.filter((pv) => !selectedVariantIds.includes(pv.variantId)) ?? [];
+    productVariants?.filter(
+      (pv) => !selectedVariantIds.includes(pv.variantId),
+    ) ?? [];
 
   const handleAddProduct = (
     product: NonNullable<typeof productVariants>[0],
@@ -522,12 +527,12 @@ export function AddPurchaseOrderDialog({
                 variant="outline"
                 className="mt-4"
                 disabled={!supplierId || isLoadingProducts}
-                title={!supplierId ? "Please select a supplier first" : undefined}
+                title={
+                  !supplierId ? "Please select a supplier first" : undefined
+                }
               >
                 {!supplierId ? (
-                  <>
-                    Select supplier first
-                  </>
+                  <>Select supplier first</>
                 ) : isLoadingProducts ? (
                   <>
                     <Loader2 className="mr-1 size-4 animate-spin" />

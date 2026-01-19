@@ -111,7 +111,9 @@ export function PickingSessionDetailDialog({
                   <div className="space-y-4">
                     <InfoItem
                       label="Assigned To"
-                      value={sessionDetail.assignedUser?.fullName ?? "Unassigned"}
+                      value={
+                        sessionDetail.assignedUser?.fullName ?? "Unassigned"
+                      }
                     />
                     <InfoItem
                       label="Status"
