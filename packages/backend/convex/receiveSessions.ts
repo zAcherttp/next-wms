@@ -1409,6 +1409,20 @@ export const completeReceiveSession = mutation({
     // ================================================================
     // UPDATE SESSION STATUS
     // ================================================================
+    // Check if any item has RETURN_REQUESTED status
+    const hasReturnRequested = details.some((d) => {
+      return (
+        returnRequestedStatusId &&
+        d.receiveSessionItemStatusTypeId === returnRequestedStatusId
+      );
+    });
+
+    // Check if all items are complete (quantity received >= expected)
+    const allItemsComplete = details.every(
+      (d) => d.quantityReceived >= d.quantityExpected,
+    );
+
+    // Check if all items are handled (either complete or return requested)
     const allHandled = details.every((d) => {
       const isReturnRequested =
         returnRequestedStatusId &&
@@ -1417,13 +1431,30 @@ export const completeReceiveSession = mutation({
       return isReturnRequested || isComplete;
     });
 
-    const sessionStatusCode = allHandled ? "COMPLETE" : "IN_PROGRESS";
+    // Determine session status:
+    // - If ANY item has RETURN_REQUESTED → session = RETURN_REQUESTED
+    // - If ALL items are COMPLETE → session = COMPLETE
+    // - Otherwise → session = IN_PROGRESS
+    let sessionStatusCode: string;
+    let sessionStatusValue: string;
+
+    if (hasReturnRequested) {
+      sessionStatusCode = "RETURN_REQUESTED";
+      sessionStatusValue = "Return Requested";
+    } else if (allItemsComplete) {
+      sessionStatusCode = "COMPLETE";
+      sessionStatusValue = "Complete";
+    } else {
+      sessionStatusCode = "IN_PROGRESS";
+      sessionStatusValue = "In Progress";
+    }
+
     const sessionStatusId = await ensureSystemLookup(
       ctx,
       "ReceiveSessionStatus",
       sessionStatusCode,
-      sessionStatusCode === "COMPLETE" ? "Complete" : "In Progress",
-      `Receive session is ${sessionStatusCode.toLowerCase()}`,
+      sessionStatusValue,
+      `Receive session is ${sessionStatusCode.toLowerCase().replace("_", " ")}`,
     );
 
     // Update session status

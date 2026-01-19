@@ -54,6 +54,93 @@ async function getProductVariant(ctx: any, skuId: string) {
   }
 }
 
+/**
+ * Check if all items in a receive session are resolved (COMPLETE or RETURNED)
+ * and update the session status to COMPLETE if so
+ */
+async function checkAndCompleteReceiveSession(
+  ctx: any,
+  purchaseOrderId: string,
+) {
+  // Find the receive session by purchaseOrderId
+  const receiveSession = await ctx.db
+    .query("receive_sessions")
+    .withIndex("purchaseOrderId", (q: any) =>
+      q.eq("purchaseOrderId", purchaseOrderId),
+    )
+    .first();
+
+  if (!receiveSession) {
+    return null;
+  }
+
+  // Get all receive session details
+  const details = await ctx.db
+    .query("receive_sessions_details")
+    .withIndex("receiveSessionId", (q: any) =>
+      q.eq("receiveSessionId", receiveSession._id),
+    )
+    .collect();
+
+  // Get COMPLETE and RETURNED status IDs
+  const completeStatus = await ctx.db
+    .query("system_lookups")
+    .withIndex("lookupType_lookupCode", (q: any) =>
+      q
+        .eq("lookupType", "ReceiveSessionItemStatus")
+        .eq("lookupCode", "COMPLETE"),
+    )
+    .first();
+
+  const returnedStatus = await ctx.db
+    .query("system_lookups")
+    .withIndex("lookupType_lookupCode", (q: any) =>
+      q
+        .eq("lookupType", "ReceiveSessionItemStatus")
+        .eq("lookupCode", "RETURNED"),
+    )
+    .first();
+
+  // Check if all items are either COMPLETE or RETURNED
+  const allItemsResolved = details.every((d: any) => {
+    const isComplete =
+      completeStatus && d.receiveSessionItemStatusTypeId === completeStatus._id;
+    const isReturned =
+      returnedStatus && d.receiveSessionItemStatusTypeId === returnedStatus._id;
+    return isComplete || isReturned;
+  });
+
+  if (allItemsResolved) {
+    // Get or create COMPLETE status for receive session
+    let sessionCompleteStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q: any) =>
+        q.eq("lookupType", "ReceiveSessionStatus").eq("lookupCode", "COMPLETE"),
+      )
+      .first();
+
+    if (!sessionCompleteStatus) {
+      const newStatusId = await ctx.db.insert("system_lookups", {
+        lookupType: "ReceiveSessionStatus",
+        lookupCode: "COMPLETE",
+        lookupValue: "Complete",
+        description: "Receive session is complete",
+        sortOrder: 3,
+      });
+      sessionCompleteStatus = await ctx.db.get(newStatusId);
+    }
+
+    // Update receive session status to COMPLETE
+    await ctx.db.patch(receiveSession._id, {
+      receiveSessionStatusTypeId: sessionCompleteStatus._id,
+    });
+
+    return receiveSession._id;
+  }
+
+  return null;
+}
+
 // ================================================================
 // QUERIES
 // ================================================================
@@ -494,12 +581,14 @@ export const approveReturnRequest = mutation({
     const approvedStatus = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "ReturnStatus").eq("lookupCode", "APPROVED")
+        q.eq("lookupType", "ReturnStatus").eq("lookupCode", "APPROVED"),
       )
       .first();
 
     if (!approvedStatus) {
-      throw new Error("APPROVED status lookup not found. Please ensure seed data has been run.");
+      throw new Error(
+        "APPROVED status lookup not found. Please ensure seed data has been run.",
+      );
     }
 
     // Step 3: Update the return request status
@@ -511,7 +600,7 @@ export const approveReturnRequest = mutation({
     const details = await ctx.db
       .query("return_request_details")
       .withIndex("returnRequestId", (q) =>
-        q.eq("returnRequestId", args.returnRequestId)
+        q.eq("returnRequestId", args.returnRequestId),
       )
       .collect();
 
@@ -519,7 +608,9 @@ export const approveReturnRequest = mutation({
     let returnedItemStatus = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "ReceiveSessionItemStatus").eq("lookupCode", "RETURNED")
+        q
+          .eq("lookupType", "ReceiveSessionItemStatus")
+          .eq("lookupCode", "RETURNED"),
       )
       .first();
 
@@ -547,10 +638,14 @@ export const approveReturnRequest = mutation({
       }
     }
 
+    // Step 7: Check if the receive session should be marked as COMPLETE
+    if (returnRequest.purchaseOrderId) {
+      await checkAndCompleteReceiveSession(ctx, returnRequest.purchaseOrderId);
+    }
+
     return args.returnRequestId;
   },
 });
-
 
 /**
  * rejectReturnRequest
@@ -585,12 +680,14 @@ export const rejectReturnRequest = mutation({
     const rejectedStatus = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "ReturnStatus").eq("lookupCode", "REJECTED")
+        q.eq("lookupType", "ReturnStatus").eq("lookupCode", "REJECTED"),
       )
       .first();
 
     if (!rejectedStatus) {
-      throw new Error("REJECTED status lookup not found. Please ensure seed data has been run.");
+      throw new Error(
+        "REJECTED status lookup not found. Please ensure seed data has been run.",
+      );
     }
 
     // Step 3: Update the return request status
@@ -602,7 +699,7 @@ export const rejectReturnRequest = mutation({
     const details = await ctx.db
       .query("return_request_details")
       .withIndex("returnRequestId", (q) =>
-        q.eq("returnRequestId", args.returnRequestId)
+        q.eq("returnRequestId", args.returnRequestId),
       )
       .collect();
 
@@ -610,7 +707,9 @@ export const rejectReturnRequest = mutation({
     let completeItemStatus = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "ReceiveSessionItemStatus").eq("lookupCode", "COMPLETE")
+        q
+          .eq("lookupType", "ReceiveSessionItemStatus")
+          .eq("lookupCode", "COMPLETE"),
       )
       .first();
 
@@ -629,7 +728,7 @@ export const rejectReturnRequest = mutation({
     let activeBatchStatus = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "BatchStatus").eq("lookupCode", "ACTIVE")
+        q.eq("lookupType", "BatchStatus").eq("lookupCode", "ACTIVE"),
       )
       .first();
 
@@ -646,7 +745,7 @@ export const rejectReturnRequest = mutation({
 
     // Step 6: Update each linked receive session item and create inventory batches
     const createdBatches: any[] = [];
-    
+
     for (const detail of details) {
       if (detail.receiveSessionDetailId) {
         const receiveDetail = await ctx.db.get(detail.receiveSessionDetailId);
@@ -657,7 +756,9 @@ export const rejectReturnRequest = mutation({
           });
 
           // Get receive session for branch info
-          const receiveSession = await ctx.db.get(receiveDetail.receiveSessionId);
+          const receiveSession = await ctx.db.get(
+            receiveDetail.receiveSessionId,
+          );
           if (receiveSession && receiveDetail.recommendedZoneId) {
             // Get branch for organization info
             const branch = await ctx.db.get(receiveSession.branchId);
@@ -666,13 +767,31 @@ export const rejectReturnRequest = mutation({
               const now = Date.now();
               const date = new Date(now);
               const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
-              
-              const startOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 0, 0, 0, 0).getTime();
-              const endOfDay = new Date(date.getFullYear(), date.getMonth(), date.getDate(), 23, 59, 59, 999).getTime();
-              
+
+              const startOfDay = new Date(
+                date.getFullYear(),
+                date.getMonth(),
+                date.getDate(),
+                0,
+                0,
+                0,
+                0,
+              ).getTime();
+              const endOfDay = new Date(
+                date.getFullYear(),
+                date.getMonth(),
+                date.getDate(),
+                23,
+                59,
+                59,
+                999,
+              ).getTime();
+
               const todayBatches = await ctx.db
                 .query("inventory_batches")
-                .withIndex("branchId", (q) => q.eq("branchId", receiveSession.branchId))
+                .withIndex("branchId", (q) =>
+                  q.eq("branchId", receiveSession.branchId),
+                )
                 .filter((q) =>
                   q.and(
                     q.gte(q.field("receivedAt"), startOfDay),
@@ -681,7 +800,9 @@ export const rejectReturnRequest = mutation({
                 )
                 .collect();
 
-              const sequence = (todayBatches.length + 1).toString().padStart(3, "0");
+              const sequence = (todayBatches.length + 1)
+                .toString()
+                .padStart(3, "0");
               const supplierBatchNumber = `SB-${dateStr}-${sequence}`;
               const internalBatchNumber = `IB-${dateStr}-${sequence}`;
 
@@ -708,6 +829,11 @@ export const rejectReturnRequest = mutation({
           }
         }
       }
+    }
+
+    // Step 7: Check if the receive session should be marked as COMPLETE
+    if (returnRequest.purchaseOrderId) {
+      await checkAndCompleteReceiveSession(ctx, returnRequest.purchaseOrderId);
     }
 
     return {

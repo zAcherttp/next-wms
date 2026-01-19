@@ -194,8 +194,21 @@ export default function VerifyingPage() {
         </Badge>
       );
     }
+
+    const isFullyRecorded = item.quantityReceived >= item.quantityExpected;
+
     return (
-      <div className="rounded-md border px-3 py-1 text-muted-foreground text-sm">
+      <div
+        className={`cursor-pointer rounded-md border px-3 py-1 text-sm transition-colors hover:bg-muted ${
+          isFullyRecorded
+            ? "border-green-500 bg-green-500/10 text-green-600"
+            : "text-muted-foreground"
+        }`}
+        onClick={() => {
+          setFoundItem(item);
+          setIsDialogOpen(true);
+        }}
+      >
         Record: {item.quantityReceived}
       </div>
     );

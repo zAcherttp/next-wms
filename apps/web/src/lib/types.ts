@@ -24,7 +24,7 @@ export type PurchaseOrderListItem = {
   orderedAt: number;
   expectedDeliveryAt: number | null;
   supplier: Pick<Supplier, "name"> | null;
-  purchaseOrderStatus: Pick<SystemLookups, "lookupValue"> | null;
+  purchaseOrderStatus: Pick<SystemLookups, "lookupValue" | "lookupCode"> | null;
 };
 
 /**

@@ -255,6 +255,7 @@ export function ReceiveSessionsTable() {
             { label: "Pending", value: "Pending" },
             { label: "Complete", value: "Complete" },
             { label: "Returned", value: "Returned" },
+            { label: "Return Requested", value: "Return Requested" },
           ];
 
           const currentFilter = column.getFilterValue() as string | undefined;
@@ -279,7 +280,7 @@ export function ReceiveSessionsTable() {
           <div className="text-center">
             <Badge
               className={cn(
-                "w-24 justify-center rounded-sm text-center text-xs",
+                "min-w-24 w-fit justify-center whitespace-nowrap rounded-sm text-center text-xs",
                 getBadgeStyleByStatus(row.getValue("status")),
               )}
               variant={"outline"}
@@ -526,6 +527,7 @@ export function ReceiveSessionsTable() {
         sessionId={selectedSessionId}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
+        trigger={<span className="hidden" />}
       />
     </div>
   );

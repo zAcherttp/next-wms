@@ -110,6 +110,7 @@ export function getBadgeStyleByStatus(status: string): string {
     // 6. Failure States
     case "rejected":
     case "cancelled":
+    case "return requested":
       return "bg-red-500/10 text-red-600 border-red-500/60";
 
     // 7. Shipped / Archived States

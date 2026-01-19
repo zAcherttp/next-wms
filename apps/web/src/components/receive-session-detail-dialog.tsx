@@ -194,8 +194,8 @@ export function ReceiveSessionDetailDialog({
                       value={sessionDetail.summary.totalSku}
                     />
                     <InfoItem
-                      label="Expected / Received"
-                      value={`${sessionDetail.summary.totalExpectedQuantity} / ${sessionDetail.summary.totalReceivedQuantity}`}
+                      label="Received / Expected"
+                      value={`${sessionDetail.summary.totalReceivedQuantity} / ${sessionDetail.summary.totalExpectedQuantity}`}
                     />
                   </div>
                 </div>

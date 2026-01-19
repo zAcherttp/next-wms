@@ -16,6 +16,7 @@ import {
 } from "@tanstack/react-table";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { useMutation } from "convex/react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -25,11 +26,8 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
 import { AddPurchaseOrderDialog } from "@/components/add-purchase-order-dialog";
-import {
-  ImportExcelButton,
-  type ResolvedImportData,
-} from "@/components/import-excel-button";
 import { PurchaseOrderDetailDialog } from "@/components/purchase-order-detail-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
@@ -86,29 +84,14 @@ export function PurchaseOrdersTable() {
     enabled: !!userId && !!currentBranch,
   });
 
-  // Dialog state - must be declared before useMemo since columns reference these
   const [selectedOrderId, setSelectedOrderId] =
     React.useState<Id<"purchase_orders"> | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
 
-  // Import Excel state
-  const [importDialogOpen, setImportDialogOpen] = React.useState(false);
-  const [importData, setImportData] = React.useState<ResolvedImportData | null>(
-    null
+  // Mutation for creating receive session
+  const createReceiveSession = useMutation(
+    api.receiveSessions.createReceiveSession,
   );
-
-  const handleImportComplete = (data: ResolvedImportData) => {
-    setImportData(data);
-    setImportDialogOpen(true);
-  };
-
-  const handleImportDialogClose = (open: boolean) => {
-    setImportDialogOpen(open);
-    if (!open) {
-      // Clear import data when dialog closes
-      setImportData(null);
-    }
-  };
 
   const columns: ColumnDef<PurchaseOrderListItem>[] = React.useMemo(
     () => [
@@ -329,6 +312,29 @@ export function PurchaseOrdersTable() {
                 >
                   View details
                 </DropdownMenuItem>
+                {purchaseOrder.purchaseOrderStatus?.lookupCode ===
+                  "PENDING" && (
+                  <DropdownMenuItem
+                    onClick={async () => {
+                      if (!userId) return;
+                      try {
+                        await createReceiveSession({
+                          purchaseOrderId: purchaseOrder._id,
+                          userId: userId as Id<"users">,
+                        });
+                        toast.success("Receive session created successfully");
+                      } catch (error) {
+                        toast.error(
+                          error instanceof Error
+                            ? error.message
+                            : "Failed to create receive session",
+                        );
+                      }
+                    }}
+                  >
+                    Proceed receiving
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           );
@@ -426,18 +432,8 @@ export function PurchaseOrdersTable() {
               Clear filters ({activeFiltersCount})
             </Button>
           )}
-          <ImportExcelButton onImportComplete={handleImportComplete} />
           <AddPurchaseOrderDialog />
         </div>
-        {/* Separate dialog for imported data - no trigger, controlled externally */}
-        <AddPurchaseOrderDialog
-          trigger={<span className="hidden" />}
-          defaultOpen={importDialogOpen}
-          onOpenChange={handleImportDialogClose}
-          initialBranchId={importData?.branchId ?? undefined}
-          initialSupplierId={importData?.supplierId ?? undefined}
-          initialProducts={importData?.products}
-        />
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table className="bg-card">
@@ -533,6 +529,7 @@ export function PurchaseOrdersTable() {
         orderId={selectedOrderId}
         open={detailDialogOpen}
         onOpenChange={setDetailDialogOpen}
+        trigger={<span className="hidden" />}
       />
     </div>
   );

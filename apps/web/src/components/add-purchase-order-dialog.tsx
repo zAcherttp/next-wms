@@ -7,6 +7,10 @@ import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { Check, Loader2, MapPin, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
+import {
+  ImportExcelButton,
+  type ResolvedImportData,
+} from "@/components/import-excel-button";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -294,8 +298,34 @@ export function AddPurchaseOrderDialog({
         )}
       </DialogTrigger>
       <DialogContent className="flex max-h-250 w-full flex-col overflow-hidden sm:max-w-3xl">
-        <DialogHeader>
+        <DialogHeader className="flex flex-row items-center justify-between pr-8">
           <DialogTitle>New Purchase Order</DialogTitle>
+          <ImportExcelButton
+            onImportComplete={(data: ResolvedImportData) => {
+              // Set branch from import
+              if (data.branchId) {
+                setReceivingBranchId(data.branchId);
+              }
+              // Set supplier from import
+              if (data.supplierId) {
+                setSupplierId(data.supplierId);
+              }
+              // Set products from import
+              if (data.products && data.products.length > 0) {
+                const mappedProducts: PurchaseOrderProductItem[] = data.products.map(
+                  (p, index) => ({
+                    id: `import-${index}-${Date.now()}`,
+                    variantId: p.variantId as Id<"product_variants">,
+                    skuCode: p.skuCode,
+                    description: p.description,
+                    quantity: p.quantity,
+                  })
+                );
+                setProducts(mappedProducts);
+                toast.success(`Imported ${mappedProducts.length} products`);
+              }
+            }}
+          />
         </DialogHeader>
 
         {/* Form Fields */}

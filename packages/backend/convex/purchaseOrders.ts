@@ -313,7 +313,7 @@ export const listPurchaseOrders = query({
           expectedDeliveryAt: order.expectedDeliveryAt ?? null,
           supplier: supplier ? { name: supplier.name } : null,
           purchaseOrderStatus: status
-            ? { lookupValue: status.lookupValue }
+            ? { lookupValue: status.lookupValue, lookupCode: status.lookupCode }
             : null,
         };
       }),

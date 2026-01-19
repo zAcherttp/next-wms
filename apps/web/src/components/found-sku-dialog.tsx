@@ -148,8 +148,12 @@ export function FoundSkuDialog({
                 id="amount"
                 type="number"
                 value={amount}
-                onChange={(e) => setAmount(Number(e.target.value))}
+                onChange={(e) => {
+                  const value = Number(e.target.value);
+                  setAmount(Math.min(value, remainingQty));
+                }}
                 min={0}
+                max={remainingQty}
                 disabled={isSubmitting}
               />
             </div>
@@ -236,7 +240,7 @@ export function FoundSkuDialog({
             </DialogClose>
             <div className="flex gap-2">
               <Button
-                variant="outline"
+                variant="destructive"
                 onClick={handleReturnClick}
                 disabled={isSubmitting}
               >
