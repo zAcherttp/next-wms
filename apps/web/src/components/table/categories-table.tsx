@@ -11,6 +11,7 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Filter,
   MoreHorizontal,
   Plus,
 } from "lucide-react";
@@ -34,6 +35,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -52,6 +58,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useDebouncedInput } from "@/hooks/use-debounced-input";
 
 // Category type with hierarchy
 export type CategoryItem = Doc<"categories"> & {
@@ -545,9 +552,22 @@ export function CategoriesTable() {
   const [currentPage, setCurrentPage] = React.useState(0);
   const [pageSize, setPageSize] = React.useState(10);
 
+  // Search filtering
+  const [setFilterValue, instantFilterValue, debouncedFilterValue] =
+    useDebouncedInput("", 300);
+
+  // Filter categories by name
+  const filteredCategories = React.useMemo(() => {
+    if (!debouncedFilterValue) return hierarchicalCategories;
+    const lowerFilter = debouncedFilterValue.toLowerCase();
+    return hierarchicalCategories.filter((cat) =>
+      cat.name.toLowerCase().includes(lowerFilter)
+    );
+  }, [hierarchicalCategories, debouncedFilterValue]);
+
   // Paginate root categories only
-  const totalPages = Math.ceil(hierarchicalCategories.length / pageSize);
-  const paginatedCategories = hierarchicalCategories.slice(
+  const totalPages = Math.ceil(filteredCategories.length / pageSize);
+  const paginatedCategories = filteredCategories.slice(
     currentPage * pageSize,
     (currentPage + 1) * pageSize,
   );
@@ -563,11 +583,22 @@ export function CategoriesTable() {
     );
   }
 
-  const totalRootCategories = hierarchicalCategories.length;
+  const totalRootCategories = filteredCategories.length;
 
   return (
     <div className="w-full">
-      <div className="flex flex-row justify-end pb-4">
+      <div className="flex flex-row justify-between pb-4">
+        {/* Search Input */}
+        <InputGroup className="max-w-50">
+          <InputGroupInput
+            placeholder="Filter categories by name..."
+            value={instantFilterValue}
+            onChange={(event) => setFilterValue(event.target.value)}
+          />
+          <InputGroupAddon>
+            <Filter />
+          </InputGroupAddon>
+        </InputGroup>
         <CreateCategoryDialog />
       </div>
       <div className="overflow-hidden rounded-md border">

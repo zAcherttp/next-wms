@@ -4,10 +4,15 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
+  type ColumnFiltersState,
   flexRender,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
+  type SortingState,
   useReactTable,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import { api } from "@wms/backend/convex/_generated/api";
 
@@ -16,13 +21,17 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Filter,
   MoreHorizontal,
   Plus,
+  Settings2,
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
+import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -40,6 +49,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -58,6 +72,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { BrandWithProductCount } from "@/lib/types";
 
 // CreateBrandDialog component
@@ -306,17 +321,63 @@ function ActionsCell({ brand }: { brand: BrandWithProductCount }) {
 export const columns: ColumnDef<BrandWithProductCount>[] = [
   {
     accessorKey: "name",
-    header: () => {
-      return <span className="font-medium">Name</span>;
+    header: ({ column }) => {
+      const sortOptions = [
+        { label: "Default", value: "default" },
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ];
+
+      const currentSort = column.getIsSorted();
+      const currentValue = currentSort ? String(currentSort) : "default";
+
+      return (
+        <div className="flex items-center">
+          <FilterPopover
+            label="Name"
+            options={sortOptions}
+            currentValue={currentValue}
+            onChange={(value) => {
+              if (value === "default" || !value) {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(value === "desc", false);
+              }
+            }}
+            isSort
+          />
+        </div>
+      );
     },
     cell: ({ row }) => <TableCellFirst>{row.getValue("name")}</TableCellFirst>,
   },
   {
     accessorKey: "productCount",
-    header: () => {
+    header: ({ column }) => {
+      const sortOptions = [
+        { label: "Default", value: "default" },
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ];
+
+      const currentSort = column.getIsSorted();
+      const currentValue = currentSort ? String(currentSort) : "default";
+
       return (
-        <div className="text-center">
-          <span className="font-medium">Product count</span>
+        <div className="flex items-center justify-center">
+          <FilterPopover
+            label="Product count"
+            options={sortOptions}
+            currentValue={currentValue}
+            onChange={(value) => {
+              if (value === "default" || !value) {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(value === "desc", false);
+              }
+            }}
+            isSort
+          />
         </div>
       );
     },
@@ -351,17 +412,56 @@ export function BrandsTable() {
     enabled: !!organizationId,
   });
 
+  // State for filtering and sorting
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
+    [],
+  );
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
+
+  // Debounced search input
+  const [setFilterValue, instantFilterValue, debouncedFilterValue] =
+    useDebouncedInput("", 300);
+
   const table = useReactTable({
     data: brands ?? [],
     columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+    },
     initialState: {
       pagination: {
         pageSize: 10,
       },
     },
   });
+
+  // Apply debounced filter to name column
+  React.useEffect(() => {
+    table.getColumn("name")?.setFilterValue(debouncedFilterValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedFilterValue]);
+
+  // Calculate active filters count
+  const activeFiltersCount =
+    sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);
+
+  // Handler to clear all filters
+  const handleClearAllFilters = () => {
+    table.resetColumnFilters();
+    table.resetSorting();
+    setFilterValue("");
+  };
 
   if (isLoading) {
     return (
@@ -375,8 +475,64 @@ export function BrandsTable() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-row justify-end pb-4">
-        <CreateBrandDialog />
+      <div className="flex flex-row justify-between pb-4">
+        {/* Search Input */}
+        <InputGroup className="max-w-50">
+          <InputGroupInput
+            placeholder="Filter brands by name..."
+            value={instantFilterValue}
+            onChange={(event) => setFilterValue(event.target.value)}
+          />
+          <InputGroupAddon>
+            <Filter />
+          </InputGroupAddon>
+        </InputGroup>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          {/* Clear Filters Button */}
+          {activeFiltersCount >= 2 && (
+            <Button variant="default" onClick={handleClearAllFilters}>
+              Clear filters ({activeFiltersCount})
+            </Button>
+          )}
+
+          {/* Column Visibility Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Settings2 className="mr-1 size-4" />
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuItem
+                      key={column.id}
+                      className="capitalize"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Checkbox
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }
+                        className="mr-2"
+                      />
+                      {column.id}
+                    </DropdownMenuItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Create Brand Button */}
+          <CreateBrandDialog />
+        </div>
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table className="bg-card">

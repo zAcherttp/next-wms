@@ -42,6 +42,10 @@ import {
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { cn } from "@/lib/utils";
+import {
+  ImportExcelButtonOutbound,
+  type ResolvedImportData,
+} from "@/components/import-excel-button-outbound";
 
 interface ProductItem {
   id: string;
@@ -112,6 +116,53 @@ export function AddOutboundOrderDialog({
 
   const handleUpdateProductQuantity = (id: string, quantity: number) => {
     setProducts(products.map((p) => (p.id === id ? { ...p, quantity } : p)));
+  };
+
+  // Handler for Excel import
+  const handleImportComplete = async (data: ResolvedImportData) => {
+    if (!currentBranch) return;
+
+    // Fetch available quantities for imported products
+    const importedProducts: ProductItem[] = [];
+    
+    for (const product of data.products) {
+      // Check if this SKU is already in the products list
+      const existingProduct = products.find(
+        (p) => p.variantId === product.variantId,
+      );
+      
+      if (existingProduct) {
+        // Update quantity of existing product
+        handleUpdateProductQuantity(
+          existingProduct.id,
+          existingProduct.quantity + product.quantity,
+        );
+      } else {
+        // Add new product
+        // We need to fetch available quantity from the backend
+        // For now, we'll use a placeholder and fetch it via the availableSkus query
+        const availableSku = (availableSkus ?? []).find(
+          (sku) => sku.variantId === product.variantId,
+        );
+
+        if (availableSku) {
+          const newProduct: ProductItem = {
+            id: `${Date.now()}-${product.variantId}`,
+            variantId: product.variantId,
+            skuCode: product.skuCode,
+            productName: product.description,
+            availableQuantity: availableSku.availableQuantity,
+            quantity: Math.min(product.quantity, availableSku.availableQuantity),
+          };
+          importedProducts.push(newProduct);
+        }
+      }
+    }
+
+    // Add all new imported products to the state
+    if (importedProducts.length > 0) {
+      setProducts([...products, ...importedProducts]);
+    }
   };
 
   const handleCreateOutboundOrder = async () => {
@@ -258,12 +309,13 @@ export function AddOutboundOrderDialog({
           </div>
 
           {/* Add Product Button with SKU Selection */}
-          <Popover open={skuPopoverOpen} onOpenChange={setSkuPopoverOpen}>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="mt-4">
-                Add product <Plus className="ml-1 size-4" />
-              </Button>
-            </PopoverTrigger>
+          <div className="mt-4 flex gap-2">
+            <Popover open={skuPopoverOpen} onOpenChange={setSkuPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline">
+                  Add product <Plus className="ml-1 size-4" />
+                </Button>
+              </PopoverTrigger>
             <PopoverContent className="w-87.5 p-0" align="start">
               <Command>
                 <CommandInput placeholder="Search SKU code or name..." />
@@ -295,6 +347,8 @@ export function AddOutboundOrderDialog({
               </Command>
             </PopoverContent>
           </Popover>
+          <ImportExcelButtonOutbound onImportComplete={handleImportComplete} />
+          </div>
         </div>
 
         {/* Footer */}

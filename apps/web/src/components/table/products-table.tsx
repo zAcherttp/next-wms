@@ -2,10 +2,15 @@
 
 import {
   type ColumnDef,
+  type ColumnFiltersState,
   flexRender,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
+  type SortingState,
   useReactTable,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
@@ -15,15 +20,19 @@ import {
   ChevronsRight,
   Edit,
   Eye,
+  Filter,
   MoreHorizontal,
+  Settings2,
   Trash2,
 } from "lucide-react";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CreateProductDialog } from "@/components/products/create-product-dialog";
 import { DeleteProductDialog } from "@/components/products/delete-product-dialog";
 import { EditProductDialog } from "@/components/products/edit-product-dialog";
+import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,6 +41,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
 import {
   Select,
@@ -49,6 +63,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import { type ProductListItem, useProductsList } from "@/hooks/use-products";
 
 // Product table item type - flattened view showing one row per variant
@@ -127,14 +142,64 @@ export const columns: ColumnDef<ProductTableItem>[] = [
   },
   {
     accessorKey: "sku",
-    header: () => <span className="font-medium">SKU</span>,
+    header: ({ column }) => {
+      const sortOptions = [
+        { label: "Default", value: "default" },
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ];
+      const currentSort = column.getIsSorted();
+      const currentValue = currentSort ? String(currentSort) : "default";
+      return (
+        <div className="flex items-center">
+          <FilterPopover
+            label="SKU"
+            options={sortOptions}
+            currentValue={currentValue}
+            onChange={(value) => {
+              if (value === "default" || !value) {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(value === "desc", false);
+              }
+            }}
+            isSort
+          />
+        </div>
+      );
+    },
     cell: ({ row }) => (
       <div className="font-mono text-sm">{row.getValue("sku")}</div>
     ),
   },
   {
     accessorKey: "name",
-    header: () => <span className="font-medium">Name</span>,
+    header: ({ column }) => {
+      const sortOptions = [
+        { label: "Default", value: "default" },
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ];
+      const currentSort = column.getIsSorted();
+      const currentValue = currentSort ? String(currentSort) : "default";
+      return (
+        <div className="flex items-center">
+          <FilterPopover
+            label="Name"
+            options={sortOptions}
+            currentValue={currentValue}
+            onChange={(value) => {
+              if (value === "default" || !value) {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(value === "desc", false);
+              }
+            }}
+            isSort
+          />
+        </div>
+      );
+    },
     cell: ({ row }) => (
       <div className="font-medium">{row.getValue("name")}</div>
     ),
@@ -146,7 +211,32 @@ export const columns: ColumnDef<ProductTableItem>[] = [
   },
   {
     accessorKey: "brand",
-    header: () => <span className="font-medium">Brand</span>,
+    header: ({ column }) => {
+      const sortOptions = [
+        { label: "Default", value: "default" },
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ];
+      const currentSort = column.getIsSorted();
+      const currentValue = currentSort ? String(currentSort) : "default";
+      return (
+        <div className="flex items-center">
+          <FilterPopover
+            label="Brand"
+            options={sortOptions}
+            currentValue={currentValue}
+            onChange={(value) => {
+              if (value === "default" || !value) {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(value === "desc", false);
+              }
+            }}
+            isSort
+          />
+        </div>
+      );
+    },
     cell: ({ row }) => <div>{row.getValue("brand") || "-"}</div>,
   },
   {
@@ -166,7 +256,32 @@ export const columns: ColumnDef<ProductTableItem>[] = [
   },
   {
     accessorKey: "costPrice",
-    header: () => <span className="block text-right font-medium">Cost</span>,
+    header: ({ column }) => {
+      const sortOptions = [
+        { label: "Default", value: "default" },
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ];
+      const currentSort = column.getIsSorted();
+      const currentValue = currentSort ? String(currentSort) : "default";
+      return (
+        <div className="flex items-center justify-end">
+          <FilterPopover
+            label="Cost"
+            options={sortOptions}
+            currentValue={currentValue}
+            onChange={(value) => {
+              if (value === "default" || !value) {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(value === "desc", false);
+              }
+            }}
+            isSort
+          />
+        </div>
+      );
+    },
     cell: ({ row }) => {
       const price = row.getValue("costPrice") as number;
       return (
@@ -181,7 +296,32 @@ export const columns: ColumnDef<ProductTableItem>[] = [
   },
   {
     accessorKey: "sellingPrice",
-    header: () => <span className="block text-right font-medium">Price</span>,
+    header: ({ column }) => {
+      const sortOptions = [
+        { label: "Default", value: "default" },
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ];
+      const currentSort = column.getIsSorted();
+      const currentValue = currentSort ? String(currentSort) : "default";
+      return (
+        <div className="flex items-center justify-end">
+          <FilterPopover
+            label="Price"
+            options={sortOptions}
+            currentValue={currentValue}
+            onChange={(value) => {
+              if (value === "default" || !value) {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(value === "desc", false);
+              }
+            }}
+            isSort
+          />
+        </div>
+      );
+    },
     cell: ({ row }) => {
       const price = row.getValue("sellingPrice") as number;
       return (
@@ -286,6 +426,15 @@ export function ProductsTable() {
     [rawProducts],
   );
 
+  // State for filtering and sorting
+  const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = useState<VisibilityState>({});
+
+  // Debounced search input
+  const [setFilterValue, instantFilterValue, debouncedFilterValue] =
+    useDebouncedInput("", 300);
+
   // Handle edit
   const handleEdit = useCallback((productId: Id<"products">) => {
     setSelectedProductId(productId);
@@ -324,14 +473,41 @@ export function ProductsTable() {
   const table = useReactTable({
     data: products ?? [],
     columns: tableColumns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+    },
     initialState: {
       pagination: {
         pageSize: 10,
       },
     },
   });
+
+  // Apply debounced filter to SKU column
+  useEffect(() => {
+    table.getColumn("sku")?.setFilterValue(debouncedFilterValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [debouncedFilterValue]);
+
+  // Calculate active filters count
+  const activeFiltersCount =
+    sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);
+
+  // Handler to clear all filters
+  const handleClearAllFilters = () => {
+    table.resetColumnFilters();
+    table.resetSorting();
+    setFilterValue("");
+  };
 
   if (isPending) {
     return (
@@ -355,8 +531,64 @@ export function ProductsTable() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-row justify-end pb-4">
-        <CreateProductDialog />
+      <div className="flex flex-row justify-between pb-4">
+        {/* Search Input */}
+        <InputGroup className="max-w-50">
+          <InputGroupInput
+            placeholder="Filter products by SKU..."
+            value={instantFilterValue}
+            onChange={(event) => setFilterValue(event.target.value)}
+          />
+          <InputGroupAddon>
+            <Filter />
+          </InputGroupAddon>
+        </InputGroup>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          {/* Clear Filters Button */}
+          {activeFiltersCount >= 2 && (
+            <Button variant="default" onClick={handleClearAllFilters}>
+              Clear filters ({activeFiltersCount})
+            </Button>
+          )}
+
+          {/* Column Visibility Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Settings2 className="mr-1 size-4" />
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuItem
+                      key={column.id}
+                      className="capitalize"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Checkbox
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }
+                        className="mr-2"
+                      />
+                      {column.id}
+                    </DropdownMenuItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Create Product Button */}
+          <CreateProductDialog />
+        </div>
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table className="bg-card">

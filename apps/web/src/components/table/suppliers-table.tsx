@@ -4,10 +4,15 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
+  type ColumnFiltersState,
   flexRender,
   getCoreRowModel,
+  getFilteredRowModel,
   getPaginationRowModel,
+  getSortedRowModel,
+  type SortingState,
   useReactTable,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Doc, Id } from "@wms/backend/convex/_generated/dataModel";
@@ -17,13 +22,17 @@ import {
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Filter,
   MoreHorizontal,
   Plus,
+  Settings2,
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
+import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -41,6 +50,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  InputGroup,
+  InputGroupAddon,
+  InputGroupInput,
+} from "@/components/ui/input-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -59,6 +73,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
+import { useDebouncedInput } from "@/hooks/use-debounced-input";
 
 // Supplier type for the table
 export type SupplierTableItem = Doc<"suppliers"> & {
@@ -557,7 +572,32 @@ function ActionsCell({ supplier }: { supplier: SupplierTableItem }) {
 export const columns: ColumnDef<SupplierTableItem>[] = [
   {
     accessorKey: "name",
-    header: () => <span className="font-medium">Name</span>,
+    header: ({ column }) => {
+      const sortOptions = [
+        { label: "Default", value: "default" },
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ];
+      const currentSort = column.getIsSorted();
+      const currentValue = currentSort ? String(currentSort) : "default";
+      return (
+        <div className="flex items-center">
+          <FilterPopover
+            label="Name"
+            options={sortOptions}
+            currentValue={currentValue}
+            onChange={(value) => {
+              if (value === "default" || !value) {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(value === "desc", false);
+              }
+            }}
+            isSort
+          />
+        </div>
+      );
+    },
     cell: ({ row }) => <TableCellFirst>{row.getValue("name")}</TableCellFirst>,
   },
   {
@@ -647,17 +687,50 @@ export function SuppliersTable() {
     }
   }, [suppliers]);
 
+  // State for filtering and sorting
+  const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([]);
+  const [columnVisibility, setColumnVisibility] = React.useState<VisibilityState>({});
+  const [setFilterValue, instantFilterValue, debouncedFilterValue] =
+    useDebouncedInput("", 300);
+
   const table = useReactTable({
     data: suppliers ?? [],
     columns,
+    onSortingChange: setSorting,
+    onColumnFiltersChange: setColumnFilters,
     getCoreRowModel: getCoreRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    onColumnVisibilityChange: setColumnVisibility,
+    state: {
+      sorting,
+      columnFilters,
+      columnVisibility,
+    },
     initialState: {
       pagination: {
         pageSize: 10,
       },
     },
   });
+
+  // Apply debounced filter to name column
+  React.useEffect(() => {
+    table.getColumn("name")?.setFilterValue(debouncedFilterValue);
+  }, [debouncedFilterValue, table]);
+
+  // Calculate active filters count
+  const activeFiltersCount =
+    sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);
+
+  // Handler to clear all filters
+  const handleClearAllFilters = () => {
+    table.resetColumnFilters();
+    table.resetSorting();
+    setFilterValue("");
+  };
 
   if (isLoading) {
     return (
@@ -671,8 +744,57 @@ export function SuppliersTable() {
 
   return (
     <div className="w-full">
-      <div className="flex flex-row justify-end pb-4">
-        <CreateSupplierDialog />
+      <div className="flex flex-row justify-between pb-4">
+        {/* Search Input */}
+        <InputGroup className="max-w-50">
+          <InputGroupInput
+            placeholder="Filter suppliers by name..."
+            value={instantFilterValue}
+            onChange={(event) => setFilterValue(event.target.value)}
+          />
+          <InputGroupAddon>
+            <Filter />
+          </InputGroupAddon>
+        </InputGroup>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          {activeFiltersCount >= 2 && (
+            <Button variant="default" onClick={handleClearAllFilters}>
+              Clear filters ({activeFiltersCount})
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Settings2 className="mr-1 size-4" />
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => (
+                  <DropdownMenuItem
+                    key={column.id}
+                    className="capitalize"
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <Checkbox
+                      checked={column.getIsVisible()}
+                      onCheckedChange={(value) =>
+                        column.toggleVisibility(!!value)
+                      }
+                      className="mr-2"
+                    />
+                    {column.id}
+                  </DropdownMenuItem>
+                ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <CreateSupplierDialog />
+        </div>
       </div>
       <div className="overflow-hidden rounded-md border">
         <Table className="bg-card">
