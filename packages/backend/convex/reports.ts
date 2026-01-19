@@ -407,18 +407,10 @@ export const getInventoryReportSummary = query({
 export const getInventoryReportItems = query({
   args: {
     branchId: v.id("branches"),
-    filter: v.optional(
-      v.union(
-        v.literal("all"),
-        v.literal("low-stock"),
-        v.literal("expiring"),
-        v.literal("expired")
-      )
-    ),
     endDate: v.number(),
   },
   handler: async (ctx, args) => {
-    const { branchId, filter = "all", endDate } = args;
+    const { branchId, endDate } = args;
 
     const batches = await ctx.db
       .query("inventory_batches")
@@ -472,20 +464,10 @@ export const getInventoryReportItems = query({
       })
     );
 
-    // Apply filter
-    let filtered = enrichedBatches;
-    if (filter === "low-stock") {
-      filtered = enrichedBatches.filter((b) => b.isLowStock);
-    } else if (filter === "expiring") {
-      filtered = enrichedBatches.filter((b) => b.isExpiringSoon);
-    } else if (filter === "expired") {
-      filtered = enrichedBatches.filter((b) => b.isExpired);
-    }
-
     // Sort by value descending
-    filtered.sort((a, b) => b.value - a.value);
+    enrichedBatches.sort((a, b) => b.value - a.value);
 
-    return filtered;
+    return enrichedBatches;
   },
 });
 

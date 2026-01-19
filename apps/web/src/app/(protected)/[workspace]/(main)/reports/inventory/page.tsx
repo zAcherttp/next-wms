@@ -128,20 +128,38 @@ export default function InventoryReportPage() {
     enabled: !!currentBranch,
   });
 
-  // Fetch detailed items
+  // Fetch detailed items (always fetch all, filter client-side)
   const { data: items, isPending: isItemsPending } = useQuery({
     ...convexQuery(
       api.reports.getInventoryReportItems,
       currentBranch
         ? {
             branchId: currentBranch._id,
-            filter,
             endDate,
           }
         : "skip"
     ),
     enabled: !!currentBranch,
   });
+
+  // Client-side filtering for better performance
+  const filteredItems = React.useMemo(() => {
+    if (!items) return [];
+    if (filter === "all") return items;
+    
+    return items.filter((item) => {
+      switch (filter) {
+        case "low-stock":
+          return item.isLowStock;
+        case "expiring":
+          return item.isExpiringSoon && !item.isExpired;
+        case "expired":
+          return item.isExpired;
+        default:
+          return true;
+      }
+    });
+  }, [items, filter]);
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -315,7 +333,7 @@ export default function InventoryReportPage() {
   );
 
   const table = useReactTable({
-    data: items ?? [],
+    data: filteredItems,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -379,7 +397,7 @@ export default function InventoryReportPage() {
             variant="outline"
             size="sm"
             onClick={() => {
-              if (!items) return;
+              if (filteredItems.length === 0) return;
               exportReportToPDF({
                 title: "Inventory Report",
                 subtitle: "Stock Levels & Inventory Health",
@@ -392,8 +410,23 @@ export default function InventoryReportPage() {
                   { label: "Expiring Soon", value: summary?.kpis.expiringSoonCount ?? 0 },
                   { label: "Expired", value: summary?.kpis.expiredCount ?? 0 },
                 ],
+                pieChart: categoryChartData.length > 0 ? {
+                  title: "Inventory by Category",
+                  data: categoryChartData.map((item) => ({
+                    name: item.name,
+                    value: item.quantity,
+                  })),
+                } : undefined,
+                barChart: zoneChartData.length > 0 ? {
+                  title: "Inventory by Zone",
+                  data: zoneChartData.map((item) => ({
+                    name: item.name,
+                    value: item.quantity,
+                  })),
+                  valueLabel: "Quantity",
+                } : undefined,
                 tableHeaders: ["SKU", "Product", "Category", "Zone", "Quantity", "Expires", "Status"],
-                tableData: items.map((item) => [
+                tableData: filteredItems.map((item) => [
                   item.skuCode,
                   item.productName,
                   item.categoryName,
@@ -407,7 +440,7 @@ export default function InventoryReportPage() {
                 fileName: `inventory-report-${new Date().toISOString().split("T")[0]}`,
               });
             }}
-            disabled={!items || items.length === 0}
+            disabled={filteredItems.length === 0}
           >
             <Download className="mr-2 h-4 w-4" />
             Export

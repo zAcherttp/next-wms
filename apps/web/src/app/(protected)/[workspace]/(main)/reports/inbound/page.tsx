@@ -64,6 +64,11 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tabs,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import type { InboundReportSession } from "@/lib/types";
@@ -91,6 +96,8 @@ const STATUS_COLORS: Record<string, string> = {
   CANCELLED: "#dc2626", // Red
 };
 
+type InboundFilter = "all" | "completed" | "pending" | "in-progress";
+
 export default function InboundReportPage() {
   const { userId, organizationId } = useCurrentUser();
   const { currentBranch } = useBranches({
@@ -104,6 +111,9 @@ export default function InboundReportPage() {
   const updateFromPicker = useDateFilterStore(
     (state) => state.updateFromPicker
   );
+
+  // Filter state
+  const [filter, setFilter] = React.useState<InboundFilter>("all");
 
   // Calculate date range timestamps
   const startDate = dateRange.from?.getTime() ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
@@ -138,6 +148,26 @@ export default function InboundReportPage() {
     ),
     enabled: !!currentBranch,
   });
+
+  // Client-side filtering for better performance
+  const filteredSessions = React.useMemo(() => {
+    if (!sessions) return [];
+    if (filter === "all") return sessions;
+    
+    return sessions.filter((session) => {
+      const statusCode = session.statusCode.toUpperCase();
+      switch (filter) {
+        case "completed":
+          return statusCode === "COMPLETED";
+        case "pending":
+          return statusCode === "PENDING" || statusCode === "DRAFT";
+        case "in-progress":
+          return statusCode === "IN_PROGRESS" || statusCode === "RECEIVING";
+        default:
+          return true;
+      }
+    });
+  }, [sessions, filter]);
 
   // Table state
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -322,7 +352,7 @@ export default function InboundReportPage() {
   );
 
   const table = useReactTable({
-    data: sessions ?? [],
+    data: filteredSessions,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -388,7 +418,7 @@ export default function InboundReportPage() {
             variant="outline"
             size="sm"
             onClick={() => {
-              if (!sessions) return;
+              if (filteredSessions.length === 0) return;
               exportReportToPDF({
                 title: "Inbound Report",
                 subtitle: "Receiving Operations & Supplier Performance",
@@ -400,8 +430,24 @@ export default function InboundReportPage() {
                   { label: "Avg Items/Session", value: summary?.kpis.avgItemsPerSession ?? 0 },
                   { label: "Accuracy Rate", value: `${summary?.kpis.overallAccuracyRate ?? 100}%` },
                 ],
+                pieChart: statusChartData.length > 0 ? {
+                  title: "Status Breakdown",
+                  data: statusChartData.map((item) => ({
+                    name: item.name,
+                    value: item.value,
+                    color: STATUS_COLORS[item.code] || undefined,
+                  })),
+                } : undefined,
+                barChart: supplierChartData.length > 0 ? {
+                  title: "Top Suppliers by Items Received",
+                  data: supplierChartData.map((item) => ({
+                    name: item.name,
+                    value: item.items,
+                  })),
+                  valueLabel: "Items Received",
+                } : undefined,
                 tableHeaders: ["Session ID", "PO Code", "Supplier", "Received Date", "Status", "SKUs", "Received", "Expected", "Variance", "Accuracy"],
-                tableData: sessions.map((s) => [
+                tableData: filteredSessions.map((s) => [
                   s.receiveSessionCode,
                   s.purchaseOrderCode,
                   s.supplierName,
@@ -416,7 +462,7 @@ export default function InboundReportPage() {
                 fileName: `inbound-report-${new Date().toISOString().split("T")[0]}`,
               });
             }}
-            disabled={!sessions || sessions.length === 0}
+            disabled={filteredSessions.length === 0}
           >
             <Download className="mr-2 h-4 w-4" />
             Export
@@ -630,10 +676,46 @@ export default function InboundReportPage() {
       {/* Detailed Table */}
       <Card>
         <CardHeader>
-          <CardTitle>Receive Sessions</CardTitle>
-          <CardDescription>
-            Detailed list of all receive sessions in the selected period
-          </CardDescription>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <CardTitle>Receive Sessions</CardTitle>
+              <CardDescription>
+                Detailed list of all receive sessions in the selected period
+              </CardDescription>
+            </div>
+            <Tabs
+              value={filter}
+              onValueChange={(v) => setFilter(v as InboundFilter)}
+            >
+              <TabsList>
+                <TabsTrigger value="all">All Sessions</TabsTrigger>
+                <TabsTrigger value="completed">
+                  Completed
+                  {summary?.statusBreakdown.find(s => s.statusCode === "COMPLETED")?.count ? (
+                    <Badge variant="secondary" className="ml-1">
+                      {summary.statusBreakdown.find(s => s.statusCode === "COMPLETED")?.count}
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+                <TabsTrigger value="in-progress">
+                  In Progress
+                  {summary?.statusBreakdown.find(s => s.statusCode === "IN_PROGRESS" || s.statusCode === "RECEIVING")?.count ? (
+                    <Badge variant="secondary" className="ml-1">
+                      {summary.statusBreakdown.filter(s => s.statusCode === "IN_PROGRESS" || s.statusCode === "RECEIVING").reduce((sum, s) => sum + s.count, 0)}
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+                <TabsTrigger value="pending">
+                  Pending
+                  {summary?.statusBreakdown.find(s => s.statusCode === "PENDING" || s.statusCode === "DRAFT")?.count ? (
+                    <Badge variant="secondary" className="ml-1">
+                      {summary.statusBreakdown.filter(s => s.statusCode === "PENDING" || s.statusCode === "DRAFT").reduce((sum, s) => sum + s.count, 0)}
+                    </Badge>
+                  ) : null}
+                </TabsTrigger>
+              </TabsList>
+            </Tabs>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
