@@ -2,6 +2,7 @@
 
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { type IDetectedBarcode, Scanner } from "@yudiel/react-qr-scanner";
 import { useMutation, useQuery } from "convex/react";
 import { ArrowRight, Check, RotateCcw, ScanLine } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
@@ -66,6 +67,25 @@ export default function VerifyingPage() {
       item.statusCode === "RETURN_REQUESTED" ||
       item.quantityReceived >= item.quantityExpected,
   );
+
+  const handleScan = (detectedCodes: IDetectedBarcode[]) => {
+    // detectedCodes is an array of IDetectedBarcode objects
+    detectedCodes.forEach((code) => {
+      // if code.rawValue matches an item SKU, setSkuInput
+      const matchedItem = sessionData.items.find(
+        (item) => item.skuCode.toLowerCase() === code.rawValue.toLowerCase(),
+      );
+
+      if (matchedItem) {
+        setFoundItem(matchedItem);
+        setIsDialogOpen(true);
+      } else {
+        toast.error(
+          `No item with SKU "${code.rawValue}" found in this session.`,
+        );
+      }
+    });
+  };
 
   const handleSubmitSku = () => {
     if (!skuInput.trim()) return;
@@ -262,14 +282,15 @@ export default function VerifyingPage() {
 
         {/* Scanner Placeholder */}
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-            <div className="mb-2 rounded-md border-2 border-dashed p-12">
-              {/* Scanner video feed would go here */}
-              <span className="text-sm">[Scanner Feed Placeholder]</span>
-            </div>
-            <p className="text-center text-sm">
-              Point your camera at a barcode to scan an item.
-            </p>
+          <CardContent className="flex flex-col items-center justify-center py-0 text-muted-foreground">
+            <Scanner
+              paused={isDialogOpen}
+              scanDelay={300}
+              allowMultiple={false}
+              sound={true}
+              onScan={handleScan}
+              onError={(error) => console.error(error)}
+            />
           </CardContent>
         </Card>
 

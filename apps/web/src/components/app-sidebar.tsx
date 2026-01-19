@@ -1,5 +1,6 @@
 "use client";
 
+import type { PermissionsInput } from "@wms/backend/lib/permissions";
 import {
   ArrowBigDownDash,
   ArrowBigUpDash,
@@ -185,7 +186,9 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   );
 
   // Check all permissions in one batch
-  const { data: permissionResults } = useHasPermissions(permissionSets);
+  const { data: permissionResults } = useHasPermissions(
+    permissionSets as unknown as PermissionsInput[],
+  );
 
   // Filter nav items based on permissions
   const navMain = NAV_DATA.filter((item) => {

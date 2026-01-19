@@ -137,25 +137,40 @@ export function AddPurchaseOrderDialog({
 
   // Fetch next PO code when branch is selected
   const { data: nextPoCode } = useQuery({
-    ...convexQuery(api.purchaseOrders.generateNextPurchaseOrderCode, {
-      branchId: receivingBranchId as Id<"branches">,
-    }),
+    ...convexQuery(
+      api.purchaseOrders.generateNextPurchaseOrderCode,
+      receivingBranchId
+        ? {
+            branchId: receivingBranchId as Id<"branches">,
+          }
+        : "skip",
+    ),
     enabled: !!receivingBranchId && open,
   });
 
   // Fetch active suppliers
   const { data: suppliers, isLoading: isLoadingSuppliers } = useQuery({
-    ...convexQuery(api.suppliers.getActive, {
-      organizationId: organizationId as Id<"organizations">,
-    }),
+    ...convexQuery(
+      api.suppliers.getActive,
+      organizationId
+        ? {
+            organizationId: organizationId as Id<"organizations">,
+          }
+        : "skip",
+    ),
     enabled: !!organizationId && open,
   });
 
   // Fetch product variants filtered by supplier
   const { data: productVariants, isLoading: isLoadingProducts } = useQuery({
-    ...convexQuery(api.purchaseOrders.getProductVariantsBySupplier, {
-      supplierId: supplierId as Id<"suppliers">,
-    }),
+    ...convexQuery(
+      api.purchaseOrders.getProductVariantsBySupplier,
+      supplierId
+        ? {
+            supplierId: supplierId as Id<"suppliers">,
+          }
+        : "skip",
+    ),
     enabled: !!supplierId && open,
   });
 
@@ -174,9 +189,14 @@ export function AddPurchaseOrderDialog({
 
   // Fetch rack-type zones for selected branch
   const { data: zones, isLoading: isLoadingZones } = useQuery({
-    ...convexQuery(api.storageZones.getRackByBranch, {
-      branchId: receivingBranchId as Id<"branches">,
-    }),
+    ...convexQuery(
+      api.storageZones.getRackByBranch,
+      receivingBranchId
+        ? {
+            branchId: receivingBranchId as Id<"branches">,
+          }
+        : "skip",
+    ),
     enabled: !!receivingBranchId && open,
   });
 
