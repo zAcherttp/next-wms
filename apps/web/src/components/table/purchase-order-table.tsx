@@ -29,6 +29,7 @@ import {
 import * as React from "react";
 import { toast } from "sonner";
 import { AddPurchaseOrderDialog } from "@/components/add-purchase-order-dialog";
+import { ProceedReceivingDialog } from "@/components/proceed-receiving-dialog";
 import { PurchaseOrderDetailDialog } from "@/components/purchase-order-detail-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
@@ -98,11 +99,6 @@ export function PurchaseOrdersTable() {
   const [selectedOrderId, setSelectedOrderId] =
     React.useState<Id<"purchase_orders"> | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
-
-  // Mutation for creating receive session
-  const createReceiveSession = useMutation(
-    api.receiveSessions.createReceiveSession,
-  );
 
   // Mutation for cancelling purchase order
   const cancelPurchaseOrder = useMutation(
@@ -360,26 +356,14 @@ export function PurchaseOrdersTable() {
                 {purchaseOrder.purchaseOrderStatus?.lookupCode ===
                   "PENDING" && (
                   <>
-                    <DropdownMenuItem
-                      onClick={async () => {
-                        if (!userId) return;
-                        try {
-                          await createReceiveSession({
-                            purchaseOrderId: purchaseOrder._id,
-                            userId: userId as Id<"users">,
-                          });
-                          toast.success("Receive session created successfully");
-                        } catch (error) {
-                          toast.error(
-                            error instanceof Error
-                              ? error.message
-                              : "Failed to create receive session",
-                          );
-                        }
-                      }}
-                    >
-                      Proceed receiving
-                    </DropdownMenuItem>
+                    <ProceedReceivingDialog
+                      purchaseOrder={purchaseOrder}
+                      trigger={
+                        <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                          Proceed receiving
+                        </DropdownMenuItem>
+                      }
+                    />
                     <DropdownMenuItem
                       onClick={() => {
                         setOrderToCancel({

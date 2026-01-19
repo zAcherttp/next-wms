@@ -4,7 +4,7 @@ import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
-import { CalendarIcon, Plus, Trash2 } from "lucide-react";
+import { CalendarIcon, Loader2, Plus, Trash2 } from "lucide-react";
 import * as React from "react";
 import {
   ImportExcelButtonOutbound,
@@ -35,6 +35,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -74,6 +81,7 @@ export function AddOutboundOrderDialog({
   const [products, setProducts] = React.useState<ProductItem[]>([]);
   const [skuPopoverOpen, setSkuPopoverOpen] = React.useState(false);
   const [datePopoverOpen, setDatePopoverOpen] = React.useState(false);
+  const [selectedWorkerId, setSelectedWorkerId] = React.useState<string>("");
 
   // Fetch available SKUs
   const { data: availableSkus } = useQuery({
@@ -87,6 +95,17 @@ export function AddOutboundOrderDialog({
   // Create mutation
   const createOrderMutation = useMutation({
     mutationFn: useConvexMutation(api.outboundOrders.createOutboundOrder),
+  });
+
+  // Fetch organization users for assigned worker dropdown
+  const { data: organizationUsers, isLoading: isLoadingUsers } = useQuery({
+    ...convexQuery(
+      api.cycleCount.getOrganizationUsers,
+      open && organizationId
+        ? { organizationId: organizationId as Id<"organizations"> }
+        : "skip",
+    ),
+    enabled: open && !!organizationId,
   });
 
   // Get list of already selected SKU IDs
@@ -176,6 +195,7 @@ export function AddOutboundOrderDialog({
         branchId: currentBranch._id,
         userId: userId as Id<"users">,
         requestedShipDate: requestedShipDate?.getTime(),
+        assignedWorkerId: selectedWorkerId ? selectedWorkerId as Id<"users"> : undefined,
         items: products.map((p) => ({
           variantId: p.variantId,
           quantity: p.quantity,
@@ -185,6 +205,7 @@ export function AddOutboundOrderDialog({
       // Reset form
       setProducts([]);
       setRequestedShipDate(undefined);
+      setSelectedWorkerId("");
     } catch (error) {
       console.error("Failed to create outbound order:", error);
     }
@@ -240,6 +261,40 @@ export function AddOutboundOrderDialog({
                 />
               </PopoverContent>
             </Popover>
+          </div>
+
+          {/* Assigned Worker Dropdown */}
+          <div className="space-y-2">
+            <Label>Assigned Worker</Label>
+            <Select value={selectedWorkerId} onValueChange={setSelectedWorkerId}>
+              <SelectTrigger className="w-50">
+                <SelectValue placeholder="Select worker" />
+              </SelectTrigger>
+              <SelectContent position="popper" sideOffset={5}>
+                {isLoadingUsers && (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="size-4 animate-spin" />
+                    <span className="ml-2">Loading...</span>
+                  </div>
+                )}
+                {!isLoadingUsers && (!organizationUsers || organizationUsers.length === 0) && (
+                  <div className="py-4 text-center text-muted-foreground text-sm">
+                    No workers available
+                  </div>
+                )}
+                {!isLoadingUsers &&
+                  organizationUsers &&
+                  organizationUsers.length > 0 &&
+                  organizationUsers.map((user) => (
+                    <SelectItem key={user._id} value={user._id}>
+                      {user.fullName}
+                      <span className="ml-2 text-muted-foreground text-xs">
+                        {user.email}
+                      </span>
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

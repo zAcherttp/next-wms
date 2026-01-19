@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { createNotification } from "./notifications";
 
 // ================================================================
 // HELPER FUNCTIONS
@@ -760,6 +761,7 @@ export const createReceiveSession = mutation({
   args: {
     purchaseOrderId: v.id("purchase_orders"),
     userId: v.id("users"),
+    assignedWorkerId: v.optional(v.id("users")),
   },
   handler: async (ctx, args) => {
     // Get purchase order
@@ -848,13 +850,16 @@ export const createReceiveSession = mutation({
       });
     }
 
+    // Determine which user to assign to the work session
+    const assignedUserId = args.assignedWorkerId ?? args.userId;
+
     // Create work session for this receive session
     const workSessionId = await ensureWorkSession(
       ctx,
       branch.organizationId,
       purchaseOrder.branchId,
       receiveSessionId,
-      args.userId,
+      assignedUserId,
     );
 
     // Update purchase order status to "Received"
@@ -868,6 +873,41 @@ export const createReceiveSession = mutation({
       await ctx.db.patch(args.purchaseOrderId, {
         purchaseOrderStatusTypeId: receivedStatusId,
       });
+    }
+
+    // Send notification to assigned worker
+    if (args.assignedWorkerId) {
+      // Get notification category lookup (NotificationCategory, INFO)
+      const notificationCategory = await ctx.db
+        .query("system_lookups")
+        .withIndex("lookupType_lookupCode", (q) =>
+          q.eq("lookupType", "NotificationCategory").eq("lookupCode", "INFO")
+        )
+        .first();
+
+      // Get priority lookup (Priority, HIGH)
+      const priorityLookup = await ctx.db
+        .query("system_lookups")
+        .withIndex("lookupType_lookupCode", (q) =>
+          q.eq("lookupType", "Priority").eq("lookupCode", "HIGH")
+        )
+        .first();
+
+      // Only send notification if lookups exist
+      if (notificationCategory && priorityLookup) {
+        await createNotification(ctx, {
+          organizationId: branch.organizationId,
+          notificationCategoryTypeId: notificationCategory._id,
+          notificationType: "RECEIVE_SESSION_ASSIGNED",
+          recipientUserId: args.assignedWorkerId,
+          title: "New Receive Session Assigned",
+          message: `You have been assigned to receive session ${receiveSessionCode} for PO ${purchaseOrder.code}`,
+          priorityTypeId: priorityLookup._id,
+          actionUrl: `/receiving-sessions/${receiveSessionId}`,
+          relatedEntityType: "receive_sessions",
+          relatedEntityId: receiveSessionId,
+        });
+      }
     }
 
     return {

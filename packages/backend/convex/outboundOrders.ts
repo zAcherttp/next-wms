@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { createNotification } from "./notifications";
 
 /**
  * Get all outbound orders for a branch (list view for table)
@@ -191,6 +192,7 @@ export const createOutboundOrder = mutation({
     branchId: v.id("branches"),
     userId: v.id("users"),
     requestedShipDate: v.optional(v.number()),
+    assignedWorkerId: v.optional(v.id("users")),
     items: v.array(
       v.object({
         variantId: v.id("product_variants"),
@@ -267,6 +269,7 @@ export const createOutboundOrder = mutation({
       createdByUserId: args.userId,
       outboundStatusTypeId: pendingStatus._id,
       isDeleted: false,
+      assignedWorkerId: args.assignedWorkerId,
     });
 
     // Insert outbound order details for each item
@@ -278,6 +281,41 @@ export const createOutboundOrder = mutation({
         quantityPicked: 0,
         quantityPacked: 0,
       });
+    }
+
+    // Send notification to assigned worker
+    if (args.assignedWorkerId) {
+      // Get notification category lookup (NotificationCategory, INFO)
+      const notificationCategory = await ctx.db
+        .query("system_lookups")
+        .withIndex("lookupType_lookupCode", (q) =>
+          q.eq("lookupType", "NotificationCategory").eq("lookupCode", "INFO")
+        )
+        .first();
+
+      // Get priority lookup (Priority, HIGH)
+      const priorityLookup = await ctx.db
+        .query("system_lookups")
+        .withIndex("lookupType_lookupCode", (q) =>
+          q.eq("lookupType", "Priority").eq("lookupCode", "HIGH")
+        )
+        .first();
+
+      // Only send notification if lookups exist
+      if (notificationCategory && priorityLookup) {
+        await createNotification(ctx, {
+          organizationId: branch.organizationId,
+          notificationCategoryTypeId: notificationCategory._id,
+          notificationType: "OUTBOUND_ORDER_ASSIGNED",
+          recipientUserId: args.assignedWorkerId,
+          title: "New Outbound Order Assigned",
+          message: `You have been assigned to outbound order ${orderCode}`,
+          priorityTypeId: priorityLookup._id,
+          actionUrl: `/outbound-orders/${orderId}`,
+          relatedEntityType: "outbound_orders",
+          relatedEntityId: orderId,
+        });
+      }
     }
 
     return {
