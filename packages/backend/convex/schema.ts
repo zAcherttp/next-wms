@@ -199,12 +199,6 @@ export default defineSchema({
     .index("isActive", ["isActive"])
     .index("isDeleted", ["isDeleted"]),
 
-  product_type_templates: defineTable({
-    organizationId: v.id("organizations"),
-    templateName: v.string(),
-    fieldDefinitions: v.any(), // jsonb
-  }).index("organizationId", ["organizationId"]),
-
   product_variants: defineTable({
     productId: v.id("products"),
     skuCode: v.string(),
@@ -216,11 +210,13 @@ export default defineSchema({
     volumeM3: v.optional(v.number()),
     temperatureSensitive: v.boolean(),
     stackingLimit: v.optional(v.number()),
+    supplierId: v.optional(v.id("suppliers")),
     customFields: v.optional(v.any()), // jsonb
     isActive: v.boolean(),
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
   })
+    .index("supplierId", ["supplierId"])
     .index("productId", ["productId"])
     .index("skuCode", ["skuCode"])
     .index("isActive", ["isActive"])

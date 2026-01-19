@@ -32,6 +32,7 @@ import type * as storageZones from "../storageZones.js";
 import type * as suppliers from "../suppliers.js";
 import type * as systemLookup from "../systemLookup.js";
 import type * as systemLookups from "../systemLookups.js";
+import type * as traceability from "../traceability.js";
 
 import type {
   ApiFromModules,
@@ -64,6 +65,7 @@ declare const fullApi: ApiFromModules<{
   suppliers: typeof suppliers;
   systemLookup: typeof systemLookup;
   systemLookups: typeof systemLookups;
+  traceability: typeof traceability;
 }>;
 
 /**

@@ -151,19 +151,28 @@ export function AddPurchaseOrderDialog({
     enabled: !!organizationId && open,
   });
 
-  // Fetch product variants
+  // Fetch product variants filtered by supplier
   const { data: productVariants, isLoading: isLoadingProducts } = useQuery({
-    ...convexQuery(api.purchaseOrders.listAllProductVariants, {
-      organizationId: organizationId as Id<"organizations">,
+    ...convexQuery(api.purchaseOrders.getProductVariantsBySupplier, {
+      supplierId: supplierId as Id<"suppliers">,
     }),
-    enabled: !!organizationId && open,
+    enabled: !!supplierId && open,
   });
 
-  // Fetch zones for selected branch
+  // Clear products when supplier changes
+  const previousSupplierIdRef = React.useRef<string>(supplierId);
+  React.useEffect(() => {
+    if (previousSupplierIdRef.current !== supplierId && previousSupplierIdRef.current !== "") {
+      // Supplier changed, clear the products list
+      setProducts([]);
+    }
+    previousSupplierIdRef.current = supplierId;
+  }, [supplierId]);
+
+  // Fetch rack-type zones for selected branch
   const { data: zones, isLoading: isLoadingZones } = useQuery({
-    ...convexQuery(api.storageZones.getByBranch, {
+    ...convexQuery(api.storageZones.getRackByBranch, {
       branchId: receivingBranchId as Id<"branches">,
-      includeDeleted: false,
     }),
     enabled: !!receivingBranchId && open,
   });
@@ -171,16 +180,16 @@ export function AddPurchaseOrderDialog({
   // Get list of already selected variant IDs
   const selectedVariantIds = products.map((p) => p.variantId);
 
-  // Filter out already selected products
+  // Filter out already selected products (use variantId from getProductVariantsBySupplier response)
   const availableProducts =
-    productVariants?.filter((pv) => !selectedVariantIds.includes(pv._id)) ?? [];
+    productVariants?.filter((pv) => !selectedVariantIds.includes(pv.variantId)) ?? [];
 
   const handleAddProduct = (
     product: NonNullable<typeof productVariants>[0],
   ) => {
     const newProduct: PurchaseOrderProductItem = {
       id: String(Date.now()),
-      variantId: product._id,
+      variantId: product.variantId,
       skuCode: product.skuCode,
       description: product.description,
       quantity: 1,
@@ -512,9 +521,14 @@ export function AddPurchaseOrderDialog({
               <Button
                 variant="outline"
                 className="mt-4"
-                disabled={isLoadingProducts}
+                disabled={!supplierId || isLoadingProducts}
+                title={!supplierId ? "Please select a supplier first" : undefined}
               >
-                {isLoadingProducts ? (
+                {!supplierId ? (
+                  <>
+                    Select supplier first
+                  </>
+                ) : isLoadingProducts ? (
                   <>
                     <Loader2 className="mr-1 size-4 animate-spin" />
                     Loading...

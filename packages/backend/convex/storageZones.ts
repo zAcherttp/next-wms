@@ -17,6 +17,24 @@ export const getByBranch = query({
   },
 });
 
+/**
+ * Get only rack-type storage zones by branch
+ * Used for purchase order zone selection (only racks are valid storage locations)
+ */
+export const getRackByBranch = query({
+  args: { branchId: v.id("branches") },
+  handler: async (ctx, { branchId }) => {
+    const zones = await ctx.db
+      .query("storage_zones")
+      .withIndex("branchId", (q) => q.eq("branchId", branchId))
+      .filter((q) => q.eq(q.field("storageBlockType"), "rack"))
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .collect();
+    
+    return zones;
+  },
+});
+
 export const create = mutation({
   args: {
     branchId: v.id("branches"),
