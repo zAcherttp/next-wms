@@ -1,4 +1,7 @@
 import { revalidateLogic, useForm } from "@tanstack/react-form";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
+import { useConvex } from "convex/react";
 import { useCallback, useState, useTransition } from "react";
 import { toast } from "sonner";
 import z from "zod";
@@ -46,6 +49,7 @@ export function CreateOrganizationForm({
   const [isPending, startTransition] = useTransition();
   const [logoFile, setLogoFile] = useState<FileWithPreview | null>(null);
   const { uploadFile, isUploading } = useFileStorage();
+  const convex = useConvex();
 
   const handleLogoChange = useCallback((file: FileWithPreview | null) => {
     setLogoFile(file);
@@ -108,23 +112,21 @@ export function CreateOrganizationForm({
     onSubmit: async ({ value }) => {
       startTransition(async () => {
         // Upload logo if selected
-        let logoUrl: string | undefined;
+        let storageId: Id<"_storage"> | undefined;
         if (logoFile?.file instanceof File) {
           try {
-            const { storageId } = await uploadFile(logoFile.file);
-            // We'll store the storage ID as the logo for now
-            // The org settings page can handle URL resolution
-            logoUrl = storageId;
+            const result = await uploadFile(logoFile.file);
+            storageId = result.storageId as Id<"_storage">;
           } catch {
             toast.error("Failed to upload logo");
             return;
           }
         }
 
+        // Create organization in Better Auth (without logo URL for now)
         const { data, error } = await authClient.organization.create({
           name: value.orgName,
           slug: value.orgSlug,
-          logo: logoUrl,
         });
         if (error) {
           toast.error(error.message || "Failed to create organization");
@@ -134,6 +136,35 @@ export function CreateOrganizationForm({
         if (!data) {
           toast.error("Failed to create organization");
           return;
+        }
+
+        // If we have a logo, update it after org creation
+        // This converts the storageId to a proper URL
+        if (storageId) {
+          try {
+            // Wait a moment for the org sync to complete
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            // Query the organization by slug to get the Convex ID
+            const org = await convex.query(
+              api.authSync.getOrganizationBySlug,
+              { slug: value.orgSlug }
+            );
+
+            if (org?._id) {
+              // Update the logo with the storage ID (converts to URL)
+              await convex.mutation(
+                api.authSync.updateOrganizationLogo,
+                {
+                  organizationId: org._id,
+                  storageId,
+                }
+              );
+            }
+          } catch (logoError) {
+            // Log error but don't fail org creation
+            console.error("Failed to update organization logo:", logoError);
+          }
         }
 
         // Success - proxy middleware will handle setting active org after navigation
