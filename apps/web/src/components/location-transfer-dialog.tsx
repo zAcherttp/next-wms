@@ -276,14 +276,15 @@ export function LocationTransferDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent showCloseButton={false} className="sm:max-w-lg">
-        <DialogHeader>
+      <DialogContent showCloseButton={false} className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-lg">
+        <DialogHeader className="shrink-0 px-6 pt-6">
           <DialogTitle>Transfer Items to New Location</DialogTitle>
         </DialogHeader>
 
-        <Separator />
+        <Separator className="mt-4" />
 
-        <AnimatePresence mode="popLayout">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6">
+          <AnimatePresence mode="popLayout">
           {/* Simplified flow when from cycle count - Step 1: Select Destination */}
           {isFromCycleCount && step === 1 && (
             <motion.div
@@ -684,9 +685,10 @@ export function LocationTransferDialog({
               </div>
             </motion.div>
           )}
-        </AnimatePresence>
+          </AnimatePresence>
+        </div>
 
-        <DialogFooter className="flex-row gap-2 sm:justify-between">
+        <DialogFooter className="shrink-0 flex-row gap-2 border-t px-6 py-4 sm:justify-between">
           {step === 1 ? (
             <Button
               variant="outline"

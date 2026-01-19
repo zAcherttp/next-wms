@@ -4,11 +4,21 @@ import { convexQuery } from "@convex-dev/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
-import { Calendar, Clock, FileText, Package, User } from "lucide-react";
+import {
+  ArrowRight,
+  Calendar,
+  Clock,
+  FileText,
+  MapPin,
+  Package,
+  TrendingDown,
+  TrendingUp,
+  User,
+} from "lucide-react";
 import * as React from "react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   Dialog,
   DialogContent,
@@ -28,12 +38,12 @@ interface InfoItemProps {
 function InfoItem({ icon, label, value }: InfoItemProps) {
   return (
     <div className="flex items-center gap-3">
-      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10">
         {icon}
       </div>
-      <div className="min-w-0">
-        <p className="text-muted-foreground text-sm">{label}</p>
-        <p className="truncate font-medium">{value}</p>
+      <div className="min-w-0 flex-1">
+        <p className="text-muted-foreground text-xs">{label}</p>
+        <p className="truncate font-medium text-sm">{value}</p>
       </div>
     </div>
   );
@@ -41,13 +51,21 @@ function InfoItem({ icon, label, value }: InfoItemProps) {
 
 interface AdjustmentDetail {
   _id: string;
+  batchId?: string;
+  skuId?: string;
+  skuCode?: string;
   productName?: string;
   fromLocationName?: string;
   toLocationName?: string;
+  expectedQuantity?: number;
+  actualQuantity?: number;
   currentQuantity?: number;
   adjustedQuantity?: number;
+  varianceQuantity?: number;
   quantityToTransfer?: number;
-  reason?: string;
+  quantity?: number;
+  reasonTypeId?: string;
+  customReasonNotes?: string;
 }
 
 interface AdjustmentRequestDetailDialogProps {
@@ -73,10 +91,13 @@ export function AdjustmentRequestDetailDialog({
       <DialogTrigger asChild>
         {trigger || <Button variant="outline">View Details</Button>}
       </DialogTrigger>
-      <DialogContent className="max-h-[90vh] max-w-3xl overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between">
-            <DialogTitle>Adjustment Request Details</DialogTitle>
+      <DialogContent className="flex max-h-[85vh] flex-col gap-0 p-0 sm:max-w-2xl">
+        <DialogHeader className="shrink-0 border-b p-6 pb-4">
+          <div className="flex items-center justify-between gap-4">
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              Adjustment Request Details
+            </DialogTitle>
             {adjustmentRequest && (
               <Badge
                 className={cn(
@@ -102,179 +123,239 @@ export function AdjustmentRequestDetailDialog({
             </p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Request Information Card */}
-            <Card>
-              <CardContent className="space-y-4 pt-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <InfoItem
-                    icon={<FileText className="h-5 w-5 text-primary" />}
-                    label="Request Code"
-                    value={adjustmentRequest.requestCode}
-                  />
-                  <InfoItem
-                    icon={<Package className="h-5 w-5 text-primary" />}
-                    label="Type"
-                    value={
-                      adjustmentRequest.adjustmentType?.lookupValue || "Unknown"
-                    }
-                  />
-                  <InfoItem
-                    icon={<Calendar className="h-5 w-5 text-primary" />}
-                    label="Date"
-                    value={new Intl.DateTimeFormat("en-US", {
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    }).format(
-                      new Date(
-                        adjustmentRequest.requestedAt ||
-                          adjustmentRequest._creationTime,
-                      ),
-                    )}
-                  />
-                  <InfoItem
-                    icon={<Clock className="h-5 w-5 text-primary" />}
-                    label="Time"
-                    value={new Intl.DateTimeFormat("en-US", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    }).format(
-                      new Date(
-                        adjustmentRequest.requestedAt ||
-                          adjustmentRequest._creationTime,
-                      ),
-                    )}
-                  />
-                  <InfoItem
-                    icon={<User className="h-5 w-5 text-primary" />}
-                    label="Requested By"
-                    value={adjustmentRequest.requestedBy?.fullName || "Unknown"}
-                  />
-                  {adjustmentRequest.approvedByUser && (
+          <div className="flex-1 overflow-y-auto p-6 pt-4">
+            <div className="space-y-4">
+              {/* Request Information Card */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm font-medium">Request Information</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <InfoItem
-                      icon={<User className="h-5 w-5 text-primary" />}
-                      label="Approved By"
-                      value={adjustmentRequest.approvedByUser.fullName}
+                      icon={<FileText className="h-4 w-4 text-primary" />}
+                      label="Request Code"
+                      value={adjustmentRequest.requestCode}
                     />
+                    <InfoItem
+                      icon={<Package className="h-4 w-4 text-primary" />}
+                      label="Type"
+                      value={
+                        adjustmentRequest.adjustmentType?.lookupValue || "Unknown"
+                      }
+                    />
+                    <InfoItem
+                      icon={<Calendar className="h-4 w-4 text-primary" />}
+                      label="Date"
+                      value={new Intl.DateTimeFormat("en-US", {
+                        year: "numeric",
+                        month: "short",
+                        day: "numeric",
+                      }).format(
+                        new Date(
+                          adjustmentRequest.requestedAt ||
+                            adjustmentRequest._creationTime,
+                        ),
+                      )}
+                    />
+                    <InfoItem
+                      icon={<Clock className="h-4 w-4 text-primary" />}
+                      label="Time"
+                      value={new Intl.DateTimeFormat("en-US", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      }).format(
+                        new Date(
+                          adjustmentRequest.requestedAt ||
+                            adjustmentRequest._creationTime,
+                        ),
+                      )}
+                    />
+                    <InfoItem
+                      icon={<User className="h-4 w-4 text-primary" />}
+                      label="Requested By"
+                      value={adjustmentRequest.requestedBy?.fullName || "Unknown"}
+                    />
+                    {adjustmentRequest.approvedByUser && (
+                      <InfoItem
+                        icon={<User className="h-4 w-4 text-primary" />}
+                        label="Approved By"
+                        value={adjustmentRequest.approvedByUser.fullName}
+                      />
+                    )}
+                  </div>
+
+                  {adjustmentRequest.resolutionNotes && (
+                    <>
+                      <Separator />
+                      <div>
+                        <p className="mb-1 font-medium text-muted-foreground text-xs">
+                          Resolution Notes
+                        </p>
+                        <p className="rounded-md bg-muted/50 p-2 text-sm">
+                          {adjustmentRequest.resolutionNotes}
+                        </p>
+                      </div>
+                    </>
                   )}
-                </div>
+                </CardContent>
+              </Card>
 
-                {adjustmentRequest.resolutionNotes && (
-                  <>
-                    <Separator />
-                    <div>
-                      <p className="mb-2 text-muted-foreground text-sm">
-                        Resolution Notes
-                      </p>
-                      <p className="text-sm">
-                        {adjustmentRequest.resolutionNotes}
-                      </p>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-            {/* Adjustment Details */}
-            {adjustmentRequest.details &&
-              adjustmentRequest.details.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">
-                    Adjustment Items
-                  </h3>
-                  <div className="space-y-2">
-                    {adjustmentRequest.details.map(
-                      (detail: AdjustmentDetail) => (
-                        <Card key={detail._id}>
-                          <CardContent className="p-4">
-                            <div className="grid grid-cols-2 gap-4">
-                              {detail.productName && (
-                                <div>
-                                  <p className="text-muted-foreground text-xs">
-                                    Product
-                                  </p>
-                                  <p className="font-medium text-sm">
-                                    {detail.productName}
-                                  </p>
+              {/* Adjustment Items */}
+              {adjustmentRequest.details &&
+                adjustmentRequest.details.length > 0 && (
+                  <Card>
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-medium">
+                          Adjustment Items
+                        </CardTitle>
+                        <Badge variant="secondary">
+                          {adjustmentRequest.details.length} item(s)
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      {adjustmentRequest.details.map(
+                        (detail: AdjustmentDetail, index: number) => {
+                          const isLocationTransfer = !!(detail.fromLocationName || detail.toLocationName);
+                          const isQuantityAdjustment = detail.currentQuantity !== undefined || detail.adjustedQuantity !== undefined;
+                          const variance = detail.varianceQuantity ?? 
+                            ((detail.adjustedQuantity ?? 0) - (detail.currentQuantity ?? 0));
+                          
+                          return (
+                            <div
+                              key={detail._id}
+                              className="rounded-lg border bg-card p-4"
+                            >
+                              {/* Product Info Header */}
+                              <div className="mb-3 flex items-start justify-between gap-3">
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                                    <Package className="h-5 w-5 text-primary" />
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <p className="truncate font-medium text-sm">
+                                      {detail.productName || detail.skuId || detail.batchId || `Item ${index + 1}`}
+                                    </p>
+                                    <div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+                                      {detail.skuCode && (
+                                        <span>SKU: {detail.skuCode}</span>
+                                      )}
+                                      {detail.batchId && detail.batchId !== detail.skuId && (
+                                        <>
+                                          {detail.skuCode && <span>•</span>}
+                                          <span>Batch: {detail.batchId}</span>
+                                        </>
+                                      )}
+                                    </div>
+                                  </div>
                                 </div>
-                              )}
-                              {detail.fromLocationName && (
-                                <div>
-                                  <p className="text-muted-foreground text-xs">
-                                    From Location
-                                  </p>
-                                  <p className="font-medium text-sm">
-                                    {detail.fromLocationName}
-                                  </p>
-                                </div>
-                              )}
-                              {detail.toLocationName && (
-                                <div>
-                                  <p className="text-muted-foreground text-xs">
-                                    To Location
-                                  </p>
-                                  <p className="font-medium text-sm">
-                                    {detail.toLocationName}
-                                  </p>
-                                </div>
-                              )}
-                              {detail.currentQuantity !== undefined && (
-                                <div>
-                                  <p className="text-muted-foreground text-xs">
-                                    Current Quantity
-                                  </p>
-                                  <p className="font-medium text-sm">
-                                    {detail.currentQuantity}
-                                  </p>
-                                </div>
-                              )}
-                              {detail.adjustedQuantity !== undefined && (
-                                <div>
-                                  <p className="text-muted-foreground text-xs">
-                                    Adjusted Quantity
-                                  </p>
-                                  <p
+                                {isQuantityAdjustment && variance !== 0 && (
+                                  <Badge
+                                    variant="outline"
                                     className={cn(
-                                      "font-medium text-sm",
-                                      detail.adjustedQuantity !== undefined &&
-                                        detail.currentQuantity !== undefined &&
-                                        detail.adjustedQuantity <
-                                          detail.currentQuantity
-                                        ? "text-red-600"
-                                        : "text-green-600",
+                                      "shrink-0",
+                                      variance > 0
+                                        ? "border-amber-200 bg-amber-50 text-amber-700"
+                                        : "border-red-200 bg-red-50 text-red-700",
                                     )}
                                   >
-                                    {detail.adjustedQuantity}
-                                  </p>
+                                    {variance > 0 ? (
+                                      <TrendingUp className="mr-1 h-3 w-3" />
+                                    ) : (
+                                      <TrendingDown className="mr-1 h-3 w-3" />
+                                    )}
+                                    {variance > 0 ? `+${variance}` : variance}
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {/* Quantity Adjustment Details */}
+                              {isQuantityAdjustment && (
+                                <div className="grid grid-cols-3 gap-3 rounded-md bg-muted/30 p-3">
+                                  <div className="text-center">
+                                    <p className="text-muted-foreground text-xs">Expected</p>
+                                    <p className="font-semibold text-lg">
+                                      {detail.currentQuantity ?? detail.expectedQuantity ?? "-"}
+                                    </p>
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-muted-foreground text-xs">Counted</p>
+                                    <p className={cn(
+                                      "font-semibold text-lg",
+                                      variance > 0 && "text-amber-600",
+                                      variance < 0 && "text-red-600",
+                                      variance === 0 && "text-green-600",
+                                    )}>
+                                      {detail.adjustedQuantity ?? detail.actualQuantity ?? "-"}
+                                    </p>
+                                  </div>
+                                  <div className="text-center">
+                                    <p className="text-muted-foreground text-xs">Variance</p>
+                                    <p className={cn(
+                                      "font-semibold text-lg",
+                                      variance > 0 && "text-amber-600",
+                                      variance < 0 && "text-red-600",
+                                      variance === 0 && "text-green-600",
+                                    )}>
+                                      {variance > 0 ? `+${variance}` : variance}
+                                    </p>
+                                  </div>
                                 </div>
                               )}
-                              {detail.quantityToTransfer !== undefined && (
-                                <div>
-                                  <p className="text-muted-foreground text-xs">
-                                    Quantity to Transfer
-                                  </p>
-                                  <p className="font-medium text-sm">
-                                    {detail.quantityToTransfer}
-                                  </p>
+
+                              {/* Location Transfer Details */}
+                              {isLocationTransfer && (
+                                <div className="flex items-center gap-3 rounded-md bg-muted/30 p-3">
+                                  <div className="flex-1 text-center">
+                                    <p className="text-muted-foreground text-xs">From</p>
+                                    <div className="flex items-center justify-center gap-1">
+                                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                                      <p className="font-medium text-sm">
+                                        {detail.fromLocationName || "-"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <ArrowRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                                  <div className="flex-1 text-center">
+                                    <p className="text-muted-foreground text-xs">To</p>
+                                    <div className="flex items-center justify-center gap-1">
+                                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                                      <p className="font-medium text-sm">
+                                        {detail.toLocationName || "-"}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  {(detail.quantityToTransfer || detail.quantity) && (
+                                    <>
+                                      <Separator orientation="vertical" className="h-8" />
+                                      <div className="text-center px-2">
+                                        <p className="text-muted-foreground text-xs">Qty</p>
+                                        <p className="font-semibold text-lg">
+                                          {detail.quantityToTransfer ?? detail.quantity}
+                                        </p>
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                               )}
-                              {detail.reason && (
-                                <div className="col-span-2">
-                                  <p className="text-muted-foreground text-xs">
-                                    Reason
-                                  </p>
-                                  <p className="text-sm">{detail.reason}</p>
+
+                              {/* Reason/Notes */}
+                              {detail.customReasonNotes && (
+                                <div className="mt-3 rounded-md bg-muted/30 p-2">
+                                  <p className="text-muted-foreground text-xs">Notes</p>
+                                  <p className="text-sm">{detail.customReasonNotes}</p>
                                 </div>
                               )}
                             </div>
-                          </CardContent>
-                        </Card>
-                      ),
-                    )}
-                  </div>
-                </div>
-              )}
+                          );
+                        },
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+            </div>
           </div>
         )}
       </DialogContent>

@@ -32,7 +32,6 @@ import {
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -483,9 +482,9 @@ export function MultiQuantityAdjustmentDialog({
     <Dialog open={open} onOpenChange={handleClose}>
       <DialogContent
         showCloseButton={false}
-        className="flex max-h-[85vh] flex-col sm:max-w-2xl"
+        className="flex max-h-[85vh] flex-col gap-0 overflow-hidden p-0 sm:max-w-2xl"
       >
-        <DialogHeader className="relative shrink-0">
+        <DialogHeader className="relative shrink-0 px-6 pt-6">
           <DialogTitle className="flex items-center gap-2">
             {step > STEPS.SELECT_ZONES && (
               <Button
@@ -515,7 +514,7 @@ export function MultiQuantityAdjustmentDialog({
         </DialogHeader>
 
         {/* Progress indicator */}
-        <div className="flex gap-1 px-1">
+        <div className="flex gap-1 px-6 py-2">
           {[1, 2, 3, 4].map((s) => (
             <div
               key={s}
@@ -527,9 +526,9 @@ export function MultiQuantityAdjustmentDialog({
           ))}
         </div>
 
-        <Separator className="my-2" />
+        <Separator />
 
-        <div className="min-h-0 flex-1 flex flex-col overflow-hidden">
+        <div className="min-h-0 flex-1 overflow-y-auto px-6 py-4">
           <AnimatePresence mode="wait">
             {/* Step 1: Select Zones */}
             {step === STEPS.SELECT_ZONES && (
@@ -545,8 +544,8 @@ export function MultiQuantityAdjustmentDialog({
                   Select one or more zones to adjust inventory quantities.
                 </p>
 
-                <ScrollArea className="h-0 flex-1">
-                  <div className="space-y-2 pr-4">
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <div className="space-y-2">
                     {isLoadingZones ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -589,7 +588,7 @@ export function MultiQuantityAdjustmentDialog({
                       </div>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
 
                 {selectedZoneIds.length > 0 && (
                   <div className="shrink-0 text-muted-foreground text-sm">
@@ -636,8 +635,8 @@ export function MultiQuantityAdjustmentDialog({
                   </div>
                 </div>
 
-                <ScrollArea className="h-0 flex-1">
-                  <div className="space-y-2 pr-4">
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <div className="space-y-2">
                     {isLoadingItems ? (
                       <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -705,7 +704,7 @@ export function MultiQuantityAdjustmentDialog({
                       </div>
                     )}
                   </div>
-                </ScrollArea>
+                </div>
 
                 {currentSelectedItems.length > 0 && (
                   <div className="shrink-0 text-muted-foreground text-sm">
@@ -730,8 +729,8 @@ export function MultiQuantityAdjustmentDialog({
                   Enter the actual counted quantity for each item.
                 </p>
 
-                <ScrollArea className="h-0 flex-1">
-                  <div className="space-y-3 pr-4">
+                <div className="min-h-0 flex-1 overflow-y-auto">
+                  <div className="space-y-3">
                     {adjustmentItems.map((item) => {
                       const variance =
                         item.countedQuantity - item.expectedQuantity;
@@ -835,7 +834,7 @@ export function MultiQuantityAdjustmentDialog({
                       );
                     })}
                   </div>
-                </ScrollArea>
+                </div>
 
                 <div className="shrink-0 text-muted-foreground text-sm">
                   {itemsWithVariance.length} item(s) with variance
@@ -853,8 +852,7 @@ export function MultiQuantityAdjustmentDialog({
                 transition={springTransition}
                 className="flex flex-1 flex-col"
               >
-                <ScrollArea className="h-0 flex-1">
-                  <div className="space-y-4 pr-4">
+                <div className="min-h-0 flex-1 space-y-4 overflow-y-auto">
                     {/* Summary */}
                     <div className="rounded-lg border bg-muted/30 p-4">
                       <h4 className="mb-2 font-medium text-sm">Summary</h4>
@@ -941,14 +939,13 @@ export function MultiQuantityAdjustmentDialog({
                         </div>
                       </div>
                     )}
-                  </div>
-                </ScrollArea>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
         </div>
 
-        <DialogFooter className="mt-4 shrink-0">
+        <DialogFooter className="shrink-0 border-t px-6 py-4">
           <Button
             variant="outline"
             onClick={handleClose}
