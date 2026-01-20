@@ -42,6 +42,8 @@ function JoinPageContent() {
 
   const handleJoinOrg = (orgSlug: string) => {
     toast.success("Loading organization...");
+    // Clear selected branch to ensure fresh selection for new org
+    localStorage.removeItem("wms:selected-branch");
     authClient.organization.setActive({
       organizationSlug: orgSlug,
     });
@@ -107,6 +109,8 @@ function JoinPageContent() {
             </span>
             <CreateOrganizationForm
               onSuccess={(orgSlug) => {
+                // Clear selected branch to ensure fresh selection for new org
+                localStorage.removeItem("wms:selected-branch");
                 authClient.organization.setActive({
                   organizationSlug: orgSlug,
                 });

@@ -12,7 +12,6 @@ import {
   Calendar,
   Layers,
   MapPin,
-  Package,
   Tag,
   Thermometer,
 } from "lucide-react";
@@ -183,7 +182,7 @@ export default function ProductInventoryDetailPage() {
   }
 
   return (
-    <div className="flex h-full flex-col">
+    <div className="mx-auto flex h-full max-w-6xl flex-col">
       {/* Page Header */}
       <div className="shrink-0 border-b bg-background px-6 py-4">
         <div className="flex items-center justify-between">
@@ -199,17 +198,14 @@ export default function ProductInventoryDetailPage() {
               </Link>
             </Button>
             <div className="flex items-center gap-2">
-              <Package className="h-5 w-5 text-muted-foreground" />
-              <h1 className="font-semibold text-xl">
-                Product Inventory Details
-              </h1>
+              <h1 className="font-semibold">Back</h1>
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="mr-2 hidden items-center gap-2 text-muted-foreground text-sm sm:flex">
-              <span className="rounded bg-primary/10 px-2 py-0.5 font-mono text-primary text-xs">
+            <div className="mr-2 hidden items-center gap-2 text-sm sm:flex">
+              <Badge variant="outline" className="h-7 px-3 font-mono text-xs">
                 ID: {productDetail.product._id.slice(-6)}
-              </span>
+              </Badge>
             </div>
             {getStockStatusBadge(
               productDetail.summary.totalQuantity,

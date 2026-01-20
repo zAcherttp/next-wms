@@ -377,8 +377,7 @@ export const syncOrganization = mutation({
       });
       return existingOrg._id;
     } else {
-      // Note: For new organizations, we should create them here with default values
-      // The application can update the organization-specific fields later
+      // Create new organization with default values
       const orgId = await ctx.db.insert("organizations", {
         authId: args.authId,
         name: args.name,
@@ -391,6 +390,18 @@ export const syncOrganization = mutation({
         isActive: true,
         isDeleted: false,
       });
+
+      // Create a default branch for the new organization
+      // This prevents the app from freezing when there are no branches
+      await ctx.db.insert("branches", {
+        organizationId: orgId,
+        name: "Main Warehouse",
+        address: "",
+        phoneNumber: "",
+        isActive: true,
+        isDeleted: false,
+      });
+
       return orgId;
     }
   },

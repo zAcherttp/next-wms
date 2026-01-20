@@ -255,20 +255,6 @@ export function InventoryTransactionsTable({
           </div>
         ),
       },
-      {
-        accessorKey: "sourceDoc",
-        header: "Source Doc",
-        cell: ({ row }) => (
-          <div className="font-mono text-muted-foreground text-xs">
-            {row.getValue("sourceDoc") || "-"}
-          </div>
-        ),
-      },
-      {
-        accessorKey: "userName",
-        header: "User",
-        cell: ({ row }) => <div className="">{row.getValue("userName")}</div>,
-      },
     ],
     [],
   );

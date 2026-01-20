@@ -267,15 +267,6 @@ export function AuditLogsTable({
           );
         },
       },
-      {
-        accessorKey: "ipAddress",
-        header: "IP Address",
-        cell: ({ row }) => (
-          <div className="font-mono text-muted-foreground text-xs">
-            {row.getValue("ipAddress") || "-"}
-          </div>
-        ),
-      },
     ],
     [],
   );

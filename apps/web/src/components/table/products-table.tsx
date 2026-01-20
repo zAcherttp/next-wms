@@ -30,7 +30,6 @@ import { CreateProductDialog } from "@/components/products/create-product-dialog
 import { DeleteProductDialog } from "@/components/products/delete-product-dialog";
 import { EditProductDialog } from "@/components/products/edit-product-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
-import TableCellFirst from "@/components/table/table-cell-first";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
@@ -124,13 +123,6 @@ function ActionsCell({
 }
 
 export const columns: ColumnDef<ProductTableItem>[] = [
-  {
-    accessorKey: "barcode",
-    header: () => <span className="font-medium">Barcode</span>,
-    cell: ({ row }) => (
-      <TableCellFirst>{row.getValue("barcode") || "-"}</TableCellFirst>
-    ),
-  },
   {
     accessorKey: "sku",
     header: ({ column }) => {

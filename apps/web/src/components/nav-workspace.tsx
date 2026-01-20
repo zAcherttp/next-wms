@@ -42,6 +42,9 @@ export function NavWorkspace() {
 
   const handleOrgSwitch = async (orgId: string, orgSlug: string) => {
     try {
+      // Clear selected branch to ensure fresh selection for new org
+      localStorage.removeItem("wms:selected-branch");
+
       await organization.setActive({
         organizationId: orgId,
       });
