@@ -634,6 +634,40 @@ export const batchCreateCycleCountSession = mutation({
 });
 
 /**
+ * cancelCycleCountSession
+ *
+ * Purpose: Soft deletes a cycle count session by setting its status to CANCELLED
+ *
+ * Access: Available to authorized users
+ */
+export const cancelCycleCountSession = mutation({
+  args: {
+    sessionId: v.id("work_sessions"),
+  },
+  handler: async (ctx, args) => {
+    const session = await ctx.db.get(args.sessionId);
+    if (!session) {
+      throw new Error("Session not found");
+    }
+
+    const cancelledStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "SessionStatus").eq("lookupCode", "CANCELLED")
+      )
+      .first();
+
+    if (!cancelledStatus) {
+      throw new Error("Cancelled status not found");
+    }
+
+    await ctx.db.patch(args.sessionId, {
+      sessionStatusTypeId: cancelledStatus._id,
+    });
+  },
+});
+
+/**
  * viewCycleCountSessionDetail
  *
  * Purpose: Retrieves a specific cycle count session by its ID along with zone assignments, line items, and inventory transactions
