@@ -168,7 +168,7 @@ export default function InventoryReportPage() {
     () => [
       {
         accessorKey: "skuCode",
-        header: "SKU",
+        header: () => <div className="ml-1">SKU</div>,
         cell: ({ row }) => (
           <TableCellFirst className="font-medium">
             {row.getValue("skuCode")}
@@ -252,14 +252,14 @@ export default function InventoryReportPage() {
       },
       {
         accessorKey: "quantity",
-        header: () => <div className="text-right">Qty</div>,
+        header: () => <div className="text-center">Qty</div>,
         cell: ({ row }) => {
           const quantity = row.getValue("quantity") as number;
           const isLowStock = row.original.isLowStock;
           return (
             <div
               className={cn(
-                "text-right font-medium",
+                "text-center font-medium",
                 isLowStock && "text-orange-600",
               )}
             >
@@ -271,14 +271,14 @@ export default function InventoryReportPage() {
       },
       {
         accessorKey: "expiresAt",
-        header: "Expires",
+        header: () => <div className="text-center">Expires</div>,
         cell: ({ row }) => {
           const expiresAt = row.getValue("expiresAt") as number | undefined;
           const isExpiringSoon = row.original.isExpiringSoon;
           const isExpired = row.original.isExpired;
 
           if (!expiresAt) {
-            return <div className="text-muted-foreground">N/A</div>;
+            return <div className="text-center text-muted-foreground">N/A</div>;
           }
 
           return (
@@ -289,6 +289,7 @@ export default function InventoryReportPage() {
                   : isExpiringSoon
                     ? "font-medium text-orange-600"
                     : "",
+                "text-center",
               )}
             >
               {new Date(expiresAt).toLocaleDateString("en-US", {

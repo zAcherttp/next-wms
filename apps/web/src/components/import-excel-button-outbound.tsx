@@ -3,7 +3,7 @@
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import { useConvex } from "convex/react";
-import { FileSpreadsheet, Loader2 } from "lucide-react";
+import { Loader2, Upload } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import * as XLSX from "xlsx";
@@ -227,7 +227,7 @@ export function ImportExcelButtonOutbound({
           </>
         ) : (
           <>
-            <FileSpreadsheet className="mr-1 size-4" />
+            <Upload className="mr-1 size-4" />
             Import Excel
           </>
         )}
