@@ -95,170 +95,6 @@ const getInitials = (name: string | null | undefined) => {
     .slice(0, 2);
 };
 
-export const columns: ColumnDef<Member>[] = [
-  {
-    id: "user",
-    accessorFn: (row) => row.user?.name ?? row.user?.email ?? "",
-    header: () => {
-      return <span className="pl-1">User</span>;
-    },
-    cell: ({ row }) => {
-      const member = row.original;
-      const user = member.user;
-      return (
-        <TableCellFirst className="flex items-center gap-3">
-          <Avatar className="size-8">
-            <AvatarImage
-              src={user?.image ?? undefined}
-              alt={user?.name ?? ""}
-            />
-            <AvatarFallback className="text-xs">
-              {getInitials(user?.name)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col">
-            <span className="font-medium">{user?.name ?? "Unknown"}</span>
-            <span className="text-muted-foreground text-xs">
-              {user?.email ?? ""}
-            </span>
-          </div>
-        </TableCellFirst>
-      );
-    },
-    filterFn: (row, _id, value) => {
-      const user = row.original.user;
-      const searchValue = value.toLowerCase();
-      return (
-        (user?.name?.toLowerCase().includes(searchValue) ?? false) ||
-        (user?.email?.toLowerCase().includes(searchValue) ?? false)
-      );
-    },
-  },
-  {
-    accessorKey: "role",
-    header: ({ column }) => {
-      const roleFilterOptions = [
-        { label: "All", value: "all" },
-        { label: "Owner", value: "owner" },
-        { label: "Admin", value: "admin" },
-        { label: "Member", value: "member" },
-      ];
-
-      const currentFilter = column.getFilterValue() as string | undefined;
-
-      return (
-        <div className="flex items-center justify-center">
-          <FilterPopover
-            label="Role"
-            options={roleFilterOptions}
-            currentValue={currentFilter}
-            onChange={(value) => column.setFilterValue(value)}
-          />
-        </div>
-      );
-    },
-    filterFn: (row, id, value) => {
-      const rowValue = row.getValue(id) as string;
-      return rowValue.toLowerCase() === value.toLowerCase();
-    },
-    cell: ({ row }) => (
-      <div className="text-center">
-        <Badge
-          className={cn(
-            "w-16 rounded-sm text-center capitalize",
-            getRoleBadgeStyle(row.getValue("role")),
-          )}
-          variant={"outline"}
-        >
-          {row.getValue("role")}
-        </Badge>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "createdAt",
-    header: ({ column }) => {
-      const sortOptions = [
-        { label: "Default", value: "default" },
-        { label: "Ascending", value: "asc" },
-        { label: "Descending", value: "desc" },
-      ];
-
-      const currentSort = column.getIsSorted();
-      const currentValue = currentSort ? String(currentSort) : "default";
-
-      return (
-        <div className="flex items-center justify-end">
-          <FilterPopover
-            label="Joined At"
-            options={sortOptions}
-            currentValue={currentValue}
-            onChange={(value) => {
-              if (value === "default" || !value) {
-                column.clearSorting();
-              } else {
-                column.toggleSorting(value === "desc", false);
-              }
-            }}
-            isSort
-          />
-        </div>
-      );
-    },
-    cell: ({ row }) => {
-      const timestamp = row.getValue("createdAt") as string | Date;
-      const formatted = new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-      }).format(new Date(timestamp));
-
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
-  },
-  {
-    id: "actions",
-    header: "Action",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const member = row.original;
-
-      return (
-        <div className="flex justify-end pr-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size={"icon-sm"}>
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem
-                onClick={() =>
-                  navigator.clipboard.writeText(member.user?.email ?? "")
-                }
-              >
-                Copy email
-              </DropdownMenuItem>
-              {/* <DropdownMenuItem>Change role</DropdownMenuItem> */}
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => {
-                  setMemberToRemove(member);
-                  setRemoveDialogOpen(true);
-                }}
-              >
-                Remove member
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      );
-    },
-  },
-];
-
 export function MembersTable() {
   const { data: activeOrg } = useActiveOrganization();
   const { data: membersData, isLoading } = useMembers({
@@ -301,6 +137,170 @@ export function MembersTable() {
       toast.error("Failed to remove member");
     }
   };
+
+  const columns: ColumnDef<Member>[] = [
+    {
+      id: "user",
+      accessorFn: (row) => row.user?.name ?? row.user?.email ?? "",
+      header: () => {
+        return <span className="pl-1">User</span>;
+      },
+      cell: ({ row }) => {
+        const member = row.original;
+        const user = member.user;
+        return (
+          <TableCellFirst className="flex items-center gap-3">
+            <Avatar className="size-8">
+              <AvatarImage
+                src={user?.image ?? undefined}
+                alt={user?.name ?? ""}
+              />
+              <AvatarFallback className="text-xs">
+                {getInitials(user?.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="font-medium">{user?.name ?? "Unknown"}</span>
+              <span className="text-muted-foreground text-xs">
+                {user?.email ?? ""}
+              </span>
+            </div>
+          </TableCellFirst>
+        );
+      },
+      filterFn: (row, _id, value) => {
+        const user = row.original.user;
+        const searchValue = value.toLowerCase();
+        return (
+          (user?.name?.toLowerCase().includes(searchValue) ?? false) ||
+          (user?.email?.toLowerCase().includes(searchValue) ?? false)
+        );
+      },
+    },
+    {
+      accessorKey: "role",
+      header: ({ column }) => {
+        const roleFilterOptions = [
+          { label: "All", value: "all" },
+          { label: "Owner", value: "owner" },
+          { label: "Admin", value: "admin" },
+          { label: "Member", value: "member" },
+        ];
+
+        const currentFilter = column.getFilterValue() as string | undefined;
+
+        return (
+          <div className="flex items-center justify-center">
+            <FilterPopover
+              label="Role"
+              options={roleFilterOptions}
+              currentValue={currentFilter}
+              onChange={(value) => column.setFilterValue(value)}
+            />
+          </div>
+        );
+      },
+      filterFn: (row, id, value) => {
+        const rowValue = row.getValue(id) as string;
+        return rowValue.toLowerCase() === value.toLowerCase();
+      },
+      cell: ({ row }) => (
+        <div className="text-center">
+          <Badge
+            className={cn(
+              "w-16 rounded-sm text-center capitalize",
+              getRoleBadgeStyle(row.getValue("role")),
+            )}
+            variant={"outline"}
+          >
+            {row.getValue("role")}
+          </Badge>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => {
+        const sortOptions = [
+          { label: "Default", value: "default" },
+          { label: "Ascending", value: "asc" },
+          { label: "Descending", value: "desc" },
+        ];
+
+        const currentSort = column.getIsSorted();
+        const currentValue = currentSort ? String(currentSort) : "default";
+
+        return (
+          <div className="flex items-center justify-end">
+            <FilterPopover
+              label="Joined At"
+              options={sortOptions}
+              currentValue={currentValue}
+              onChange={(value) => {
+                if (value === "default" || !value) {
+                  column.clearSorting();
+                } else {
+                  column.toggleSorting(value === "desc", false);
+                }
+              }}
+              isSort
+            />
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const timestamp = row.getValue("createdAt") as string | Date;
+        const formatted = new Intl.DateTimeFormat("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        }).format(new Date(timestamp));
+
+        return <div className="text-right font-medium">{formatted}</div>;
+      },
+    },
+    {
+      id: "actions",
+      header: "Action",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const member = row.original;
+
+        return (
+          <div className="flex justify-end pr-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size={"icon-sm"}>
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() =>
+                    navigator.clipboard.writeText(member.user?.email ?? "")
+                  }
+                >
+                  Copy email
+                </DropdownMenuItem>
+                {/* <DropdownMenuItem>Change role</DropdownMenuItem> */}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => {
+                    setMemberToRemove(member);
+                    setRemoveDialogOpen(true);
+                  }}
+                >
+                  Remove member
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
 
   const table = useReactTable({
     data: members,
