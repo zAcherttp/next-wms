@@ -292,7 +292,7 @@ export default function VerifyingPage() {
             <Scanner
               paused={isDialogOpen}
               scanDelay={300}
-              allowMultiple={false}
+              allowMultiple={true}
               sound={true}
               onScan={handleScan}
               onError={(error) => console.error(error)}

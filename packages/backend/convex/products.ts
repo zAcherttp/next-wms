@@ -174,29 +174,12 @@ export const listWithDetails = query({
               .withIndex("skuId", (q) => q.eq("skuId", variant._id))
               .collect();
 
-            // Get barcode types
-            const barcodesWithTypes = await Promise.all(
-              barcodes.map(async (barcode) => {
-                const barcodeType = await ctx.db.get(barcode.barcodeTypeId);
-                return {
-                  ...barcode,
-                  barcodeType: barcodeType
-                    ? {
-                        _id: barcodeType._id,
-                        lookupValue: barcodeType.lookupValue,
-                        lookupCode: barcodeType.lookupCode,
-                      }
-                    : null,
-                };
-              }),
-            );
-
             // Get unit of measure
             const unitOfMeasure = await ctx.db.get(variant.unitOfMeasureId);
 
             return {
               ...variant,
-              barcodes: barcodesWithTypes,
+              barcodes,
               unitOfMeasure: unitOfMeasure
                 ? {
                     _id: unitOfMeasure._id,
@@ -952,16 +935,41 @@ export const removeVariant = mutation({
 export const addBarcode = mutation({
   args: {
     skuId: v.id("product_variants"),
-    barcodeTypeId: v.id("system_lookups"),
+    barcodeTypeId: v.optional(v.id("system_lookups")),
     barcodeValue: v.string(),
   },
   handler: async (ctx, args) => {
-    const { skuId, barcodeTypeId, barcodeValue } = args;
+    const { skuId, barcodeValue } = args;
+    let { barcodeTypeId } = args;
 
     // Validate variant exists
     const variant = await ctx.db.get(skuId);
     if (!variant || variant.isDeleted) {
       throw new Error("Variant not found or deleted");
+    }
+
+    // If barcodeTypeId not provided, get default (EAN13)
+    if (!barcodeTypeId) {
+      const defaultBarcodeType = await ctx.db
+        .query("system_lookups")
+        .withIndex("lookupType", (q) => q.eq("lookupType", "BarcodeType"))
+        .filter((q) => q.eq(q.field("lookupCode"), "EAN13"))
+        .first();
+
+      if (!defaultBarcodeType) {
+        // Fallback: get any barcode type
+        const anyBarcodeType = await ctx.db
+          .query("system_lookups")
+          .withIndex("lookupType", (q) => q.eq("lookupType", "BarcodeType"))
+          .first();
+
+        if (!anyBarcodeType) {
+          throw new Error("No barcode type found in system. Please seed system lookups first.");
+        }
+        barcodeTypeId = anyBarcodeType._id;
+      } else {
+        barcodeTypeId = defaultBarcodeType._id;
+      }
     }
 
     // Check barcode uniqueness

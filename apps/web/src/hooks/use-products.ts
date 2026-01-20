@@ -263,7 +263,7 @@ export type CreateProductWithVariantsInput = {
     isActive?: boolean;
     // Barcodes for this variant
     barcodes?: {
-      barcodeTypeId: Id<"system_lookups">;
+      barcodeTypeId?: Id<"system_lookups">;
       barcodeValue: string;
     }[];
   }[];

@@ -224,7 +224,7 @@ export default defineSchema({
 
   product_barcodes: defineTable({
     skuId: v.id("product_variants"),
-    barcodeTypeId: v.id("system_lookups"),
+    barcodeTypeId: v.optional(v.id("system_lookups")),
     barcodeValue: v.string(),
   })
     .index("skuId", ["skuId"])
