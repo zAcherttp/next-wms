@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -20,9 +21,20 @@ import {
   MoreHorizontal,
 } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
 import { InviteUserDialog } from "@/components/settings/invite-user-dialog";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -56,7 +68,7 @@ import {
 } from "@/components/ui/table";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import { useMembers } from "@/hooks/use-members";
-import { useActiveOrganization } from "@/lib/auth/client";
+import { authClient, useActiveOrganization } from "@/lib/auth/client";
 import type { Member } from "@/lib/auth/types";
 import { cn } from "@/lib/utils";
 
@@ -230,7 +242,13 @@ export const columns: ColumnDef<Member>[] = [
               </DropdownMenuItem>
               {/* <DropdownMenuItem>Change role</DropdownMenuItem> */}
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={() => {
+                  setMemberToRemove(member);
+                  setRemoveDialogOpen(true);
+                }}
+              >
                 Remove member
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -258,6 +276,31 @@ export function MembersTable() {
 
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
+
+  const queryClient = useQueryClient();
+  const [removeDialogOpen, setRemoveDialogOpen] = React.useState(false);
+  const [memberToRemove, setMemberToRemove] = React.useState<Member | null>(
+    null,
+  );
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove || !activeOrg?.id) return;
+
+    try {
+      const { data, error } = await authClient.organization.removeMember({
+        memberIdOrEmail: memberToRemove.user?.email ?? "",
+        organizationId: activeOrg.id,
+      });
+      if (error) throw error;
+
+      toast.success("Member removed successfully");
+      queryClient.invalidateQueries({ queryKey: ["members", activeOrg.id] });
+      setRemoveDialogOpen(false);
+      setMemberToRemove(null);
+    } catch (err) {
+      toast.error("Failed to remove member");
+    }
+  };
 
   const table = useReactTable({
     data: members,
@@ -442,6 +485,29 @@ export function MembersTable() {
           </div>
         </div>
       </div>
+      {removeDialogOpen && memberToRemove && (
+        <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Member</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove{" "}
+                {memberToRemove.user?.name ?? memberToRemove.user?.email} from
+                the organization? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleRemoveMember}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }
