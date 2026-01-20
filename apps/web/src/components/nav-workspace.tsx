@@ -23,11 +23,8 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar";
-import {
-  organization,
-  useActiveOrganization,
-  useListOrganizations,
-} from "@/lib/auth/client";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { organization, useListOrganizations } from "@/lib/auth/client";
 import { OrganizationDialog } from "./organization-dialog";
 import { Kbd } from "./ui/kbd";
 import { ScrollArea } from "./ui/scroll-area";
@@ -38,8 +35,8 @@ export function NavWorkspace() {
   const { isMobile } = useSidebar();
 
   const { data: organizations } = useListOrganizations();
-  const { data: activeOrg, refetch } = useActiveOrganization();
   const tenants = organizations ?? [];
+  const { organization: currentOrg } = useCurrentUser();
 
   const [open, setOpen] = useState(false);
 
@@ -49,7 +46,6 @@ export function NavWorkspace() {
         organizationId: orgId,
       });
       router.push(`/${orgSlug}/dashboard`);
-      refetch();
     } catch (error) {
       console.error("Failed to switch organization:", error);
       toast.error("Failed to switch organization");
@@ -57,8 +53,8 @@ export function NavWorkspace() {
   };
 
   const handleSettingsClick = () => {
-    if (activeOrg) {
-      router.push(`/${activeOrg.slug}/settings`);
+    if (currentOrg) {
+      router.push(`/${currentOrg.slug}/settings`);
     } else {
       // this should not happen, but just in case
       toast.error("No active organization to view settings for.");
@@ -77,11 +73,11 @@ export function NavWorkspace() {
                   className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
                 >
                   <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                    {activeOrg?.logo ? (
-                      <Avatar className="h-4 w-4 rounded">
+                    {currentOrg?.logo ? (
+                      <Avatar className="size-8 rounded-md">
                         <AvatarImage
-                          src={activeOrg.logo}
-                          alt={activeOrg.name}
+                          src={currentOrg.logo}
+                          alt={currentOrg.name}
                         />
                         <AvatarFallback>
                           <Building2 className="size-2.5" />
@@ -93,9 +89,9 @@ export function NavWorkspace() {
                   </div>
                   <div className="grid flex-1 text-left text-sm leading-tight">
                     <span className="truncate font-medium">
-                      {activeOrg?.name}
+                      {currentOrg?.name}
                     </span>
-                    <span className="truncate text-xs">{activeOrg?.slug}</span>
+                    <span className="truncate text-xs">{currentOrg?.slug}</span>
                   </div>
                   <ChevronsUpDown className="ml-auto" />
                 </SidebarMenuButton>
@@ -114,7 +110,7 @@ export function NavWorkspace() {
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={() =>
-                    router.push(`/${activeOrg?.slug}/settings/admin/members`)
+                    router.push(`/${currentOrg?.slug}/settings/admin/members`)
                   }
                 >
                   Invite and manage members

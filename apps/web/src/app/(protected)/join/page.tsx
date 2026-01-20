@@ -49,7 +49,7 @@ function JoinPageContent() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center">
+    <div className="flex min-h-screen w-full items-center justify-center bg-background">
       <div className="w-full max-w-100 space-y-6">
         {!showCreateForm ? (
           <>
