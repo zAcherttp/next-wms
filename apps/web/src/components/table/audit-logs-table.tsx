@@ -256,13 +256,26 @@ export function AuditLogsTable({
             return String(val);
           };
 
+          const truncateValue = (val: string, maxLength = 30) => {
+            if (val.length <= maxLength) return val;
+            return `${val.substring(0, maxLength)}...`;
+          };
+
+          const formattedOld = formatValue(oldValue);
+          const formattedNew = formatValue(newValue);
+
           return (
-            <div className="flex items-center gap-1">
-              <span className="text-red-500 line-through">
-                {formatValue(oldValue)}
+            <div className="flex items-center gap-1 max-w-[300px]">
+              <span
+                className="text-red-500 line-through truncate"
+                title={formattedOld}
+              >
+                {truncateValue(formattedOld)}
               </span>
-              <span className="text-muted-foreground">→</span>
-              <span className="text-green-500">{formatValue(newValue)}</span>
+              <span className="text-muted-foreground shrink-0">→</span>
+              <span className="text-green-500 truncate" title={formattedNew}>
+                {truncateValue(formattedNew)}
+              </span>
             </div>
           );
         },
