@@ -228,7 +228,7 @@ export const columns: ColumnDef<Member>[] = [
               >
                 Copy email
               </DropdownMenuItem>
-              <DropdownMenuItem>Change role</DropdownMenuItem>
+              {/* <DropdownMenuItem>Change role</DropdownMenuItem> */}
               <DropdownMenuSeparator />
               <DropdownMenuItem className="text-destructive">
                 Remove member

@@ -164,12 +164,12 @@ export default function SignInForm() {
                       autoComplete="current-password"
                       className="col-span-2 row-start-2"
                     />
-                    <Link
+                    {/* <Link
                       href="#"
                       className="col-start-2 row-start-1 ml-auto inline-block text-sm underline"
                     >
                       Forgot your password?
-                    </Link>
+                    </Link> */}
                     {isInvalid && (
                       <FieldError
                         errors={field.state.meta.errors}
