@@ -49,10 +49,15 @@ const editProductSchema = z.object({
   description: z.string().optional(),
   categoryId: z.string().min(1, "Category is required"),
   brandId: z.string().min(1, "Brand is required"),
-  storageRequirementTypeId: z.string().min(1, "Storage requirement is required"),
+  storageRequirementTypeId: z
+    .string()
+    .min(1, "Storage requirement is required"),
   trackingMethodTypeId: z.string().min(1, "Tracking method is required"),
   shelfLifeDays: z.number().min(0, "Shelf life cannot be negative").optional(),
-  reorderPoint: z.number().min(0, "Reorder point cannot be negative").optional(),
+  reorderPoint: z
+    .number()
+    .min(0, "Reorder point cannot be negative")
+    .optional(),
   isActive: z.boolean(),
 });
 
@@ -328,8 +333,16 @@ export function EditProductDialog({
                           type="number"
                           min="0"
                           placeholder="Number of days"
-                          {...field}
                           value={field.value ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(
+                              value === "" ? undefined : Number(value),
+                            );
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                         />
                       </FormControl>
                       <FormMessage />
@@ -348,8 +361,16 @@ export function EditProductDialog({
                           type="number"
                           min="0"
                           placeholder="Minimum quantity"
-                          {...field}
                           value={field.value ?? ""}
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            field.onChange(
+                              value === "" ? undefined : Number(value),
+                            );
+                          }}
+                          onBlur={field.onBlur}
+                          name={field.name}
+                          ref={field.ref}
                         />
                       </FormControl>
                       <FormMessage />
