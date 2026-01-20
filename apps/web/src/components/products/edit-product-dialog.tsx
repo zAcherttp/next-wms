@@ -45,14 +45,14 @@ import {
 
 // Form Schema
 const editProductSchema = z.object({
-  name: z.string().min(1, "Tên sản phẩm là bắt buộc"),
+  name: z.string().min(1, "Product name is required"),
   description: z.string().optional(),
-  categoryId: z.string().min(1, "Danh mục là bắt buộc"),
-  brandId: z.string().min(1, "Thương hiệu là bắt buộc"),
-  storageRequirementTypeId: z.string().min(1, "Yêu cầu lưu trữ là bắt buộc"),
-  trackingMethodTypeId: z.string().min(1, "Phương thức theo dõi là bắt buộc"),
-  shelfLifeDays: z.number().optional(),
-  reorderPoint: z.number().optional(),
+  categoryId: z.string().min(1, "Category is required"),
+  brandId: z.string().min(1, "Brand is required"),
+  storageRequirementTypeId: z.string().min(1, "Storage requirement is required"),
+  trackingMethodTypeId: z.string().min(1, "Tracking method is required"),
+  shelfLifeDays: z.number().min(0, "Shelf life cannot be negative").optional(),
+  reorderPoint: z.number().min(0, "Reorder point cannot be negative").optional(),
   isActive: z.boolean(),
 });
 
@@ -137,11 +137,11 @@ export function EditProductDialog({
         isActive: data.isActive,
       });
 
-      toast.success("Cập nhật sản phẩm thành công!");
+      toast.success("Product updated successfully!");
       onOpenChange(false);
     } catch (error) {
       toast.error(
-        error instanceof Error ? error.message : "Lỗi khi cập nhật sản phẩm",
+        error instanceof Error ? error.message : "Failed to update product",
       );
     }
   };
@@ -150,9 +150,9 @@ export function EditProductDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Chỉnh sửa sản phẩm</DialogTitle>
+          <DialogTitle>Edit Product</DialogTitle>
           <DialogDescription>
-            Cập nhật thông tin sản phẩm. Nhấn Lưu để xác nhận thay đổi.
+            Update product information. Click Save to confirm changes.
           </DialogDescription>
         </DialogHeader>
 
@@ -169,9 +169,9 @@ export function EditProductDialog({
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tên sản phẩm *</FormLabel>
+                    <FormLabel>Product Name *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nhập tên sản phẩm" {...field} />
+                      <Input placeholder="Enter product name" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -184,10 +184,10 @@ export function EditProductDialog({
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Mô tả</FormLabel>
+                    <FormLabel>Description</FormLabel>
                     <FormControl>
                       <Textarea
-                        placeholder="Nhập mô tả sản phẩm"
+                        placeholder="Enter product description"
                         rows={3}
                         {...field}
                       />
@@ -204,14 +204,14 @@ export function EditProductDialog({
                   name="categoryId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Danh mục *</FormLabel>
+                      <FormLabel>Category *</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Chọn danh mục" />
+                            <SelectValue placeholder="Select category" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -232,14 +232,14 @@ export function EditProductDialog({
                   name="brandId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Thương hiệu *</FormLabel>
+                      <FormLabel>Brand *</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Chọn thương hiệu" />
+                            <SelectValue placeholder="Select brand" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -263,14 +263,14 @@ export function EditProductDialog({
                   name="storageRequirementTypeId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Yêu cầu lưu trữ *</FormLabel>
+                      <FormLabel>Storage Requirement *</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Chọn yêu cầu lưu trữ" />
+                            <SelectValue placeholder="Select storage requirement" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -291,14 +291,14 @@ export function EditProductDialog({
                   name="trackingMethodTypeId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Phương thức theo dõi *</FormLabel>
+                      <FormLabel>Tracking Method *</FormLabel>
                       <Select
                         onValueChange={field.onChange}
                         value={field.value}
                       >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Chọn phương thức" />
+                            <SelectValue placeholder="Select tracking method" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -322,11 +322,12 @@ export function EditProductDialog({
                   name="shelfLifeDays"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Hạn sử dụng (ngày)</FormLabel>
+                      <FormLabel>Shelf Life (days)</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
-                          placeholder="Số ngày"
+                          min="0"
+                          placeholder="Number of days"
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -341,11 +342,12 @@ export function EditProductDialog({
                   name="reorderPoint"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Điểm đặt hàng lại</FormLabel>
+                      <FormLabel>Reorder Point</FormLabel>
                       <FormControl>
                         <Input
                           type="number"
-                          placeholder="Số lượng tối thiểu"
+                          min="0"
+                          placeholder="Minimum quantity"
                           {...field}
                           value={field.value ?? ""}
                         />
@@ -363,9 +365,9 @@ export function EditProductDialog({
                 render={({ field }) => (
                   <FormItem className="flex items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
-                      <FormLabel>Trạng thái hoạt động</FormLabel>
+                      <FormLabel>Active Status</FormLabel>
                       <p className="text-muted-foreground text-sm">
-                        Sản phẩm có thể được sử dụng trong hệ thống
+                        Product can be used in the system
                       </p>
                     </div>
                     <FormControl>
@@ -384,16 +386,16 @@ export function EditProductDialog({
                   variant="outline"
                   onClick={() => onOpenChange(false)}
                 >
-                  Hủy
+                  Cancel
                 </Button>
                 <Button type="submit" disabled={updateProduct.isPending}>
                   {updateProduct.isPending ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Đang lưu...
+                      Saving...
                     </>
                   ) : (
-                    "Lưu thay đổi"
+                    "Save Changes"
                   )}
                 </Button>
               </DialogFooter>
