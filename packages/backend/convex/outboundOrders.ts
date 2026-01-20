@@ -40,7 +40,7 @@ export const listOutboundOrders = query({
             ? { lookupValue: status.lookupValue, lookupCode: status.lookupCode }
             : null,
         };
-      })
+      }),
     );
 
     return enrichedOrders;
@@ -66,7 +66,7 @@ export const getOutboundOrderDetailed = query({
     const details = await ctx.db
       .query("outbound_order_details")
       .withIndex("outboundOrderId", (q) =>
-        q.eq("outboundOrderId", args.orderId)
+        q.eq("outboundOrderId", args.orderId),
       )
       .collect();
 
@@ -91,7 +91,7 @@ export const getOutboundOrderDetailed = query({
           quantityPicked: detail.quantityPicked,
           quantityPacked: detail.quantityPacked,
         };
-      })
+      }),
     );
 
     // Get related entities
@@ -102,15 +102,15 @@ export const getOutboundOrderDetailed = query({
     const totalItems = enrichedDetails.length;
     const totalQuantityRequested = enrichedDetails.reduce(
       (sum, item) => sum + item.quantityRequested,
-      0
+      0,
     );
     const totalQuantityPicked = enrichedDetails.reduce(
       (sum, item) => sum + item.quantityPicked,
-      0
+      0,
     );
     const totalQuantityPacked = enrichedDetails.reduce(
       (sum, item) => sum + item.quantityPacked,
-      0
+      0,
     );
 
     return {
@@ -146,10 +146,7 @@ export const getProductVariantsForOutbound = query({
       .query("inventory_batches")
       .withIndex("branchId", (q) => q.eq("branchId", args.branchId))
       .filter((q) =>
-        q.and(
-          q.eq(q.field("isDeleted"), false),
-          q.gt(q.field("quantity"), 0)
-        )
+        q.and(q.eq(q.field("isDeleted"), false), q.gt(q.field("quantity"), 0)),
       )
       .collect();
 
@@ -198,7 +195,7 @@ export const createOutboundOrder = mutation({
       v.object({
         variantId: v.id("product_variants"),
         quantity: v.number(),
-      })
+      }),
     ),
   },
   handler: async (ctx, args) => {
@@ -226,8 +223,8 @@ export const createOutboundOrder = mutation({
       .filter((q) =>
         q.and(
           q.eq(q.field("lookupType"), "OutboundOrderStatus"),
-          q.eq(q.field("lookupValue"), "Pending")
-        )
+          q.eq(q.field("lookupValue"), "Pending"),
+        ),
       )
       .first();
 
@@ -247,13 +244,13 @@ export const createOutboundOrder = mutation({
     const yearOrders = await ctx.db
       .query("outbound_orders")
       .withIndex("organizationId", (q) =>
-        q.eq("organizationId", branch.organizationId)
+        q.eq("organizationId", branch.organizationId),
       )
       .filter((q) =>
         q.and(
           q.gte(q.field("orderDate"), startOfYear),
-          q.lte(q.field("orderDate"), endOfYear)
-        )
+          q.lte(q.field("orderDate"), endOfYear),
+        ),
       )
       .collect();
 
@@ -290,7 +287,7 @@ export const createOutboundOrder = mutation({
       const notificationCategory = await ctx.db
         .query("system_lookups")
         .withIndex("lookupType_lookupCode", (q) =>
-          q.eq("lookupType", "NotificationCategory").eq("lookupCode", "INFO")
+          q.eq("lookupType", "NotificationCategory").eq("lookupCode", "INFO"),
         )
         .first();
 
@@ -298,7 +295,7 @@ export const createOutboundOrder = mutation({
       const priorityLookup = await ctx.db
         .query("system_lookups")
         .withIndex("lookupType_lookupCode", (q) =>
-          q.eq("lookupType", "Priority").eq("lookupCode", "HIGH")
+          q.eq("lookupType", "Priority").eq("lookupCode", "HIGH"),
         )
         .first();
 
@@ -344,15 +341,15 @@ async function ensureSystemLookup(
   lookupType: string,
   lookupCode: string,
   lookupValue: string,
-  description: string
+  description: string,
 ) {
   const existing = await ctx.db
     .query("system_lookups")
     .filter((q: any) =>
       q.and(
         q.eq(q.field("lookupType"), lookupType),
-        q.eq(q.field("lookupCode"), lookupCode)
-      )
+        q.eq(q.field("lookupCode"), lookupCode),
+      ),
     )
     .first();
 
@@ -423,7 +420,7 @@ export const startLoading = mutation({
       "OutboundOrderStatus",
       "LOADING",
       "Loading",
-      "Loading goods onto vehicle"
+      "Loading goods onto vehicle",
     );
 
     await ctx.db.patch(args.orderId, {
@@ -453,13 +450,27 @@ export const completeLoading = mutation({
       throw new Error("Order must be in 'Loading' status to complete");
     }
 
+    // Update quantityPacked to match quantityPicked for all order details
+    const orderDetails = await ctx.db
+      .query("outbound_order_details")
+      .withIndex("outboundOrderId", (q) =>
+        q.eq("outboundOrderId", args.orderId),
+      )
+      .collect();
+
+    for (const detail of orderDetails) {
+      await ctx.db.patch(detail._id, {
+        quantityPacked: detail.quantityPicked,
+      });
+    }
+
     // Get or create Shipped status
     const shippedStatusId = await ensureSystemLookup(
       ctx,
       "OutboundOrderStatus",
       "SHIPPED",
       "Shipped",
-      "Order has been shipped"
+      "Order has been shipped",
     );
 
     await ctx.db.patch(args.orderId, {

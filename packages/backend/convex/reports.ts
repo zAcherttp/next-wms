@@ -1,4 +1,5 @@
 import { v } from "convex/values";
+import type { Doc, Id } from "./_generated/dataModel";
 import { query } from "./_generated/server";
 
 // ================================================================
@@ -24,8 +25,8 @@ export const getInboundReportSummary = query({
       .filter((q) =>
         q.and(
           q.gte(q.field("receivedAt"), startDate),
-          q.lte(q.field("receivedAt"), endDate)
-        )
+          q.lte(q.field("receivedAt"), endDate),
+        ),
       )
       .collect();
 
@@ -35,7 +36,7 @@ export const getInboundReportSummary = query({
         const details = await ctx.db
           .query("receive_sessions_details")
           .withIndex("receiveSessionId", (q) =>
-            q.eq("receiveSessionId", session._id)
+            q.eq("receiveSessionId", session._id),
           )
           .collect();
 
@@ -50,11 +51,11 @@ export const getInboundReportSummary = query({
 
         const totalReceived = details.reduce(
           (sum, d) => sum + d.quantityReceived,
-          0
+          0,
         );
         const totalExpected = details.reduce(
           (sum, d) => sum + d.quantityExpected,
-          0
+          0,
         );
 
         return {
@@ -69,18 +70,18 @@ export const getInboundReportSummary = query({
               ? Math.round((totalReceived / totalExpected) * 100)
               : 100,
         };
-      })
+      }),
     );
 
     // Calculate KPIs
     const totalSessions = sessionDetails.length;
     const totalItemsReceived = sessionDetails.reduce(
       (sum, s) => sum + s.totalReceived,
-      0
+      0,
     );
     const totalItemsExpected = sessionDetails.reduce(
       (sum, s) => sum + s.totalExpected,
-      0
+      0,
     );
     const avgItemsPerSession =
       totalSessions > 0 ? Math.round(totalItemsReceived / totalSessions) : 0;
@@ -102,7 +103,7 @@ export const getInboundReportSummary = query({
         }
         return acc;
       },
-      [] as { status: string; statusCode: string; count: number }[]
+      [] as { status: string; statusCode: string; count: number }[],
     );
 
     // Group by supplier
@@ -122,7 +123,7 @@ export const getInboundReportSummary = query({
         }
         return acc;
       },
-      [] as { supplier: string; sessions: number; itemsReceived: number }[]
+      [] as { supplier: string; sessions: number; itemsReceived: number }[],
     );
 
     // Sort by items received descending
@@ -135,7 +136,7 @@ export const getInboundReportSummary = query({
         value: s.totalReceived,
       })),
       startDate,
-      endDate
+      endDate,
     );
 
     return {
@@ -170,8 +171,8 @@ export const getInboundReportSessions = query({
       .filter((q) =>
         q.and(
           q.gte(q.field("receivedAt"), startDate),
-          q.lte(q.field("receivedAt"), endDate)
-        )
+          q.lte(q.field("receivedAt"), endDate),
+        ),
       )
       .order("desc")
       .collect();
@@ -181,7 +182,7 @@ export const getInboundReportSessions = query({
         const details = await ctx.db
           .query("receive_sessions_details")
           .withIndex("receiveSessionId", (q) =>
-            q.eq("receiveSessionId", session._id)
+            q.eq("receiveSessionId", session._id),
           )
           .collect();
 
@@ -194,11 +195,11 @@ export const getInboundReportSessions = query({
 
         const totalReceived = details.reduce(
           (sum, d) => sum + d.quantityReceived,
-          0
+          0,
         );
         const totalExpected = details.reduce(
           (sum, d) => sum + d.quantityExpected,
-          0
+          0,
         );
 
         return {
@@ -218,7 +219,7 @@ export const getInboundReportSessions = query({
               ? Math.round((totalReceived / totalExpected) * 100)
               : 100,
         };
-      })
+      }),
     );
 
     return enrichedSessions;
@@ -274,14 +275,14 @@ export const getInventoryReportSummary = query({
           status,
           value: (variant?.costPrice ?? 0) * batch.quantity,
         };
-      })
+      }),
     );
 
     // Calculate KPIs
     const totalSKUs = new Set(enrichedBatches.map((b) => b.skuId)).size;
     const totalQuantity = enrichedBatches.reduce(
       (sum, b) => sum + b.quantity,
-      0
+      0,
     );
     const totalValue = enrichedBatches.reduce((sum, b) => sum + b.value, 0);
 
@@ -292,17 +293,17 @@ export const getInventoryReportSummary = query({
         b.expiresAt &&
         b.expiresAt > endDate &&
         b.expiresAt <= thirtyDaysFromNow &&
-        b.quantity > 0
+        b.quantity > 0,
     );
 
     // Already expired
     const expired = enrichedBatches.filter(
-      (b) => b.expiresAt && b.expiresAt <= endDate && b.quantity > 0
+      (b) => b.expiresAt && b.expiresAt <= endDate && b.quantity > 0,
     );
 
     // Low stock items (quantity <= 10)
     const lowStockBatches = enrichedBatches.filter(
-      (b) => b.quantity > 0 && b.quantity <= 10
+      (b) => b.quantity > 0 && b.quantity <= 10,
     );
 
     // Group by category for chart
@@ -329,7 +330,7 @@ export const getInventoryReportSummary = query({
         quantity: number;
         value: number;
         skuCount: number;
-      }[]
+      }[],
     );
 
     // Sort by value descending
@@ -352,7 +353,7 @@ export const getInventoryReportSummary = query({
         }
         return acc;
       },
-      [] as { zone: string; quantity: number; value: number }[]
+      [] as { zone: string; quantity: number; value: number }[],
     );
 
     // Sort by value descending
@@ -366,7 +367,7 @@ export const getInventoryReportSummary = query({
       const transactions = await ctx.db
         .query("inventory_transactions")
         .withIndex("organizationId", (q) =>
-          q.eq("organizationId", branch.organizationId)
+          q.eq("organizationId", branch.organizationId),
         )
         .collect();
 
@@ -416,7 +417,7 @@ export const getInventoryReportItems = query({
       .query("inventory_batches")
       .withIndex("branchId", (q) => q.eq("branchId", branchId))
       .filter((q) =>
-        q.and(q.eq(q.field("isDeleted"), false), q.gt(q.field("quantity"), 0))
+        q.and(q.eq(q.field("isDeleted"), false), q.gt(q.field("quantity"), 0)),
       )
       .collect();
 
@@ -461,7 +462,7 @@ export const getInventoryReportItems = query({
           isExpired,
           isLowStock,
         };
-      })
+      }),
     );
 
     // Sort by value descending
@@ -495,8 +496,8 @@ export const getOutboundReportSummary = query({
         q.and(
           q.eq(q.field("isDeleted"), false),
           q.gte(q.field("orderDate"), startDate),
-          q.lte(q.field("orderDate"), endDate)
-        )
+          q.lte(q.field("orderDate"), endDate),
+        ),
       )
       .collect();
 
@@ -506,7 +507,7 @@ export const getOutboundReportSummary = query({
         const details = await ctx.db
           .query("outbound_order_details")
           .withIndex("outboundOrderId", (q) =>
-            q.eq("outboundOrderId", order._id)
+            q.eq("outboundOrderId", order._id),
           )
           .collect();
 
@@ -515,15 +516,15 @@ export const getOutboundReportSummary = query({
 
         const totalRequested = details.reduce(
           (sum, d) => sum + d.quantityRequested,
-          0
+          0,
         );
         const totalPicked = details.reduce(
           (sum, d) => sum + d.quantityPicked,
-          0
+          0,
         );
         const totalPacked = details.reduce(
           (sum, d) => sum + d.quantityPacked,
-          0
+          0,
         );
 
         return {
@@ -540,18 +541,18 @@ export const getOutboundReportSummary = query({
               ? Math.round((totalPacked / totalRequested) * 100)
               : 0,
         };
-      })
+      }),
     );
 
     // Calculate KPIs
     const totalOrders = enrichedOrders.length;
     const totalItemsShipped = enrichedOrders.reduce(
       (sum, o) => sum + o.totalPacked,
-      0
+      0,
     );
     const totalItemsRequested = enrichedOrders.reduce(
       (sum, o) => sum + o.totalRequested,
-      0
+      0,
     );
     const avgItemsPerOrder =
       totalOrders > 0 ? Math.round(totalItemsShipped / totalOrders) : 0;
@@ -573,20 +574,64 @@ export const getOutboundReportSummary = query({
         }
         return acc;
       },
-      [] as { status: string; statusCode: string; count: number }[]
+      [] as { status: string; statusCode: string; count: number }[],
     );
 
-    // Get daily trend data
+    // Get daily trend data - count shipped orders per day
     const dailyTrend = getDailyTrendData(
       enrichedOrders.map((o) => ({
         date: o.orderDate,
-        value: o.totalPacked,
+        value: 1, // Count each order as 1
       })),
       startDate,
-      endDate
+      endDate,
     );
 
-    // Top products shipped
+    // Top products shipped - batch fetch variants and products for performance
+    // First, collect all unique SKU IDs from all order details
+    const allSkuIds = new Set<Id<"product_variants">>();
+    for (const order of enrichedOrders) {
+      for (const detail of order.details) {
+        allSkuIds.add(detail.skuId);
+      }
+    }
+
+    // Batch fetch all variants
+    const variantPromises = Array.from(allSkuIds).map((skuId) =>
+      ctx.db.get(skuId),
+    );
+    const variants = await Promise.all(variantPromises);
+
+    // Create a map for quick lookup (use String() for consistent key comparison)
+    const variantMap = new Map<string, Doc<"product_variants">>();
+    for (const variant of variants) {
+      if (variant) {
+        variantMap.set(String(variant._id), variant);
+      }
+    }
+
+    // Collect all unique product IDs and batch fetch products
+    const productIds = new Set<Id<"products">>();
+    for (const variant of variants) {
+      if (variant) {
+        productIds.add(variant.productId);
+      }
+    }
+
+    const productPromises = Array.from(productIds).map((productId) =>
+      ctx.db.get(productId),
+    );
+    const products = await Promise.all(productPromises);
+
+    // Create a map for quick lookup (use String() for consistent key comparison)
+    const productMap = new Map<string, Doc<"products">>();
+    for (const product of products) {
+      if (product) {
+        productMap.set(String(product._id), product);
+      }
+    }
+
+    // Now calculate product stats using the cached lookups
     const productStats = new Map<
       string,
       { skuCode: string; productName: string; quantity: number }
@@ -594,9 +639,9 @@ export const getOutboundReportSummary = query({
 
     for (const order of enrichedOrders) {
       for (const detail of order.details) {
-        const variant = await ctx.db.get(detail.skuId);
+        const variant = variantMap.get(String(detail.skuId));
         if (variant) {
-          const product = await ctx.db.get(variant.productId);
+          const product = productMap.get(String(variant.productId));
           const key = variant.skuCode;
           const existing = productStats.get(key);
           if (existing) {
@@ -624,19 +669,19 @@ export const getOutboundReportSummary = query({
         q.and(
           q.eq(q.field("isDeleted"), false),
           q.gte(q.field("startedAt"), startDate),
-          q.lte(q.field("startedAt"), endDate)
-        )
+          q.lte(q.field("startedAt"), endDate),
+        ),
       )
       .collect();
 
     const completedPickingSessions = pickingSessions.filter(
-      (s) => s.completedAt
+      (s) => s.completedAt,
     );
     const avgPickingTimeMs =
       completedPickingSessions.length > 0
         ? completedPickingSessions.reduce(
             (sum, s) => sum + ((s.completedAt ?? 0) - (s.startedAt ?? 0)),
-            0
+            0,
           ) / completedPickingSessions.length
         : 0;
 
@@ -675,8 +720,8 @@ export const getOutboundReportOrders = query({
         q.and(
           q.eq(q.field("isDeleted"), false),
           q.gte(q.field("orderDate"), startDate),
-          q.lte(q.field("orderDate"), endDate)
-        )
+          q.lte(q.field("orderDate"), endDate),
+        ),
       )
       .order("desc")
       .collect();
@@ -686,7 +731,7 @@ export const getOutboundReportOrders = query({
         const details = await ctx.db
           .query("outbound_order_details")
           .withIndex("outboundOrderId", (q) =>
-            q.eq("outboundOrderId", order._id)
+            q.eq("outboundOrderId", order._id),
           )
           .collect();
 
@@ -695,15 +740,15 @@ export const getOutboundReportOrders = query({
 
         const totalRequested = details.reduce(
           (sum, d) => sum + d.quantityRequested,
-          0
+          0,
         );
         const totalPicked = details.reduce(
           (sum, d) => sum + d.quantityPicked,
-          0
+          0,
         );
         const totalPacked = details.reduce(
           (sum, d) => sum + d.quantityPacked,
-          0
+          0,
         );
 
         return {
@@ -724,7 +769,7 @@ export const getOutboundReportOrders = query({
               ? Math.round((totalPacked / totalRequested) * 100)
               : 0,
         };
-      })
+      }),
     );
 
     return enrichedOrders;
@@ -758,24 +803,26 @@ export const getDashboardSummary = query({
       .query("inventory_batches")
       .withIndex("branchId", (q) => q.eq("branchId", branchId))
       .filter((q) =>
-        q.and(q.eq(q.field("isDeleted"), false), q.gt(q.field("quantity"), 0))
+        q.and(q.eq(q.field("isDeleted"), false), q.gt(q.field("quantity"), 0)),
       )
       .collect();
 
     const totalInventory = inventoryBatches.reduce(
       (sum, b) => sum + b.quantity,
-      0
+      0,
     );
     const uniqueSkus = new Set(inventoryBatches.map((b) => b.skuId)).size;
 
     // ========== KPI: Low Stock & Expiring ==========
-    const lowStockCount = inventoryBatches.filter((b) => b.quantity <= 10).length;
+    const lowStockCount = inventoryBatches.filter(
+      (b) => b.quantity <= 10,
+    ).length;
     const thirtyDaysFromNow = endDate + 30 * 24 * 60 * 60 * 1000;
     const expiringSoonCount = inventoryBatches.filter(
       (b) =>
         b.expiresAt &&
         b.expiresAt > endDate &&
-        b.expiresAt <= thirtyDaysFromNow
+        b.expiresAt <= thirtyDaysFromNow,
     ).length;
 
     // ========== KPI: Pending Inbound (Purchase Orders) ==========
@@ -788,13 +835,13 @@ export const getDashboardSummary = query({
     const pendingStatusLookup = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "PENDING")
+        q.eq("lookupType", "PurchaseOrderStatus").eq("lookupCode", "PENDING"),
       )
       .first();
 
     const pendingInboundCount = pendingStatusLookup
       ? purchaseOrders.filter(
-          (po) => po.purchaseOrderStatusTypeId === pendingStatusLookup._id
+          (po) => po.purchaseOrderStatusTypeId === pendingStatusLookup._id,
         ).length
       : 0;
 
@@ -808,26 +855,26 @@ export const getDashboardSummary = query({
     const readyStatusLookup = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "OutboundStatus").eq("lookupCode", "READY")
+        q.eq("lookupType", "OutboundStatus").eq("lookupCode", "READY"),
       )
       .first();
 
     const pendingOutboundLookup = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "OutboundStatus").eq("lookupCode", "PENDING")
+        q.eq("lookupType", "OutboundStatus").eq("lookupCode", "PENDING"),
       )
       .first();
 
     const outboundReadyCount = readyStatusLookup
       ? outboundOrders.filter(
-          (o) => o.outboundStatusTypeId === readyStatusLookup._id
+          (o) => o.outboundStatusTypeId === readyStatusLookup._id,
         ).length
       : 0;
 
     const outboundPendingCount = pendingOutboundLookup
       ? outboundOrders.filter(
-          (o) => o.outboundStatusTypeId === pendingOutboundLookup._id
+          (o) => o.outboundStatusTypeId === pendingOutboundLookup._id,
         ).length
       : 0;
 
@@ -841,13 +888,13 @@ export const getDashboardSummary = query({
     const pendingReturnLookup = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "ReturnStatus").eq("lookupCode", "PENDING")
+        q.eq("lookupType", "ReturnStatus").eq("lookupCode", "PENDING"),
       )
       .first();
 
     const pendingReturnsCount = pendingReturnLookup
       ? returnRequests.filter(
-          (r) => r.returnStatusTypeId === pendingReturnLookup._id
+          (r) => r.returnStatusTypeId === pendingReturnLookup._id,
         ).length
       : 0;
 
@@ -860,34 +907,34 @@ export const getDashboardSummary = query({
     const pendingReceiveLookup = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "ReceiveSessionStatus").eq("lookupCode", "PENDING")
+        q.eq("lookupType", "ReceiveSessionStatus").eq("lookupCode", "PENDING"),
       )
       .first();
 
     const pendingReceiveCount = pendingReceiveLookup
       ? receiveSessions.filter(
-          (rs) => rs.receiveSessionStatusTypeId === pendingReceiveLookup._id
+          (rs) => rs.receiveSessionStatusTypeId === pendingReceiveLookup._id,
         ).length
       : 0;
 
     // ========== Order Activity Trend (for charts) ==========
     const inboundInRange = receiveSessions.filter(
-      (rs) => rs.receivedAt >= startDate && rs.receivedAt <= endDate
+      (rs) => rs.receivedAt >= startDate && rs.receivedAt <= endDate,
     );
     const outboundInRange = outboundOrders.filter(
-      (o) => o.orderDate >= startDate && o.orderDate <= endDate
+      (o) => o.orderDate >= startDate && o.orderDate <= endDate,
     );
 
     const inboundTrend = getDailyTrendData(
       inboundInRange.map((rs) => ({ date: rs.receivedAt, value: 1 })),
       startDate,
-      endDate
+      endDate,
     );
 
     const outboundTrend = getDailyTrendData(
       outboundInRange.map((o) => ({ date: o.orderDate, value: 1 })),
       startDate,
-      endDate
+      endDate,
     );
 
     // Combine trends for chart
@@ -900,7 +947,9 @@ export const getDashboardSummary = query({
     // ========== Recent Activity (from audit_logs) ==========
     const auditLogs = await ctx.db
       .query("audit_logs")
-      .withIndex("organizationId", (q) => q.eq("organizationId", organizationId))
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organizationId),
+      )
       .order("desc")
       .take(20);
 
@@ -918,7 +967,7 @@ export const getDashboardSummary = query({
           notes: log.notes,
           timestamp: log._creationTime,
         };
-      })
+      }),
     );
 
     // ========== Recent Orders (for table) ==========
@@ -933,7 +982,7 @@ export const getDashboardSummary = query({
           const details = await ctx.db
             .query("purchase_order_details")
             .withIndex("purchaseOrderId", (q) =>
-              q.eq("purchaseOrderId", po._id)
+              q.eq("purchaseOrderId", po._id),
             )
             .collect();
 
@@ -947,7 +996,7 @@ export const getDashboardSummary = query({
             createdAt: po.orderedAt,
             supplierName: supplier?.name,
           };
-        })
+        }),
     );
 
     const recentOutboundOrders = await Promise.all(
@@ -959,9 +1008,7 @@ export const getDashboardSummary = query({
           const status = await ctx.db.get(o.outboundStatusTypeId);
           const details = await ctx.db
             .query("outbound_order_details")
-            .withIndex("outboundOrderId", (q) =>
-              q.eq("outboundOrderId", o._id)
-            )
+            .withIndex("outboundOrderId", (q) => q.eq("outboundOrderId", o._id))
             .collect();
 
           return {
@@ -974,7 +1021,7 @@ export const getDashboardSummary = query({
             createdAt: o.orderDate,
             trackingNumber: o.trackingNumber,
           };
-        })
+        }),
     );
 
     // Combine and sort recent orders
@@ -986,13 +1033,13 @@ export const getDashboardSummary = query({
     const completedOutboundLookup = await ctx.db
       .query("system_lookups")
       .withIndex("lookupType_lookupCode", (q) =>
-        q.eq("lookupType", "OutboundStatus").eq("lookupCode", "SHIPPED")
+        q.eq("lookupType", "OutboundStatus").eq("lookupCode", "SHIPPED"),
       )
       .first();
 
     const shippedCount = completedOutboundLookup
       ? outboundInRange.filter(
-          (o) => o.outboundStatusTypeId === completedOutboundLookup._id
+          (o) => o.outboundStatusTypeId === completedOutboundLookup._id,
         ).length
       : 0;
 
@@ -1036,7 +1083,7 @@ export const getDashboardSummary = query({
 function getDailyTrendData(
   data: { date: number; value: number }[],
   startDate: number,
-  endDate: number
+  endDate: number,
 ): { date: string; value: number }[] {
   const result: { date: string; value: number }[] = [];
   const dayMs = 24 * 60 * 60 * 1000;

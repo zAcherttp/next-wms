@@ -123,10 +123,13 @@ export default function OutboundReportPage() {
   // Filter state
   const [filter, setFilter] = React.useState<OutboundFilter>("all");
 
-  // Calculate date range timestamps
-  const startDate =
-    dateRange.from?.getTime() ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const endDate = dateRange.to?.getTime() ?? Date.now();
+  // Calculate date range timestamps - memoize to prevent query key instability
+  const { startDate, endDate } = React.useMemo(() => {
+    const end = dateRange.to?.getTime() ?? Date.now();
+    const start =
+      dateRange.from?.getTime() ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return { startDate: start, endDate: end };
+  }, [dateRange.from, dateRange.to]);
 
   // Fetch report summary
   const { data: summary, isPending: isSummaryPending } = useQuery({
@@ -695,7 +698,7 @@ export default function OutboundReportPage() {
         <Card>
           <CardHeader>
             <CardTitle>Daily Shipment Trend</CardTitle>
-            <CardDescription>Items shipped per day over time</CardDescription>
+            <CardDescription>Orders shipped per day over time</CardDescription>
           </CardHeader>
           <CardContent>
             {isSummaryPending ? (
@@ -726,7 +729,7 @@ export default function OutboundReportPage() {
                     tick={{ fontSize: 12 }}
                     interval="preserveStartEnd"
                   />
-                  <YAxis tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
                   <Tooltip />
                   <Area
                     type="monotone"
@@ -734,7 +737,7 @@ export default function OutboundReportPage() {
                     stroke="#2563eb"
                     fillOpacity={1}
                     fill="url(#colorShipped)"
-                    name="Items Shipped"
+                    name="Orders Shipped"
                   />
                 </AreaChart>
               </ResponsiveContainer>

@@ -113,10 +113,13 @@ export default function InboundReportPage() {
   // Filter state
   const [filter, setFilter] = React.useState<InboundFilter>("all");
 
-  // Calculate date range timestamps
-  const startDate =
-    dateRange.from?.getTime() ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
-  const endDate = dateRange.to?.getTime() ?? Date.now();
+  // Calculate date range timestamps - memoize to prevent query key instability
+  const { startDate, endDate } = React.useMemo(() => {
+    const end = dateRange.to?.getTime() ?? Date.now();
+    const start =
+      dateRange.from?.getTime() ?? Date.now() - 30 * 24 * 60 * 60 * 1000;
+    return { startDate: start, endDate: end };
+  }, [dateRange.from, dateRange.to]);
 
   // Fetch report summary
   const { data: summary, isPending: isSummaryPending } = useQuery({
