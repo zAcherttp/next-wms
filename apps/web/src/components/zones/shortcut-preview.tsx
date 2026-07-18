@@ -113,7 +113,7 @@ export const ShortcutPreview: React.FC = () => {
             <KbdGroup>
               {shortcut.keys.map((key, keyIndex) => (
                 <span
-                  key={`${shortcut.label}-${key}-${keyIndex}`}
+                  key={`${shortcut.label}-${key}`}
                   className="inline-flex items-center gap-0.5"
                 >
                   {keyIndex > 0 && (

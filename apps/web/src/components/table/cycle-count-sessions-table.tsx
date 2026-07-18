@@ -126,10 +126,10 @@ export function CycleCountSessionsTable() {
     },
   });
 
-  const handleDeleteClick = (sessionId: string) => {
+  const handleDeleteClick = React.useCallback((sessionId: string) => {
     setSessionToDelete(sessionId);
     setDeleteDialogOpen(true);
-  };
+  }, []);
 
   const handleConfirmDelete = () => {
     if (sessionToDelete) {
@@ -321,7 +321,7 @@ export function CycleCountSessionsTable() {
         },
       },
     ],
-    [handleViewDetailsCallback, router, params.workspace],
+    [handleViewDetailsCallback, router, params.workspace, handleDeleteClick],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
