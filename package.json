@@ -9,21 +9,26 @@
   ],
   "scripts": {
     "build": "turbo build",
+    "build:web": "turbo -F web build",
     "check": "biome check --write .",
     "check-types": "turbo check-types",
     "dev": "turbo -F web dev -F @wms/backend db:app:dev",
     "dev:web": "turbo -F web dev",
-    "dev:backend": "turbo -F @wms/backend db:app:dev"
+    "dev:backend": "turbo -F @wms/backend db:app:dev",
+    "deploy:vercel": "turbo -F @wms/backend deploy:vercel",
+    "seed:auth": "turbo -F @wms/backend db:auth:seed-demo",
+    "seed:demo": "turbo -F @wms/backend seed:demo",
+    "reset:demo": "turbo -F @wms/backend reset:demo"
   },
   "dependencies": {
-    "dotenv": "^17.2.3",
+    "dotenv": "catalog:",
     "zod": "catalog:"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.3.11",
+    "@biomejs/biome": "^2.5.4",
     "@types/node": "catalog:",
-    "tsdown": "^0.15.12",
-    "turbo": "^2.7.5"
+    "tsdown": "^0.22.9",
+    "turbo": "^2.10.5"
   },
-  "packageManager": "pnpm@10.28.0"
+  "packageManager": "pnpm@11.10.0"
 }

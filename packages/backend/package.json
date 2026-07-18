@@ -34,35 +34,41 @@
     }
   },
   "scripts": {
+    "check-types": "tsc --noEmit",
     "db:app:dev": "convex dev",
     "db:app:setup": "convex dev --configure --until-success && convex dashboard",
     "db:auth:generate": "drizzle-kit generate",
     "db:auth:migrate": "drizzle-kit migrate",
     "db:auth:push": "drizzle-kit push",
+    "db:auth:seed-demo": "tsx auth/seed-demo.ts",
     "db:auth:studio": "drizzle-kit studio",
-    "dev:email": "email dev -p 3001"
+    "deploy:vercel": "convex deploy --cmd-url-env-var-name NEXT_PUBLIC_CONVEX_URL --cmd \"corepack pnpm --dir ../.. build:web\" --preview-run seedMockData:seedAllTestData",
+    "dev:email": "email dev -p 3001",
+    "reset:demo": "convex run myFunctions:resetDemoData",
+    "seed:demo": "convex run seedMockData:seedAllTestData"
   },
   "author": "",
   "license": "ISC",
   "description": "",
   "devDependencies": {
-    "@react-email/components": "^1.0.4",
-    "@react-email/preview-server": "4.3.2",
+    "@react-email/ui": "6.9.0",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "drizzle-kit": "^0.31.8",
+    "drizzle-kit": "^0.31.10",
     "react": "catalog:",
     "react-dom": "catalog:",
-    "react-email": "4.3.2",
-    "tsx": "^4.21.0",
+    "react-email": "6.9.0",
+    "tsx": "^4.23.1",
     "typescript": "catalog:"
   },
   "dependencies": {
-    "@neondatabase/serverless": "^1.0.2",
+    "@neondatabase/serverless": "^1.1.0",
     "better-auth": "catalog:",
     "convex": "catalog:",
-    "drizzle-orm": "^0.45.0",
-    "resend": "^6.5.2"
+    "dotenv": "catalog:",
+    "drizzle-orm": "^0.45.2",
+    "resend": "^6.17.2",
+    "zod": "catalog:"
   }
 }
