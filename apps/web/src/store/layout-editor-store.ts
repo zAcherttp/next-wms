@@ -119,4 +119,4 @@ export const canRedo = () => {
 // Re-export Types
 // ============================================================================
 
-export type { StorageEntity, EntityStatus, BlockType };
+export type { BlockType, EntityStatus, StorageEntity };

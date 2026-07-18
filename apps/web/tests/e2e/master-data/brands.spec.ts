@@ -1,6 +1,9 @@
-import { test, expect } from "@playwright/test";
-import { loginAndSelectOrg, TEST_USERS, TEST_ORG } from "../helpers/auth.helper";
-import { TOAST_SELECTOR } from "../helpers/constants";
+import { expect, test } from "@playwright/test";
+import {
+  loginAndSelectOrg,
+  TEST_ORG,
+  TEST_USERS,
+} from "../helpers/auth.helper";
 
 const BASE = `/${TEST_ORG.slug}/master-data/brands`;
 
@@ -55,15 +58,23 @@ test.describe("Brands", () => {
 
   test.describe("UC20: Edit Brand", () => {
     test("[BR75] Empty name shows error", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
-    test("[BR76] Duplicate name (excluding self) rejected", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+    test("[BR76] Duplicate name (excluding self) rejected", async ({
+      page,
+    }) => {
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     test("[BR77] Success toast shown", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
   });
 
@@ -71,19 +82,27 @@ test.describe("Brands", () => {
 
   test.describe("UC21: Delete Brand", () => {
     test("[BR78] Delete confirmation dialog appears", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     test("[BR79] Brand with products cannot be deleted", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     test("[BR80] Brand without products is hard deleted", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     test("[BR81] Deactivate brand alternative", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
   });
 
@@ -91,7 +110,9 @@ test.describe("Brands", () => {
 
   test.describe("UC22: List & Search Brands", () => {
     test("[BR82] Brand list shows product count", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     test("[BR83] Search by brand name (case-insensitive)", async ({ page }) => {

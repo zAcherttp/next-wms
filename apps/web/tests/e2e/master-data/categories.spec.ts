@@ -1,6 +1,9 @@
-import { test, expect } from "@playwright/test";
-import { loginAndSelectOrg, TEST_USERS, TEST_ORG } from "../helpers/auth.helper";
-import { TOAST_SELECTOR } from "../helpers/constants";
+import { expect, test } from "@playwright/test";
+import {
+  loginAndSelectOrg,
+  TEST_ORG,
+  TEST_USERS,
+} from "../helpers/auth.helper";
 
 const BASE = `/${TEST_ORG.slug}/master-data/categories`;
 
@@ -45,15 +48,21 @@ test.describe("Categories", () => {
 
   test.describe("UC16: Edit Category", () => {
     test("[BR62] Empty name shows error", async ({ page }) => {
-      await expect(page.locator("tbody tr, [data-category]").first()).toBeVisible({ timeout: 10_000 });
+      await expect(
+        page.locator("tbody tr, [data-category]").first(),
+      ).toBeVisible({ timeout: 10_000 });
     });
 
     test("[BR63] Successful rename", async ({ page }) => {
-      await expect(page.locator("tbody tr, [data-category]").first()).toBeVisible({ timeout: 10_000 });
+      await expect(
+        page.locator("tbody tr, [data-category]").first(),
+      ).toBeVisible({ timeout: 10_000 });
     });
 
     test("[BR64] Success toast shown", async ({ page }) => {
-      await expect(page.locator("tbody tr, [data-category]").first()).toBeVisible({ timeout: 10_000 });
+      await expect(
+        page.locator("tbody tr, [data-category]").first(),
+      ).toBeVisible({ timeout: 10_000 });
     });
   });
 
@@ -61,19 +70,29 @@ test.describe("Categories", () => {
 
   test.describe("UC17: Delete Category", () => {
     test("[BR65] Delete confirmation dialog appears", async ({ page }) => {
-      await expect(page.locator("tbody tr, [data-category]").first()).toBeVisible({ timeout: 10_000 });
+      await expect(
+        page.locator("tbody tr, [data-category]").first(),
+      ).toBeVisible({ timeout: 10_000 });
     });
 
-    test("[BR66] Category with products cannot be deleted", async ({ page }) => {
-      await expect(page.locator("tbody tr, [data-category]").first()).toBeVisible({ timeout: 10_000 });
+    test("[BR66] Category with products cannot be deleted", async ({
+      page,
+    }) => {
+      await expect(
+        page.locator("tbody tr, [data-category]").first(),
+      ).toBeVisible({ timeout: 10_000 });
     });
 
     test("[BR67] Empty category soft deleted", async ({ page }) => {
-      await expect(page.locator("tbody tr, [data-category]").first()).toBeVisible({ timeout: 10_000 });
+      await expect(
+        page.locator("tbody tr, [data-category]").first(),
+      ).toBeVisible({ timeout: 10_000 });
     });
 
     test("[BR68] Success toast shown", async ({ page }) => {
-      await expect(page.locator("tbody tr, [data-category]").first()).toBeVisible({ timeout: 10_000 });
+      await expect(
+        page.locator("tbody tr, [data-category]").first(),
+      ).toBeVisible({ timeout: 10_000 });
     });
   });
 
@@ -81,10 +100,14 @@ test.describe("Categories", () => {
 
   test.describe("UC18: List & Search Categories", () => {
     test("[BR69] Category list loads (paginated or tree)", async ({ page }) => {
-      await expect(page.locator("tbody tr, [data-category]").first()).toBeVisible({ timeout: 10_000 });
+      await expect(
+        page.locator("tbody tr, [data-category]").first(),
+      ).toBeVisible({ timeout: 10_000 });
     });
 
-    test("[BR70] Search by category name (case-insensitive)", async ({ page }) => {
+    test("[BR70] Search by category name (case-insensitive)", async ({
+      page,
+    }) => {
       const searchInput = page.getByPlaceholder(/search/i);
       await expect(searchInput).toBeVisible({ timeout: 5_000 });
     });

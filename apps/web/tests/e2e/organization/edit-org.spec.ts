@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { loginAndSelectOrg, TEST_USERS } from "../helpers/auth.helper";
 import { TOAST_SELECTOR } from "../helpers/constants";
 
@@ -31,9 +31,9 @@ test.describe("UC08: Edit Organization", () => {
     await nameInput.fill("Invalid@#$Chars!");
     await page.getByRole("button", { name: /save|update/i }).click();
 
-    await expect(
-      page.getByText(/can only contain/i)
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/can only contain/i)).toBeVisible({
+      timeout: 5_000,
+    });
   });
 
   // ─── ORG-021 | BR38 ─────────────────────────────────────────────

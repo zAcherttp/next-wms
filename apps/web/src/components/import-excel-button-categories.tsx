@@ -18,6 +18,7 @@ interface ParsedCategory {
 
 interface CategoryToCreate {
   name: string;
+  parentName?: string;
   parentId?: Id<"categories">;
   level: number;
 }
@@ -231,7 +232,7 @@ export function ImportExcelButtonCategories() {
           name: category.name,
           parentName: category.parentName,
           level,
-        } as CategoryToCreate);
+        });
       }
 
       // Sort by level (create parents before children)

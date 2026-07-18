@@ -1,5 +1,9 @@
-import { test, expect } from "@playwright/test";
-import { loginAndSelectOrg, TEST_USERS, TEST_ORG } from "../helpers/auth.helper";
+import { expect, test } from "@playwright/test";
+import {
+  loginAndSelectOrg,
+  TEST_ORG,
+  TEST_USERS,
+} from "../helpers/auth.helper";
 import { TOAST_SELECTOR } from "../helpers/constants";
 
 /**
@@ -20,66 +24,104 @@ test.describe("UC05: Manage User Profile", () => {
   });
 
   test("[BR24] Empty name shows error", async ({ page }) => {
-    const editBtn = page.getByRole("button").filter({ has: page.locator("svg") }).last();
+    const editBtn = page
+      .getByRole("button")
+      .filter({ has: page.locator("svg") })
+      .last();
     await editBtn.click();
     const nameInput = page.locator("input").first();
     await nameInput.clear();
-    const saveBtn = page.getByRole("button").filter({ has: page.locator("svg") }).last();
+    const saveBtn = page
+      .getByRole("button")
+      .filter({ has: page.locator("svg") })
+      .last();
     await saveBtn.click();
-    await expect(page.locator(TOAST_SELECTOR)).toContainText(/full name cannot be empty/i);
+    await expect(page.locator(TOAST_SELECTOR)).toContainText(
+      /full name cannot be empty/i,
+    );
   });
 
   test("[BR24] No changes shows info message", async ({ page }) => {
-    const editBtn = page.getByRole("button").filter({ has: page.locator("svg") }).last();
+    const editBtn = page
+      .getByRole("button")
+      .filter({ has: page.locator("svg") })
+      .last();
     await editBtn.click();
-    const saveBtn = page.getByRole("button").filter({ has: page.locator("svg") }).last();
+    const saveBtn = page
+      .getByRole("button")
+      .filter({ has: page.locator("svg") })
+      .last();
     await saveBtn.click();
-    await expect(page.locator(TOAST_SELECTOR)).toContainText(/no changes made/i);
+    await expect(page.locator(TOAST_SELECTOR)).toContainText(
+      /no changes made/i,
+    );
   });
 
   test("[BR24] Invalid image file shows error", async ({ page }) => {
     const fileInput = page.locator('input[type="file"]');
-    if (await fileInput.count() > 0) {
+    if ((await fileInput.count()) > 0) {
       await fileInput.setInputFiles({
         name: "test.txt",
         mimeType: "text/plain",
         buffer: Buffer.from("not an image"),
       });
-      await expect(page.locator(TOAST_SELECTOR)).toBeVisible({ timeout: 5_000 });
+      await expect(page.locator(TOAST_SELECTOR)).toBeVisible({
+        timeout: 5_000,
+      });
     }
   });
 
   test("[BR25] Name update shows success toast", async ({ page }) => {
-    const editBtn = page.getByRole("button").filter({ has: page.locator("svg") }).last();
+    const editBtn = page
+      .getByRole("button")
+      .filter({ has: page.locator("svg") })
+      .last();
     await editBtn.click();
     const nameInput = page.locator("input").first();
     const originalName = await nameInput.inputValue();
     await nameInput.clear();
     await nameInput.fill("Updated E2E Name");
-    const saveBtn = page.getByRole("button").filter({ has: page.locator("svg") }).last();
+    const saveBtn = page
+      .getByRole("button")
+      .filter({ has: page.locator("svg") })
+      .last();
     await saveBtn.click();
-    await expect(page.locator(TOAST_SELECTOR)).toContainText(/full name updated/i);
+    await expect(page.locator(TOAST_SELECTOR)).toContainText(
+      /full name updated/i,
+    );
     // Restore
-    const editBtn2 = page.getByRole("button").filter({ has: page.locator("svg") }).last();
+    const editBtn2 = page
+      .getByRole("button")
+      .filter({ has: page.locator("svg") })
+      .last();
     await editBtn2.click();
     await nameInput.clear();
     await nameInput.fill(originalName);
-    const saveBtn2 = page.getByRole("button").filter({ has: page.locator("svg") }).last();
+    const saveBtn2 = page
+      .getByRole("button")
+      .filter({ has: page.locator("svg") })
+      .last();
     await saveBtn2.click();
   });
 
   test("[BR25] Avatar update shows success toast", async ({ page }) => {
     const fileInput = page.locator('input[type="file"]');
-    if (await fileInput.count() > 0) {
+    if ((await fileInput.count()) > 0) {
       const pngBuf = Buffer.from(
         "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==",
-        "base64"
+        "base64",
       );
-      await fileInput.setInputFiles({ name: "avatar.png", mimeType: "image/png", buffer: pngBuf });
+      await fileInput.setInputFiles({
+        name: "avatar.png",
+        mimeType: "image/png",
+        buffer: pngBuf,
+      });
       const savePicBtn = page.getByRole("button", { name: /save picture/i });
       if (await savePicBtn.isVisible({ timeout: 3_000 })) {
         await savePicBtn.click();
-        await expect(page.locator(TOAST_SELECTOR)).toContainText(/profile picture updated/i);
+        await expect(page.locator(TOAST_SELECTOR)).toContainText(
+          /profile picture updated/i,
+        );
       }
     }
   });

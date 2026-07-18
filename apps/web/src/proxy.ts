@@ -81,11 +81,7 @@ export async function proxy(request: NextRequest) {
       headers: await headers(), // some endpoints might require headers
     });
 
-    if (
-      !getSessionResponse ||
-      !getSessionResponse.session ||
-      !getSessionResponse.user
-    ) {
+    if (!getSessionResponse?.session || !getSessionResponse.user) {
       const url = new URL("/auth/sign-in", request.url);
       url.searchParams.set("error", "Not authenticated");
       return NextResponse.redirect(url);
@@ -133,7 +129,13 @@ export async function proxy(request: NextRequest) {
     // - We already verified user has access to this org
     // - Subsequent requests will see the updated activeOrganizationId
     // - Reduces middleware latency (don't wait for DB write)
-    if (getSessionResponse.session?.activeOrganizationId !== org.id) {
+    const activeOrganizationId =
+      getSessionResponse.session &&
+      "activeOrganizationId" in getSessionResponse.session
+        ? getSessionResponse.session.activeOrganizationId
+        : null;
+
+    if (activeOrganizationId !== org.id) {
       try {
         const _data = await auth.api.setActiveOrganization({
           body: {

@@ -3355,6 +3355,8 @@ export const clearAllTestData = mutation({
       "adjustment_requests",
 
       // Outbound Orders
+      "picking_session_details",
+      "picking_sessions",
       "outbound_order_details",
       "outbound_orders",
 
@@ -3394,6 +3396,7 @@ export const clearAllTestData = mutation({
       "brands",
 
       // User Management
+      "members",
       "user_role_assignments",
       "role_permissions",
       "roles",
@@ -3473,6 +3476,8 @@ export const clearAllDatabaseData = mutation({
       "adjustment_requests",
 
       // Outbound Orders
+      "picking_session_details",
+      "picking_sessions",
       "outbound_order_details",
       "outbound_orders",
 
@@ -3512,6 +3517,7 @@ export const clearAllDatabaseData = mutation({
       "brands",
 
       // User Management
+      "members",
       "user_role_assignments",
       "role_permissions",
       "roles",

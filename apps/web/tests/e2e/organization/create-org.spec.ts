@@ -1,6 +1,6 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { login, TEST_USERS } from "../helpers/auth.helper";
-import { TOAST_SELECTOR, DIALOG_SELECTOR } from "../helpers/constants";
+import { TOAST_SELECTOR } from "../helpers/constants";
 
 /**
  * UC06: Create Organization
@@ -61,9 +61,9 @@ test.describe("UC06: Create Organization", () => {
     await page.getByLabel(/organization slug/i).fill("test-slug");
     await page.getByRole("button", { name: /create/i }).click();
 
-    await expect(
-      page.getByText(/organization name is required/i)
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/organization name is required/i)).toBeVisible({
+      timeout: 5_000,
+    });
   });
 
   // ─── ORG-008 | BR27 ─────────────────────────────────────────────
@@ -84,7 +84,7 @@ test.describe("UC06: Create Organization", () => {
     await page.getByRole("button", { name: /create/i }).click();
 
     await expect(
-      page.getByText(/can only contain letters, numbers, spaces, and hyphens/i)
+      page.getByText(/can only contain letters, numbers, spaces, and hyphens/i),
     ).toBeVisible({ timeout: 5_000 });
   });
 
@@ -105,9 +105,9 @@ test.describe("UC06: Create Organization", () => {
     // Leave slug empty
     await page.getByRole("button", { name: /create/i }).click();
 
-    await expect(
-      page.getByText(/organization slug is required/i)
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/organization slug is required/i)).toBeVisible({
+      timeout: 5_000,
+    });
   });
 
   // ─── ORG-010 | BR27 ─────────────────────────────────────────────
@@ -129,8 +129,8 @@ test.describe("UC06: Create Organization", () => {
 
     await expect(
       page.getByText(
-        /can only contain lowercase letters, numbers, and hyphens/i
-      )
+        /can only contain lowercase letters, numbers, and hyphens/i,
+      ),
     ).toBeVisible({ timeout: 5_000 });
   });
 
@@ -151,9 +151,9 @@ test.describe("UC06: Create Organization", () => {
     await page.getByLabel(/organization slug/i).fill("test-org"); // existing slug
     await page.getByRole("button", { name: /create/i }).click();
 
-    await expect(
-      page.getByText(/already taken/i)
-    ).toBeVisible({ timeout: 10_000 });
+    await expect(page.getByText(/already taken/i)).toBeVisible({
+      timeout: 10_000,
+    });
   });
 
   // ─── ORG-012 | BR30 ─────────────────────────────────────────────
@@ -200,7 +200,7 @@ test.describe("UC06: Create Organization", () => {
 
     // MSG18 — "Organization created successfully"
     await expect(page.locator(TOAST_SELECTOR)).toContainText(
-      /organization created successfully/i
+      /organization created successfully/i,
     );
   });
 

@@ -18,6 +18,7 @@ import type * as cycleCount from "../cycleCount.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
 import type * as inventory from "../inventory.js";
+import type * as myFunctions from "../myFunctions.js";
 import type * as notifications from "../notifications.js";
 import type * as outboundOrders from "../outboundOrders.js";
 import type * as pickingSessions from "../pickingSessions.js";
@@ -51,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   healthCheck: typeof healthCheck;
   http: typeof http;
   inventory: typeof inventory;
+  myFunctions: typeof myFunctions;
   notifications: typeof notifications;
   outboundOrders: typeof outboundOrders;
   pickingSessions: typeof pickingSessions;

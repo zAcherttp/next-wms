@@ -42,7 +42,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import type { PieSectorData } from "recharts/types/polar/Pie";
+import type { PieSectorDataItem } from "recharts/types/polar/Pie";
 import { FilterPopover } from "@/components/table/filter-popover";
 import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
@@ -70,7 +70,6 @@ import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { exportReportToPDF, formatDateRange } from "@/lib/pdf-export";
-import type { InventoryReportItem } from "@/lib/types";
 import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 import { useDateFilterStore } from "@/store/date-filter";
 
@@ -140,6 +139,8 @@ export default function InventoryReportPage() {
     enabled: !!currentBranch,
   });
 
+  type InventoryReportRow = NonNullable<typeof items>[number];
+
   // Client-side filtering for better performance
   const filteredItems = React.useMemo(() => {
     if (!items) return [];
@@ -167,7 +168,7 @@ export default function InventoryReportPage() {
   const [columnVisibility, setColumnVisibility] =
     React.useState<VisibilityState>({});
 
-  const columns: ColumnDef<InventoryReportItem>[] = React.useMemo(
+  const columns: ColumnDef<InventoryReportRow>[] = React.useMemo(
     () => [
       {
         accessorKey: "skuCode",
@@ -594,7 +595,7 @@ export default function InventoryReportPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }: PieSectorData) =>
+                    label={({ name, percent }: PieSectorDataItem) =>
                       `${name} (${((percent ?? 0) * 100).toFixed(0)}%)`
                     }
                     outerRadius={100}

@@ -1,4 +1,4 @@
-import { type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 export const TEST_USERS = {
   owner: { email: "owner@test.com", password: "Test1234!" },

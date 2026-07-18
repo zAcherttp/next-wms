@@ -80,6 +80,7 @@ export default function AvatarUpload({
                     className="h-full w-full object-cover"
                     width={96}
                     height={96}
+                    loading="eager"
                   />
                 </motion.div>
               ) : (

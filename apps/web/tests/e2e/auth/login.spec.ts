@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TOAST_SELECTOR } from "../helpers/constants";
 
 /**
@@ -24,9 +24,7 @@ test.describe("UC01: Login", () => {
     await expect(page.getByLabel(/remember me/i)).toBeVisible();
 
     // Login button visible
-    await expect(
-      page.getByRole("button", { name: /login/i })
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /login/i })).toBeVisible();
   });
 
   // ─── AUTH-002 | BR02 ─────────────────────────────────────────────
@@ -53,7 +51,7 @@ test.describe("UC01: Login", () => {
     await page.getByRole("button", { name: /login/i }).click();
 
     await expect(
-      page.getByText(/password must be at least 8 characters/i)
+      page.getByText(/password must be at least 8 characters/i),
     ).toBeVisible();
   });
 
@@ -64,7 +62,7 @@ test.describe("UC01: Login", () => {
     await page.getByRole("button", { name: /login/i }).click();
 
     await expect(
-      page.getByText(/password must be at least 8 characters/i)
+      page.getByText(/password must be at least 8 characters/i),
     ).toBeVisible();
   });
 
@@ -100,7 +98,7 @@ test.describe("UC01: Login", () => {
 
     // Toast MSG01 — "Successfully signed in"
     await expect(page.locator(TOAST_SELECTOR)).toContainText(
-      /successfully signed in/i
+      /successfully signed in/i,
     );
   });
 
@@ -126,7 +124,7 @@ test.describe("UC01: Login", () => {
       timeout: 10_000,
     });
     await expect(
-      page.locator(TOAST_SELECTOR).getByRole("button", { name: /verify now/i })
+      page.locator(TOAST_SELECTOR).getByRole("button", { name: /verify now/i }),
     ).toBeVisible();
   });
 });

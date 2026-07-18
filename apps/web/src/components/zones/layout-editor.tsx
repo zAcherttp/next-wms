@@ -298,11 +298,11 @@ export const WarehouseEditor = forwardRef<
         className={`relative h-full min-h-0 w-full overflow-hidden border-t ${className ?? ""}`}
       >
         <ErrorBoundary onError={onError}>
-          <ResizablePanelGroup direction="horizontal">
+          <ResizablePanelGroup orientation="horizontal">
             {/* Left Sidebar: Console Log */}
             {showDebugPanel && (
               <>
-                <ResizablePanel defaultSize={35} minSize={10} maxSize={35}>
+                <ResizablePanel defaultSize="35%" minSize="10%" maxSize="35%">
                   <EditorConsole />
                 </ResizablePanel>
 
@@ -311,18 +311,18 @@ export const WarehouseEditor = forwardRef<
             )}
 
             {/* Main 3D Canvas */}
-            <ResizablePanel defaultSize={55} minSize={40}>
+            <ResizablePanel defaultSize="55%" minSize="40%">
               <Canvas3D />
             </ResizablePanel>
 
             <ResizableHandle withHandle />
 
             {/* Right Sidebar: Entity List + Properties */}
-            <ResizablePanel defaultSize={25} minSize={15} maxSize={40}>
-              <ResizablePanelGroup direction="vertical" className="h-full">
+            <ResizablePanel defaultSize="25%" minSize="15%" maxSize="40%">
+              <ResizablePanelGroup orientation="vertical" className="h-full">
                 {/* Entity List */}
                 {showEntityBrowser && (
-                  <ResizablePanel defaultSize={50} minSize={20}>
+                  <ResizablePanel defaultSize="50%" minSize="20%">
                     <div className="h-full overflow-hidden">
                       <EntityBrowser />
                     </div>
@@ -335,7 +335,7 @@ export const WarehouseEditor = forwardRef<
 
                 {/* Properties Panel */}
                 {showPropertiesPanel && (
-                  <ResizablePanel defaultSize={50} minSize={20}>
+                  <ResizablePanel defaultSize="50%" minSize="20%">
                     <div className="h-full overflow-hidden">
                       <SchemaPropertyPanel readOnly={readOnly} />
                     </div>

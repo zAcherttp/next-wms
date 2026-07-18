@@ -6,7 +6,7 @@
  * Convex mutations to seed the database before tests run.
  */
 
-import { type Page } from "@playwright/test";
+import type { Page } from "@playwright/test";
 
 /**
  * Ensure master data exists for inbound/outbound tests.

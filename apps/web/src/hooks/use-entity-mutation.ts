@@ -65,7 +65,7 @@ function validateFloorResize(
 ): { valid: boolean; reason?: string } {
   const store = useLayoutStore.getState();
   const floor = store.getEntity(floorTempId);
-  if (!floor || floor.storageBlockType !== "floor") {
+  if (floor?.storageBlockType !== "floor") {
     return { valid: true }; // Not a floor, skip check
   }
 
@@ -625,9 +625,9 @@ export function useEntityMutation() {
           zoneAttributes: mergedAttrsForCommit,
           name: entityName,
           // Include new parentId if floor transfer occurred
-          ...(__newParentId && {
-            parentId: __newParentId as Id<"storage_zones">,
-          }),
+          ...(__newParentId
+            ? { parentId: __newParentId as Id<"storage_zones"> }
+            : {}),
         });
         return { success: true };
       } catch (err) {

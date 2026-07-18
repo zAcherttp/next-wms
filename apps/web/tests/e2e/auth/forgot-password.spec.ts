@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TOAST_SELECTOR } from "../helpers/constants";
 
 /**
@@ -43,7 +43,7 @@ test.describe("UC03: Forgot Password", () => {
 
     // Should show "Account doesn't exist" or similar error
     await expect(
-      page.getByText(/account doesn.t exist|email không hợp lệ/i)
+      page.getByText(/account doesn.t exist|email không hợp lệ/i),
     ).toBeVisible({ timeout: 10_000 });
   });
 
@@ -100,9 +100,7 @@ test.describe("UC03: Forgot Password", () => {
     await expect(page.getByText(/resend \(\d+s\)/i)).toBeVisible();
 
     // Resend button should be disabled during countdown
-    await expect(
-      page.getByRole("button", { name: /resend/i })
-    ).toBeDisabled();
+    await expect(page.getByRole("button", { name: /resend/i })).toBeDisabled();
   });
 
   // ─── AUTH-028 | BR16 ─────────────────────────────────────────────
@@ -134,8 +132,6 @@ test.describe("UC03: Forgot Password", () => {
     await page.waitForLoadState("networkidle");
 
     // Verify the initial page loads correctly
-    await expect(
-      page.getByText(/email verification/i)
-    ).toBeVisible();
+    await expect(page.getByText(/email verification/i)).toBeVisible();
   });
 });

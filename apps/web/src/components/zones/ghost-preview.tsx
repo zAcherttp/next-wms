@@ -4,6 +4,7 @@
  */
 
 import { useFrame, useThree } from "@react-three/fiber";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import type React from "react";
 import { useCallback, useEffect, useMemo, useRef } from "react";
 import { toast } from "sonner";
@@ -60,8 +61,10 @@ export const GhostPreview: React.FC = () => {
   // Find closest floor to a position
   const findClosestFloor = useCallback(
     (position: { x: number; y: number; z: number }) => {
-      let closestFloor: { tempId: string; realId: string | undefined } | null =
-        null;
+      let closestFloor: {
+        tempId: string;
+        realId: Id<"storage_zones"> | undefined;
+      } | null = null;
       let minDistance = Number.POSITIVE_INFINITY;
 
       for (const [tempId, entity] of entities) {

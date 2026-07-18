@@ -243,5 +243,5 @@ export function CreateOrganizationForm({
   );
 }
 
-export { ORG_CREATE_SCHEMA };
 export type { OrgCreateForm };
+export { ORG_CREATE_SCHEMA };

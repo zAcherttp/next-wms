@@ -1,4 +1,4 @@
-import { Heading, Text } from "@react-email/components";
+import { Heading, Text } from "react-email";
 import { BaseEmail, styles } from "./components/base-email";
 
 interface VerifyOTPProps {

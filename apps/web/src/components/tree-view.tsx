@@ -460,13 +460,13 @@ const TreeActions = ({
 };
 
 export {
-  TreeView,
-  type TreeDataItem,
-  type TreeRenderItemParams,
-  type TreeViewRef,
-  AccordionTrigger,
   AccordionContent,
+  AccordionTrigger,
+  type TreeDataItem,
+  TreeItem,
   TreeLeaf,
   TreeNode,
-  TreeItem,
+  type TreeRenderItemParams,
+  TreeView,
+  type TreeViewRef,
 };

@@ -83,18 +83,14 @@ function ChildCountInput({
 
   // Check if child has cargo (for bins: usagePercent > 0 or isFull)
   const hasCargoCheck = useCallback(
-    (entity: { zoneAttributes: Record<string, unknown> }) => {
+    (entity: StorageEntity) => {
       if (childType === "bin") {
         const attrs = entity.zoneAttributes;
         return attrs.isFull === true || (attrs.usagePercent as number) > 0;
       }
       // For shelves, check if any of their bins have cargo
       if (childType === "shelf") {
-        const bins = getChildren(
-          (entity as { _id?: Id<"storage_zones">; tempId: string })._id ??
-            (entity as { tempId: string }).tempId,
-          "bin",
-        );
+        const bins = getChildren(entity._id ?? entity.tempId, "bin");
         return bins.some(
           (bin) =>
             bin.zoneAttributes.isFull === true ||

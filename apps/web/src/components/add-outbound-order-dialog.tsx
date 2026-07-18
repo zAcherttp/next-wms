@@ -259,7 +259,7 @@ export function AddOutboundOrderDialog({
                     setRequestedShipDate(date);
                     setDatePopoverOpen(false);
                   }}
-                  initialFocus
+                  autoFocus
                 />
               </PopoverContent>
             </Popover>

@@ -23,7 +23,7 @@ export interface ParsedExcelData {
 // Types for resolved data after API lookups
 export interface ResolvedImportData {
   products: Array<{
-    variantId: string;
+    variantId: Id<"product_variants">;
     skuCode: string;
     description: string;
     quantity: number;

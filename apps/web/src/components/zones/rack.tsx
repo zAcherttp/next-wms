@@ -103,12 +103,12 @@ declare module "@react-three/fiber" {
   interface ThreeElements {
     fillGaugeMaterial: {
       uFillLevel: number;
-      uLowColor: THREE.Color;
-      uMidColor: THREE.Color;
-      uHighColor: THREE.Color;
-      uEmptyColor: THREE.Color;
-      uLowThreshold: number;
-      uHighThreshold: number;
+      uLowColor?: THREE.Color;
+      uMidColor?: THREE.Color;
+      uHighColor?: THREE.Color;
+      uEmptyColor?: THREE.Color;
+      uLowThreshold?: number;
+      uHighThreshold?: number;
       transparent?: boolean;
       side?: THREE.Side;
       depthWrite?: boolean;

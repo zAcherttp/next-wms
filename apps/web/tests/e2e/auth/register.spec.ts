@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { TOAST_SELECTOR } from "../helpers/constants";
 
 /**
@@ -18,9 +18,7 @@ test.describe("UC02: Register", () => {
     await expect(page.getByLabel(/email/i)).toBeVisible();
     await expect(page.getByLabel("Password")).toBeVisible();
     await expect(page.getByLabel(/confirm password/i)).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: /submit/i })
-    ).toBeVisible();
+    await expect(page.getByRole("button", { name: /submit/i })).toBeVisible();
   });
 
   // ─── AUTH-012 | BR08 ─────────────────────────────────────────────
@@ -64,7 +62,7 @@ test.describe("UC02: Register", () => {
     await page.getByRole("button", { name: /submit/i }).click();
 
     await expect(
-      page.getByText(/password must be at least 8 characters/i)
+      page.getByText(/password must be at least 8 characters/i),
     ).toBeVisible();
   });
 
@@ -77,7 +75,7 @@ test.describe("UC02: Register", () => {
     await page.getByRole("button", { name: /submit/i }).click();
 
     await expect(
-      page.getByText(/password confirmation is required/i)
+      page.getByText(/password confirmation is required/i),
     ).toBeVisible();
   });
 
@@ -145,7 +143,7 @@ test.describe("UC02: Register", () => {
     await expect(page.getByText(/verification code/i)).toBeVisible();
 
     // Type wrong OTP — fill all 6 slots
-    const otpSlots = page.locator('[data-slot="input-otp-slot"]');
+    // const otpSlots = page.locator('[data-slot="input-otp-slot"]');
     // Use keyboard to type into OTP input
     await page.getByRole("textbox").first().focus();
     await page.keyboard.type("000000");

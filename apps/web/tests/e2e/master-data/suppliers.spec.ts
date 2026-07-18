@@ -1,6 +1,9 @@
-import { test, expect } from "@playwright/test";
-import { loginAndSelectOrg, TEST_USERS, TEST_ORG } from "../helpers/auth.helper";
-import { TOAST_SELECTOR } from "../helpers/constants";
+import { expect, test } from "@playwright/test";
+import {
+  loginAndSelectOrg,
+  TEST_ORG,
+  TEST_USERS,
+} from "../helpers/auth.helper";
 
 const BASE = `/${TEST_ORG.slug}/master-data/suppliers`;
 
@@ -54,12 +57,18 @@ test.describe("Suppliers", () => {
   // ═══ UC24: Edit Supplier ═══
 
   test.describe("UC24: Edit Supplier", () => {
-    test("[BR87] Same validation rules apply (excluding self)", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+    test("[BR87] Same validation rules apply (excluding self)", async ({
+      page,
+    }) => {
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     test("[BR88] Success toast shown", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
   });
 
@@ -67,19 +76,29 @@ test.describe("Suppliers", () => {
 
   test.describe("UC25: Delete Supplier", () => {
     test("[BR89] Delete confirmation dialog appears", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
-    test("[BR90] Supplier with active POs cannot be deleted", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+    test("[BR90] Supplier with active POs cannot be deleted", async ({
+      page,
+    }) => {
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     test("[BR91] Soft delete supplier without active POs", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     test("[BR92] Success toast shown", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
   });
 
@@ -87,7 +106,9 @@ test.describe("Suppliers", () => {
 
   test.describe("UC26: List & Search Suppliers", () => {
     test("[BR93] Supplier list loads with brand info", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     test("[BR94] Search by name, email, or contactPerson", async ({ page }) => {

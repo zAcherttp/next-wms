@@ -1,6 +1,7 @@
-import { test, expect } from "@playwright/test";
-import { login, TEST_USERS, TEST_ORG } from "../helpers/auth.helper";
-import { TOAST_SELECTOR } from "../helpers/constants";
+import { expect, test } from "@playwright/test";
+import { login, TEST_ORG, TEST_USERS } from "../helpers/auth.helper";
+
+// import { TOAST_SELECTOR } from "../helpers/constants";
 
 /**
  * UC04: Login to Organization
@@ -22,9 +23,7 @@ test.describe("UC04: Login to Organization", () => {
   });
 
   // ─── ORG-002 | BR19 ─────────────────────────────────────────────
-  test("[BR19] Each org shows avatar, name, Open button", async ({
-    page,
-  }) => {
+  test("[BR19] Each org shows avatar, name, Open button", async ({ page }) => {
     await login(page, TEST_USERS.owner.email, TEST_USERS.owner.password);
 
     // After login, user may be auto-redirected to dashboard if activeOrg is set

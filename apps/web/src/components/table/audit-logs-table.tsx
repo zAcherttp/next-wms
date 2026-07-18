@@ -265,15 +265,15 @@ export function AuditLogsTable({
           const formattedNew = formatValue(newValue);
 
           return (
-            <div className="flex items-center gap-1 max-w-[300px]">
+            <div className="flex max-w-[300px] items-center gap-1">
               <span
-                className="text-red-500 line-through truncate"
+                className="truncate text-red-500 line-through"
                 title={formattedOld}
               >
                 {truncateValue(formattedOld)}
               </span>
-              <span className="text-muted-foreground shrink-0">→</span>
-              <span className="text-green-500 truncate" title={formattedNew}>
+              <span className="shrink-0 text-muted-foreground">→</span>
+              <span className="truncate text-green-500" title={formattedNew}>
                 {truncateValue(formattedNew)}
               </span>
             </div>

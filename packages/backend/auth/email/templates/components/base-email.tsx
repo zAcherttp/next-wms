@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Body,
   Container,
@@ -7,8 +8,7 @@ import {
   Link,
   Preview,
   Text,
-} from "@react-email/components";
-import React from "react";
+} from "react-email";
 
 export type BaseEmailProps = {
   children: React.ReactNode;

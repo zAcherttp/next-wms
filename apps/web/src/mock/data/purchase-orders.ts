@@ -11,6 +11,7 @@ export const MOCK_PO: PurchaseOrderListItem[] = [
     orderedAt: 1685577600000,
     expectedDeliveryAt: 1686009600000,
     purchaseOrderStatus: {
+      lookupCode: "PENDING",
       lookupValue: "Pending",
     },
     supplier: {
@@ -23,6 +24,7 @@ export const MOCK_PO: PurchaseOrderListItem[] = [
     orderedAt: 1685664000000,
     expectedDeliveryAt: 1686528000000,
     purchaseOrderStatus: {
+      lookupCode: "APPROVED",
       lookupValue: "Approved",
     },
     supplier: {
@@ -35,6 +37,7 @@ export const MOCK_PO: PurchaseOrderListItem[] = [
     orderedAt: 1685750400000,
     expectedDeliveryAt: 1686009600000,
     purchaseOrderStatus: {
+      lookupCode: "RECEIVED",
       lookupValue: "Received",
     },
     supplier: {

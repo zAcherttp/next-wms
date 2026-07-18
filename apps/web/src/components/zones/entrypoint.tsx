@@ -48,13 +48,8 @@ extend({ EntryPointMaterial });
 declare module "@react-three/fiber" {
   interface ThreeElements {
     entryPointMaterial: {
-      uFillLevel: number;
-      uLowColor: THREE.Color;
-      uMidColor: THREE.Color;
-      uHighColor: THREE.Color;
-      uEmptyColor: THREE.Color;
-      uLowThreshold: number;
-      uHighThreshold: number;
+      uColor: THREE.Color;
+      uHeight: number;
       transparent?: boolean;
       side?: THREE.Side;
       depthWrite?: boolean;

@@ -123,7 +123,7 @@ export function MembersTable() {
     if (!memberToRemove || !activeOrg?.id) return;
 
     try {
-      const { data, error } = await authClient.organization.removeMember({
+      const { error } = await authClient.organization.removeMember({
         memberIdOrEmail: memberToRemove.user?.email ?? "",
         organizationId: activeOrg.id,
       });
@@ -133,7 +133,7 @@ export function MembersTable() {
       queryClient.invalidateQueries({ queryKey: ["members", activeOrg.id] });
       setRemoveDialogOpen(false);
       setMemberToRemove(null);
-    } catch (err) {
+    } catch {
       toast.error("Failed to remove member");
     }
   };

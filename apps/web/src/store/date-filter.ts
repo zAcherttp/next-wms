@@ -8,7 +8,7 @@ import {
 
 // Re-export for convenience
 export type { DateRange, PresetName };
-export { PRESETS, getPresetDateRange };
+export { getPresetDateRange, PRESETS };
 
 interface DateFilterState {
   // Date range for filtering chart data across the app

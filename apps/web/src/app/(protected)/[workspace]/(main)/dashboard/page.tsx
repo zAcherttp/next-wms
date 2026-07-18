@@ -484,7 +484,7 @@ export default function DashboardPage() {
             ) : (dashboardData?.recentActivity as RecentActivity[])?.length >
               0 ? (
               <ScrollArea className="h-80 overflow-y-auto">
-                {(dashboardData?.recentActivity as RecentActivity[]).map(
+                {(dashboardData?.recentActivity as RecentActivity[])?.map(
                   (activity) => (
                     <Item
                       key={activity._id}

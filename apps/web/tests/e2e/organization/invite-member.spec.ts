@@ -1,6 +1,6 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { loginAndSelectOrg, TEST_USERS } from "../helpers/auth.helper";
-import { TOAST_SELECTOR, DIALOG_SELECTOR } from "../helpers/constants";
+import { TOAST_SELECTOR } from "../helpers/constants";
 
 /**
  * UC07: Invite Member
@@ -11,7 +11,7 @@ test.describe("UC07: Invite Member", () => {
   test.beforeEach(async ({ page }) => {
     await loginAndSelectOrg(page, TEST_USERS.owner);
     // Navigate to admin settings where invite form is
-    await page.goto(`/test-org/settings/admin`);
+    await page.goto("/test-org/settings/admin");
     await page.waitForLoadState("networkidle");
   });
 
@@ -42,9 +42,9 @@ test.describe("UC07: Invite Member", () => {
     // Leave email empty, click send
     await page.getByRole("button", { name: /send invitation/i }).click();
 
-    await expect(
-      page.getByText(/valid email/i)
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/valid email/i)).toBeVisible({
+      timeout: 5_000,
+    });
   });
 
   // ─── ORG-017 | BR34 ─────────────────────────────────────────────
@@ -59,9 +59,9 @@ test.describe("UC07: Invite Member", () => {
     await page.getByLabel(/email/i).fill("bad");
     await page.getByLabel(/email/i).blur();
 
-    await expect(
-      page.getByText(/valid email/i)
-    ).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/valid email/i)).toBeVisible({
+      timeout: 5_000,
+    });
   });
 
   // ─── ORG-018 | BR36 ─────────────────────────────────────────────
@@ -83,7 +83,7 @@ test.describe("UC07: Invite Member", () => {
     await page.getByRole("button", { name: /send invitation/i }).click();
 
     await expect(page.locator(TOAST_SELECTOR)).toContainText(
-      /invitation sent/i
+      /invitation sent/i,
     );
   });
 });

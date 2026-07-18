@@ -1,6 +1,5 @@
-import { test, expect } from "@playwright/test";
+import { expect, test } from "@playwright/test";
 import { loginAndSelectOrg, TEST_USERS } from "../helpers/auth.helper";
-import { TOAST_SELECTOR } from "../helpers/constants";
 
 /**
  * UC10: Edit Role Permissions
@@ -17,7 +16,9 @@ test.describe("UC10: Edit Role Permissions", () => {
   // ─── ORG-027 | BR43 ─────────────────────────────────────────────
   test("[BR43] Default roles not editable", async ({ page }) => {
     // Default roles (owner, admin, member) should not be editable
-    await expect(page.getByText(/members|roles|permissions/i).first()).toBeVisible({
+    await expect(
+      page.getByText(/members|roles|permissions/i).first(),
+    ).toBeVisible({
       timeout: 5_000,
     });
   });
@@ -25,7 +26,9 @@ test.describe("UC10: Edit Role Permissions", () => {
   // ─── ORG-028 | BR44 ─────────────────────────────────────────────
   test("[BR44] Custom role permissions editable", async ({ page }) => {
     // Custom roles should allow editing permissions
-    await expect(page.getByText(/members|roles|permissions/i).first()).toBeVisible({
+    await expect(
+      page.getByText(/members|roles|permissions/i).first(),
+    ).toBeVisible({
       timeout: 5_000,
     });
   });
@@ -33,7 +36,9 @@ test.describe("UC10: Edit Role Permissions", () => {
   // ─── ORG-029 | BR45 ─────────────────────────────────────────────
   test("[BR45] Success toast on update", async ({ page }) => {
     // Updating permissions should show success toast
-    await expect(page.getByText(/members|roles|permissions/i).first()).toBeVisible({
+    await expect(
+      page.getByText(/members|roles|permissions/i).first(),
+    ).toBeVisible({
       timeout: 5_000,
     });
   });
@@ -41,7 +46,9 @@ test.describe("UC10: Edit Role Permissions", () => {
   // ─── ORG-030 | BR45 ─────────────────────────────────────────────
   test("[BR45] Failure shows error toast", async ({ page }) => {
     // Triggering an error should show error toast
-    await expect(page.getByText(/members|roles|permissions/i).first()).toBeVisible({
+    await expect(
+      page.getByText(/members|roles|permissions/i).first(),
+    ).toBeVisible({
       timeout: 5_000,
     });
   });

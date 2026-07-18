@@ -1,6 +1,10 @@
-import { test, expect } from "@playwright/test";
-import { loginAndSelectOrg, TEST_USERS, TEST_ORG } from "../helpers/auth.helper";
-import { TOAST_SELECTOR, ALERT_DIALOG_SELECTOR } from "../helpers/constants";
+import { expect, test } from "@playwright/test";
+import {
+  loginAndSelectOrg,
+  TEST_ORG,
+  TEST_USERS,
+} from "../helpers/auth.helper";
+import { TOAST_SELECTOR } from "../helpers/constants";
 
 const BASE = `/${TEST_ORG.slug}/master-data/products`;
 
@@ -20,7 +24,9 @@ test.describe("Products", () => {
   test.describe("UC11: Add Product", () => {
     test("[BR46] Form displays all required fields", async ({ page }) => {
       await page.getByRole("button", { name: /add new/i }).click();
-      await expect(page.getByLabel(/product name/i)).toBeVisible({ timeout: 5_000 });
+      await expect(page.getByLabel(/product name/i)).toBeVisible({
+        timeout: 5_000,
+      });
       await expect(page.getByText(/category/i).first()).toBeVisible();
       await expect(page.getByText(/brand/i).first()).toBeVisible();
       await expect(page.getByText(/storage requirement/i)).toBeVisible();
@@ -30,14 +36,18 @@ test.describe("Products", () => {
 
     test("[BR47] Empty product name shows error", async ({ page }) => {
       await page.getByRole("button", { name: /add new/i }).click();
-      await page.getByRole("button", { name: /^add new product$|submit/i }).click();
+      await page
+        .getByRole("button", { name: /^add new product$|submit/i })
+        .click();
       await expect(page.locator(TOAST_SELECTOR)).toContainText(/product name/i);
     });
 
     test("[BR47] No category selected shows error", async ({ page }) => {
       await page.getByRole("button", { name: /add new/i }).click();
       await page.getByLabel(/product name/i).fill("Test Product");
-      await page.getByRole("button", { name: /^add new product$|submit/i }).click();
+      await page
+        .getByRole("button", { name: /^add new product$|submit/i })
+        .click();
       await expect(page.locator(TOAST_SELECTOR)).toContainText(/category/i);
     });
 
@@ -48,7 +58,9 @@ test.describe("Products", () => {
       const catTrigger = page.locator('[role="combobox"]').first();
       await catTrigger.click();
       await page.getByRole("option").first().click();
-      await page.getByRole("button", { name: /^add new product$|submit/i }).click();
+      await page
+        .getByRole("button", { name: /^add new product$|submit/i })
+        .click();
       await expect(page.locator(TOAST_SELECTOR)).toContainText(/brand/i);
     });
 
@@ -76,25 +88,35 @@ test.describe("Products", () => {
       await expect(page.getByText(/sku/i)).toBeVisible();
     });
 
-    test("[BR48] Duplicate product name in same org rejected", async ({ page }) => {
+    test("[BR48] Duplicate product name in same org rejected", async ({
+      page,
+    }) => {
       // Attempt to create a product with an existing name
       await page.getByRole("button", { name: /add new/i }).click();
-      await expect(page.getByLabel(/product name/i)).toBeVisible({ timeout: 5_000 });
+      await expect(page.getByLabel(/product name/i)).toBeVisible({
+        timeout: 5_000,
+      });
     });
 
     test("[BR48] Duplicate SKU code in same org rejected", async ({ page }) => {
       await page.getByRole("button", { name: /add new/i }).click();
-      await expect(page.getByLabel(/product name/i)).toBeVisible({ timeout: 5_000 });
+      await expect(page.getByLabel(/product name/i)).toBeVisible({
+        timeout: 5_000,
+      });
     });
 
     test("[BR49] Successful product creation", async ({ page }) => {
       await page.getByRole("button", { name: /add new/i }).click();
-      await expect(page.getByLabel(/product name/i)).toBeVisible({ timeout: 5_000 });
+      await expect(page.getByLabel(/product name/i)).toBeVisible({
+        timeout: 5_000,
+      });
     });
 
     test("[BR50] Success toast shown", async ({ page }) => {
       await page.getByRole("button", { name: /add new/i }).click();
-      await expect(page.getByLabel(/product name/i)).toBeVisible({ timeout: 5_000 });
+      await expect(page.getByLabel(/product name/i)).toBeVisible({
+        timeout: 5_000,
+      });
     });
 
     test("[BR51] Import Excel with valid file", async ({ page }) => {
@@ -107,7 +129,9 @@ test.describe("Products", () => {
       await expect(importBtn).toBeVisible({ timeout: 5_000 });
     });
 
-    test("[BR51] Import Excel with duplicates shows error", async ({ page }) => {
+    test("[BR51] Import Excel with duplicates shows error", async ({
+      page,
+    }) => {
       const importBtn = page.getByRole("button", { name: /import/i });
       await expect(importBtn).toBeVisible({ timeout: 5_000 });
     });
@@ -116,12 +140,16 @@ test.describe("Products", () => {
   // ═══ UC12: Edit Product ═══
 
   test.describe("UC12: Edit Product", () => {
-    test("[BR52] Edit form validates same rules as create", async ({ page }) => {
+    test("[BR52] Edit form validates same rules as create", async ({
+      page,
+    }) => {
       const firstRow = page.locator("tbody tr").first();
       await expect(firstRow).toBeVisible({ timeout: 10_000 });
     });
 
-    test("[BR53] Duplicate name (excluding self) rejected", async ({ page }) => {
+    test("[BR53] Duplicate name (excluding self) rejected", async ({
+      page,
+    }) => {
       const firstRow = page.locator("tbody tr").first();
       await expect(firstRow).toBeVisible({ timeout: 10_000 });
     });
@@ -160,7 +188,9 @@ test.describe("Products", () => {
 
   test.describe("UC14: List & Search Products", () => {
     test("[BR57] Product list loads with details", async ({ page }) => {
-      await expect(page.locator("tbody tr").first()).toBeVisible({ timeout: 10_000 });
+      await expect(page.locator("tbody tr").first()).toBeVisible({
+        timeout: 10_000,
+      });
     });
 
     test("[BR58] Search by product name", async ({ page }) => {
