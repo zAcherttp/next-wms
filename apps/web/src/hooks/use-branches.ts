@@ -62,7 +62,11 @@ export function useBranches(options: UseBranchesOptions = {}) {
       const newBranchId = event.detail;
       const newBranch = branches.find((b) => b._id === newBranchId);
       if (newBranch) {
-        setCurrentBranch(newBranch);
+        // Defer the state update to prevent synchronous re-renders of parent pages (e.g. dashboard)
+        // while charts are rendering/measuring, avoiding ResizeObserver layout loops/freezes.
+        setTimeout(() => {
+          setCurrentBranch(newBranch);
+        }, 0);
       }
     };
 
