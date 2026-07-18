@@ -80,9 +80,7 @@ export async function proxy(request: NextRequest) {
     // 1. Get auth user from Convex via Better Auth component
     const user = await preloadAuthQuery(api.auth.getCurrentUser);
 
-    console.log("Middleware - Authenticated user:", user);
-
-    if (!user) {
+    if (!getSessionResponse?.session || !getSessionResponse.user) {
       const url = new URL("/auth/sign-in", request.url);
       url.searchParams.set("error", "Not authenticated");
       return NextResponse.redirect(url);
@@ -129,22 +127,25 @@ export async function proxy(request: NextRequest) {
     // - We already verified user has access to this org
     // - Subsequent requests will see the updated activeOrganizationId
     // - Reduces middleware latency (don't wait for DB write)
-    // const session = await authComponent.api.getSession({
-    //   headers: await headers(),
-    // });
+    const activeOrganizationId =
+      getSessionResponse.session &&
+      "activeOrganizationId" in getSessionResponse.session
+        ? getSessionResponse.session.activeOrganizationId
+        : null;
 
-    // if (session?.session?.activeOrganizationId !== org.id) {
-    //   try {
-    //     await authComponent.api.setActiveOrganization({
-    //       body: {
-    //         organizationId: org.id,
-    //       },
-    //       headers: await headers(),
-    //     });
-    //   } catch (error) {
-    //     console.error("Failed to set active organization:", error);
-    //   }
-    // }
+    if (activeOrganizationId !== org.id) {
+      try {
+        const _data = await auth.api.setActiveOrganization({
+          body: {
+            organizationId: org.id,
+          },
+          // This endpoint requires session cookies.
+          headers: await headers(),
+        });
+      } catch (error) {
+        console.error("Failed to set active organization:", error);
+      }
+    }
 
     // 5. Check permissions for protected admin routes
     //

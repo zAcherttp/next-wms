@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Body,
   Container,
@@ -7,10 +8,9 @@ import {
   Link,
   Preview,
   Text,
-} from "@react-email/components";
-import React from "react";
+} from "react-email";
 
-export interface BaseEmailProps {
+export type BaseEmailProps = {
   children: React.ReactNode;
   previewText: string;
   footerLinks?: Array<{ text: string; href: string }>;
@@ -18,7 +18,7 @@ export interface BaseEmailProps {
   brandName?: string;
   brandTagline?: string;
   brandLogoUrl?: string;
-}
+};
 
 export const styles = {
   main: {

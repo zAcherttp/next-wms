@@ -5,10 +5,25 @@
     "build": {
       "dependsOn": ["^build"],
       "inputs": ["$TURBO_DEFAULT$", ".env*"],
+      "env": [
+        "AUTH_DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "CONVEX_URL",
+        "NEXT_PUBLIC_CONVEX_URL",
+        "RESEND_API_KEY",
+        "RESEND_EMAIL_FROM",
+        "SITE_URL"
+      ],
       "outputs": ["dist/**", ".next/**", "!.next/cache/**"]
     },
     "lint": {
       "dependsOn": ["^lint"]
+    },
+    "reset:demo": {
+      "cache": false
+    },
+    "seed:demo": {
+      "cache": false
     },
     "check-types": {
       "dependsOn": ["^check-types"]
@@ -17,9 +32,41 @@
       "cache": false,
       "persistent": true
     },
-    "db:dev": {
+    "deploy:vercel": {
+      "cache": false,
+      "env": [
+        "AUTH_DATABASE_URL",
+        "BETTER_AUTH_SECRET",
+        "CONVEX_DEPLOY_KEY",
+        "CONVEX_URL",
+        "RESEND_API_KEY",
+        "RESEND_EMAIL_FROM",
+        "SITE_URL"
+      ]
+    },
+    "db:app:dev": {
       "cache": false,
       "persistent": true
+    },
+    "db:auth:push": {
+      "cache": false,
+      "persistent": true
+    },
+    "db:auth:studio": {
+      "cache": false,
+      "persistent": true
+    },
+    "db:auth:migrate": {
+      "cache": false,
+      "persistent": true
+    },
+    "db:auth:generate": {
+      "cache": false,
+      "persistent": true
+    },
+    "db:auth:seed-demo": {
+      "cache": false,
+      "env": ["AUTH_DATABASE_URL", "DEMO_ACCOUNT_PASSWORD"]
     }
   }
 }

@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,41 +14,30 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
-// import { convexQuery } from "@convex-dev/react-query";
-// import { useQuery } from "@tanstack/react-query";
-// import { api } from "@wms/backend/convex/_generated/api";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
-  ArrowUpDown,
-  Check,
-  ChevronDown,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Eye,
   Filter,
-  Funnel,
   MoreHorizontal,
+  XCircle,
 } from "lucide-react";
-import Link from "next/link";
-import { useParams } from "next/navigation";
 import * as React from "react";
+import { toast } from "sonner";
+import { ReturnRequestDetailDialog } from "@/components/return-request-detail-dialog";
+import { FilterPopover } from "@/components/table/filter-popover";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Command,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -56,13 +47,6 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-// import { Skeleton } from "@/components/ui/skeleton";
-import {
   Table,
   TableBody,
   TableCell,
@@ -70,242 +54,110 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-// import { useCurrentUser } from "@/hooks/use-current-user";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { ReturnRequestListItem } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { MOCK_RETURN_REQUESTS } from "@/mock/data/return-requests";
-
-const getBadgeStyleByStatus = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "waiting":
-    case "pending":
-      return "bg-yellow-500/5 text-yellow-500 border-yellow-500/60";
-    case "approved":
-    case "accepted":
-      return "bg-green-500/5 text-green-500 border-green-500/60";
-    case "returned":
-    case "completed":
-      return "bg-blue-500/5 text-blue-500 border-blue-500/60";
-    case "rejected":
-    case "cancelled":
-      return "bg-red-500/5 text-red-500 border-red-500/60";
-    default:
-      return "bg-orange-500/5 text-orange-500 border-orange-500/60";
-  }
-};
-
-interface FilterPopoverProps {
-  label: string;
-  options: { label: string; value: string }[];
-  currentValue?: string | string[];
-  onChange: (value: string | string[] | undefined) => void;
-  isSort?: boolean;
-  variant?: "single" | "multi-select";
-}
-
-const FilterPopover = ({
-  label,
-  options,
-  currentValue,
-  onChange,
-  isSort = false,
-  variant = "single",
-}: FilterPopoverProps) => {
-  const [searchQuery, instantQuery, debouncedQuery] = useDebouncedInput(
-    "",
-    100,
-  );
-
-  const isFiltered =
-    variant === "single"
-      ? currentValue !== undefined && currentValue !== "default"
-      : Array.isArray(currentValue) && currentValue.length > 0;
-
-  const selectedValues = Array.isArray(currentValue) ? currentValue : [];
-  const allSelected = selectedValues.length === 0;
-
-  const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(debouncedQuery.toLowerCase()),
-  );
-
-  const toggleSelection = (value: string, e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    const currentArray = Array.isArray(currentValue) ? currentValue : [];
-    const newSelected = currentArray.includes(value)
-      ? currentArray.filter((v) => v !== value)
-      : [...currentArray, value];
-    onChange(newSelected.length === 0 ? undefined : newSelected);
-  };
-
-  const toggleAll = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    onChange(undefined);
-  };
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant={isFiltered ? "default" : "ghost"} size={"sm"}>
-          {label}
-          {variant === "multi-select" && selectedValues.length > 0 && (
-            <span className="ml-1">({selectedValues.length})</span>
-          )}
-          {isSort ? <ArrowUpDown /> : <Funnel />}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
-        <Command shouldFilter={false}>
-          {variant === "multi-select" && (
-            <CommandInput
-              placeholder="Search..."
-              value={instantQuery}
-              onValueChange={searchQuery}
-              className="h-9"
-            />
-          )}
-          <CommandList>
-            {variant === "multi-select" ? (
-              <>
-                <CommandGroup>
-                  <CommandItem
-                    onSelect={() => toggleAll()}
-                    className="flex cursor-pointer items-center gap-2"
-                  >
-                    <Checkbox
-                      checked={allSelected}
-                      className="pointer-events-none"
-                    />
-                    <span>All</span>
-                  </CommandItem>
-                </CommandGroup>
-                <ScrollArea className="h-[200px]">
-                  <CommandGroup>
-                    {filteredOptions.map((option) => (
-                      <CommandItem
-                        key={option.value}
-                        value={option.value}
-                        onSelect={() => toggleSelection(option.value)}
-                        className="flex cursor-pointer items-center gap-2"
-                      >
-                        <Checkbox
-                          checked={selectedValues.includes(option.value)}
-                          className="pointer-events-none"
-                        />
-                        <span>{option.label}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </ScrollArea>
-              </>
-            ) : (
-              <CommandGroup>
-                {options.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    onSelect={() => {
-                      onChange(
-                        option.value === "all" ? undefined : option.value,
-                      );
-                    }}
-                    className="flex justify-between"
-                  >
-                    {option.label}
-                    {(currentValue === option.value ||
-                      (currentValue === "default" &&
-                        option.value === "default") ||
-                      (!currentValue && option.value === "all")) && (
-                      <Check className="h-4 w-4" />
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 
 export function ReturnRequestsTable() {
-  const params = useParams();
-  const workspace = params.workspace as string;
-  // const { organizationId } = useCurrentUser();
+  const { organizationId } = useCurrentUser();
+  const { currentBranch } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: false,
+  });
 
-  // TODO: Get actual branchId from user's selected branch
-  // For now, we'll use a placeholder - in a real app, this would come from user context
-  // const branchId = organizationId; // Placeholder - should be actual branch ID
+  const { data: returnRequests, isLoading } = useQuery({
+    ...convexQuery(
+      api.returnRequest.listWithDetails,
+      organizationId && currentBranch
+        ? {
+            organizationId: organizationId as string,
+            branchId: currentBranch._id as string,
+          }
+        : "skip",
+    ),
+  });
 
-  // COMMENTED OUT: Convex query - using mock data instead
-  // const { data: returnRequests, isPending } = useQuery({
-  //   ...convexQuery(api.returnRequest.listWithDetails, {
-  //     organizationId: organizationId ?? "",
-  //     branchId: branchId ?? "",
-  //   }),
-  //   enabled: !!organizationId && !!branchId,
-  // });
+  // Mutations for approve and reject
+  const { mutate: approveRequest, isPending: isApproving } = useMutation({
+    mutationFn: useConvexMutation(api.returnRequest.approveReturnRequest),
+  });
 
-  // Using mock data instead of Convex
-  const returnRequests = MOCK_RETURN_REQUESTS;
-  const isPending = false;
+  const { mutate: rejectRequest, isPending: isRejecting } = useMutation({
+    mutationFn: useConvexMutation(api.returnRequest.rejectReturnRequest),
+  });
+
+  // Memoize supplier options separately to avoid recreating columns on data changes
+  const supplierOptions = React.useMemo(() => {
+    if (!returnRequests) return [];
+    return Array.from(
+      new Set(returnRequests.map((rr) => rr.supplier?.name).filter(Boolean)),
+    ).map((name) => ({
+      label: name as string,
+      value: name as string,
+    }));
+  }, [returnRequests]);
+
+  const handleApprove = React.useCallback(
+    (returnRequestId: Id<"return_requests">, requestCode: string) => {
+      // console.log("Approving return request:", returnRequestId, requestCode);
+      approveRequest(
+        { returnRequestId },
+        {
+          onSuccess: () => {
+            // console.log("Approval successful");
+            toast.success(`Return request ${requestCode} has been approved`);
+          },
+          onError: (error) => {
+            console.error("Approval failed:", error);
+            toast.error(`Failed to approve return request: ${error.message}`);
+          },
+        },
+      );
+    },
+    [approveRequest],
+  );
+
+  const handleReject = React.useCallback(
+    (returnRequestId: Id<"return_requests">, requestCode: string) => {
+      // console.log("Rejecting return request:", returnRequestId, requestCode);
+      rejectRequest(
+        { returnRequestId },
+        {
+          onSuccess: () => {
+            // console.log("Rejection successful");
+            toast.success(`Return request ${requestCode} has been rejected`);
+          },
+          onError: (error) => {
+            console.error("Rejection failed:", error);
+            toast.error(`Failed to reject return request: ${error.message}`);
+          },
+        },
+      );
+    },
+    [rejectRequest],
+  );
 
   const columns: ColumnDef<ReturnRequestListItem>[] = React.useMemo(
     () => [
       {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={
-              table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && "indeterminate")
-            }
-            onCheckedChange={(value) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      },
-      {
         accessorKey: "requestCode",
         header: "Request ID",
         cell: ({ row }) => (
-          <div className="font-medium">{row.getValue("requestCode")}</div>
+          <TableCellFirst>{row.getValue("requestCode")}</TableCellFirst>
         ),
       },
       {
         id: "supplier.name",
         accessorFn: (row) => row.supplier?.name,
         header: ({ column }) => {
-          const suppliers = returnRequests
-            ? Array.from(
-                new Set(
-                  returnRequests.map((rr) => rr.supplier?.name).filter(Boolean),
-                ),
-              ).map((name) => ({
-                label: name as string,
-                value: name as string,
-              }))
-            : [];
-
           const currentFilter = column.getFilterValue() as string[] | undefined;
 
           return (
             <FilterPopover
               label="Supplier"
-              options={suppliers}
+              options={supplierOptions}
               currentValue={currentFilter}
               onChange={(value) => column.setFilterValue(value)}
               variant="multi-select"
@@ -399,12 +251,15 @@ export function ReturnRequestsTable() {
                 label="Status"
                 options={statusFilterOptions}
                 currentValue={currentFilter}
-                onChange={(value) => column.setFilterValue(value)}
+                onChange={(value) =>
+                  column.setFilterValue(value === "all" ? undefined : value)
+                }
               />
             </div>
           );
         },
         filterFn: (row, id, value) => {
+          if (!value || value === "all") return true;
           const rowValue = row.getValue(id) as string;
           return rowValue?.toLowerCase() === value?.toLowerCase();
         },
@@ -427,9 +282,12 @@ export function ReturnRequestsTable() {
       },
       {
         id: "actions",
+        header: "Action",
         enableHiding: false,
         cell: ({ row }) => {
           const returnRequest = row.original;
+          const status = returnRequest.returnStatus?.lookupValue?.toLowerCase();
+          const isPending = status === "pending" || status === "waiting";
 
           return (
             <DropdownMenu>
@@ -440,7 +298,6 @@ export function ReturnRequestsTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
                 <DropdownMenuItem
                   onClick={() =>
                     navigator.clipboard.writeText(returnRequest.requestCode)
@@ -449,21 +306,53 @@ export function ReturnRequestsTable() {
                   Copy Request ID
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link
-                    href={`/${workspace}/return-requests/${returnRequest._id as string}`}
-                  >
-                    <Eye className="mr-2 h-4 w-4" />
-                    View details
-                  </Link>
-                </DropdownMenuItem>
+                <ReturnRequestDetailDialog
+                  returnRequestId={returnRequest._id as Id<"return_requests">}
+                  trigger={
+                    <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                      <Eye className="mr-2 h-4 w-4" />
+                      View details
+                    </DropdownMenuItem>
+                  }
+                />
+                {isPending && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleApprove(
+                          returnRequest._id as Id<"return_requests">,
+                          returnRequest.requestCode,
+                        );
+                      }}
+                      disabled={isApproving}
+                    >
+                      <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                      Approve
+                    </DropdownMenuItem>
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        handleReject(
+                          returnRequest._id as Id<"return_requests">,
+                          returnRequest.requestCode,
+                        );
+                      }}
+                      disabled={isRejecting}
+                    >
+                      <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                      Reject
+                    </DropdownMenuItem>
+                  </>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           );
         },
       },
     ],
-    [returnRequests, workspace],
+    [supplierOptions, handleApprove, handleReject, isApproving, isRejecting],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -477,8 +366,11 @@ export function ReturnRequestsTable() {
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
 
+  // Memoize the data to prevent unnecessary table re-renders
+  const tableData = React.useMemo(() => returnRequests ?? [], [returnRequests]);
+
   const table = useReactTable({
-    data: returnRequests ?? [],
+    data: tableData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -496,9 +388,15 @@ export function ReturnRequestsTable() {
     },
   });
 
+  // Use a ref to avoid table dependency in useEffect
+  const tableRef = React.useRef(table);
+  tableRef.current = table;
+
   React.useEffect(() => {
-    table.getColumn("requestCode")?.setFilterValue(debouncedFilterValue);
-  }, [debouncedFilterValue, table]);
+    tableRef.current
+      .getColumn("requestCode")
+      ?.setFilterValue(debouncedFilterValue);
+  }, [debouncedFilterValue]);
 
   const activeFiltersCount =
     sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);
@@ -509,23 +407,10 @@ export function ReturnRequestsTable() {
     setFilterValue("");
   };
 
-  if (isPending) {
+  if (isLoading) {
     return (
-      <div className="w-full space-y-4">
-        <div className="flex flex-row justify-between pb-4">
-          <div className="h-10 w-[200px] animate-pulse rounded bg-muted" />
-          <div className="h-10 w-[100px] animate-pulse rounded bg-muted" />
-        </div>
-        <div className="overflow-hidden rounded-md border">
-          <div className="bg-card p-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <div
-                key={i}
-                className="mb-2 h-12 w-full animate-pulse rounded bg-muted"
-              />
-            ))}
-          </div>
-        </div>
+      <div className="flex h-40 items-center justify-center">
+        <p className="text-muted-foreground">Loading return requests...</p>
       </div>
     );
   }
@@ -533,7 +418,7 @@ export function ReturnRequestsTable() {
   return (
     <div className="w-full">
       <div className="flex flex-row justify-between pb-4">
-        <InputGroup className="max-w-[200px]">
+        <InputGroup className="max-w-50">
           <InputGroupInput
             placeholder="Filter Request ID..."
             value={instantFilterValue}
@@ -553,32 +438,6 @@ export function ReturnRequestsTable() {
               Clear filters ({activeFiltersCount})
             </Button>
           )}
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="ml-auto">
-                Columns <ChevronDown />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
         </div>
       </div>
       <div className="overflow-hidden rounded-md border">

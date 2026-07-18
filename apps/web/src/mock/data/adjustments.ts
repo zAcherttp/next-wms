@@ -7,7 +7,7 @@ import type { Id } from "@wms/backend/convex/_generated/dataModel";
 export type AdjustmentStatus = "Pending" | "Approved" | "Rejected";
 export type AdjustmentType = "quantity" | "location";
 
-export interface QuantityAdjustmentRequest {
+export type QuantityAdjustmentRequest = {
   _id: Id<"adjustment_requests">;
   requestCode: string;
   productName: string;
@@ -17,9 +17,9 @@ export interface QuantityAdjustmentRequest {
   status: AdjustmentStatus;
   requestedBy: { fullName: string } | null;
   createdAt: number;
-}
+};
 
-export interface LocationAdjustmentRequest {
+export type LocationAdjustmentRequest = {
   _id: Id<"adjustment_requests">;
   requestCode: string;
   productName: string;
@@ -30,14 +30,14 @@ export interface LocationAdjustmentRequest {
   status: AdjustmentStatus;
   requestedBy: { fullName: string } | null;
   createdAt: number;
-}
+};
 
-export interface AdjustmentStats {
+export type AdjustmentStats = {
   totalQuantityRequests: number;
   pendingApproval: number;
   approved: number;
   rejected: number;
-}
+};
 
 // ============================================================================
 // MOCK DATA

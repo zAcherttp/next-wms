@@ -40,7 +40,7 @@ export default function NotificationDetailPage() {
     <>
       {/* Notification List - Hidden on mobile when notification is selected */}
       <div
-        className={`flex w-full flex-col border-r md:w-[400px] ${
+        className={`flex w-full flex-col border-r md:w-100 ${
           selectedNotification ? "hidden md:flex" : "flex"
         }`}
       >

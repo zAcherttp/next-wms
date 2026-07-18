@@ -17,6 +17,7 @@ import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { logCRUDAction } from "./audit";
 
 /**
  * LIST - Get all brands with pagination
@@ -92,6 +93,52 @@ export const listAll = query({
 });
 
 /**
+ * LIST ALL WITH PRODUCT COUNT - Get all brands with their product count
+ * Returns brands with the count of products associated with each brand
+ */
+export const listBrandsWithProductCount = query({
+  args: {
+    organizationId: v.string(),
+    isActive: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const { organizationId, isActive } = args;
+
+    let brandsQuery = ctx.db
+      .query("brands")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organizationId),
+      );
+
+    if (isActive !== undefined) {
+      brandsQuery = brandsQuery.filter((q) =>
+        q.eq(q.field("isActive"), isActive),
+      );
+    }
+
+    const brands = await brandsQuery.collect();
+
+    // Get product counts for each brand
+    const brandsWithProductCount = await Promise.all(
+      brands.map(async (brand) => {
+        const products = await ctx.db
+          .query("products")
+          .withIndex("brandId", (q) => q.eq("brandId", brand._id))
+          .filter((q) => q.eq(q.field("isDeleted"), false))
+          .collect();
+
+        return {
+          ...brand,
+          productCount: products.length,
+        };
+      }),
+    );
+
+    return brandsWithProductCount;
+  },
+});
+
+/**
  * CREATE - Create a new brand
  * Permission required: brands:create
  */
@@ -120,11 +167,23 @@ export const createBrand = mutation({
       throw new Error("Brand name already exists");
     }
 
-    return await ctx.db.insert("brands", {
+    const brandId = await ctx.db.insert("brands", {
       organizationId,
       name,
       isActive,
     });
+
+    // Log audit for brand creation
+    await logCRUDAction(ctx, {
+      organizationId: organizationId as Id<"organizations">,
+      action: "CREATE",
+      entityType: "brands",
+      entityId: brandId,
+      newValue: { name, isActive },
+      notes: `Created brand "${name}"`,
+    });
+
+    return brandId;
   },
 });
 
@@ -172,6 +231,18 @@ export const updateBrand = mutation({
     }
 
     await ctx.db.patch(id, updates);
+
+    // Log audit for brand update
+    await logCRUDAction(ctx, {
+      organizationId: brand.organizationId as Id<"organizations">,
+      action: "UPDATE",
+      entityType: "brands",
+      entityId: id,
+      oldValue: { name: brand.name, isActive: brand.isActive },
+      newValue: updates,
+      notes: `Updated brand "${brand.name}"`,
+    });
+
     return id;
   },
 });
@@ -203,6 +274,15 @@ export const deleteBrand = mutation({
       );
     }
 
+    // Log audit for brand deletion before deleting
+    await logCRUDAction(ctx, {
+      organizationId: id as unknown as Id<"organizations">, // brands table uses string organizationId
+      action: "DELETE",
+      entityType: "brands",
+      entityId: brandId,
+      notes: `Hard deleted brand`,
+    });
+
     await ctx.db.delete(id);
     return { success: true };
   },
@@ -227,6 +307,17 @@ export const deactivateBrand = mutation({
 
     await ctx.db.patch(args.id, {
       isActive: false,
+    });
+
+    // Log audit for brand deactivation
+    await logCRUDAction(ctx, {
+      organizationId: brand.organizationId as Id<"organizations">,
+      action: "UPDATE",
+      entityType: "brands",
+      entityId: args.id,
+      oldValue: { isActive: brand.isActive },
+      newValue: { isActive: false },
+      notes: `Deactivated brand "${brand.name}"`,
     });
 
     return args.id;

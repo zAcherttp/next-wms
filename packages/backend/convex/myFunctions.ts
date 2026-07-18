@@ -1,78 +1,192 @@
-// import { v } from "convex/values";
-// import { api } from "../convex/_generated/api";
-// import { action, mutation, query } from "../convex/_generated/server";
+import { makeFunctionReference } from "convex/server";
+import { internalAction, query } from "./_generated/server";
 
-// // Write your Convex functions in any file inside this directory (`convex`).
-// // See https://docs.convex.dev/functions for more.
+const LOW_STOCK_THRESHOLD = 10;
+const clearAllTestData = makeFunctionReference<
+  "mutation",
+  Record<string, never>,
+  { totalDeleted: number }
+>("seedMockData:clearAllTestData");
+const seedAllTestData = makeFunctionReference<
+  "mutation",
+  Record<string, never>,
+  { summary: Record<string, number | string> }
+>("seedMockData:seedAllTestData");
 
-// // You can read data from the database via a query:
-// export const listNumbers = query({
-//   // Validators for arguments.
-//   args: {
-//     count: v.number(),
-//   },
+/** Public, read-only snapshot used by the evaluator demo. */
+export const getDemoSnapshot = query({
+  args: {},
+  handler: async (ctx) => {
+    const organization = await ctx.db
+      .query("organizations")
+      .withIndex("isDeleted", (q) => q.eq("isDeleted", false))
+      .first();
 
-//   // Query implementation.
-//   handler: async (ctx, args) => {
-//     //// Read the database as many times as you need here.
-//     //// See https://docs.convex.dev/database/reading-data.
-//     const numbers = await ctx.db
-//       .query("numbers")
-//       // Ordered by _creationTime, return most recent
-//       .order("desc")
-//       .take(args.count);
-//     return {
-//       viewer: (await ctx.auth.getUserIdentity())?.name ?? null,
-//       numbers: numbers.reverse().map((number) => number.value),
-//     };
-//   },
-// });
+    if (!organization) {
+      return {
+        ready: false as const,
+        lastResetAt: null,
+        organization: null,
+        branch: null,
+        metrics: {
+          onHand: 0,
+          activeSkus: 0,
+          lowStock: 0,
+          openInbound: 0,
+          openOutbound: 0,
+          inventoryValue: 0,
+        },
+        topInventory: [],
+        recentActivity: [],
+      };
+    }
 
-// // You can write data to the database via a mutation:
-// export const addNumber = mutation({
-//   // Validators for arguments.
-//   args: {
-//     value: v.number(),
-//   },
+    const branch = await ctx.db
+      .query("branches")
+      .withIndex("organizationId", (q) =>
+        q.eq("organizationId", organization._id),
+      )
+      .filter((q) => q.eq(q.field("isDeleted"), false))
+      .first();
 
-//   // Mutation implementation.
-//   handler: async (ctx, args) => {
-//     //// Insert or modify documents in the database here.
-//     //// Mutations can also read from the database like queries.
-//     //// See https://docs.convex.dev/database/writing-data.
+    if (!branch) {
+      return {
+        ready: false as const,
+        lastResetAt: organization._creationTime,
+        organization: {
+          name: organization.name,
+          slug: organization.slug,
+        },
+        branch: null,
+        metrics: {
+          onHand: 0,
+          activeSkus: 0,
+          lowStock: 0,
+          openInbound: 0,
+          openOutbound: 0,
+          inventoryValue: 0,
+        },
+        topInventory: [],
+        recentActivity: [],
+      };
+    }
 
-//     const id = await ctx.db.insert("numbers", { value: args.value });
+    const [batches, purchaseOrders, outboundOrders, receiveSessions] =
+      await Promise.all([
+        ctx.db
+          .query("inventory_batches")
+          .withIndex("branchId", (q) => q.eq("branchId", branch._id))
+          .filter((q) => q.eq(q.field("isDeleted"), false))
+          .collect(),
+        ctx.db
+          .query("purchase_orders")
+          .withIndex("branchId", (q) => q.eq("branchId", branch._id))
+          .filter((q) => q.eq(q.field("isDeleted"), false))
+          .collect(),
+        ctx.db
+          .query("outbound_orders")
+          .withIndex("branchId", (q) => q.eq("branchId", branch._id))
+          .filter((q) => q.eq(q.field("isDeleted"), false))
+          .collect(),
+        ctx.db
+          .query("receive_sessions")
+          .withIndex("branchId", (q) => q.eq("branchId", branch._id))
+          .collect(),
+      ]);
 
-//     console.log("Added new document with id:", id);
-//     // Optionally, return a value from your mutation.
-//     // return id;
-//   },
-// });
+    const variants = await Promise.all(
+      batches.map((batch) => ctx.db.get(batch.skuId)),
+    );
+    const products = await Promise.all(
+      variants.map((variant) =>
+        variant ? ctx.db.get(variant.productId) : Promise.resolve(null),
+      ),
+    );
 
-// // You can fetch data from and send data to third-party APIs via an action:
-// export const myAction = action({
-//   // Validators for arguments.
-//   args: {
-//     first: v.number(),
-//     second: v.string(),
-//   },
+    const onHand = batches.reduce((sum, batch) => sum + batch.quantity, 0);
+    const inventoryValue = batches.reduce(
+      (sum, batch, index) =>
+        sum + batch.quantity * (variants[index]?.costPrice ?? 0),
+      0,
+    );
+    const activeSkus = new Set(batches.map((batch) => batch.skuId)).size;
+    const lowStock = batches.filter(
+      (batch) => batch.quantity <= LOW_STOCK_THRESHOLD,
+    ).length;
 
-//   // Action implementation.
-//   handler: async (ctx, args) => {
-//     //// Use the browser-like `fetch` API to send HTTP requests.
-//     //// See https://docs.convex.dev/functions/actions#calling-third-party-apis-and-using-npm-packages.
-//     // const response = await ctx.fetch("https://api.thirdpartyservice.com");
-//     // const data = await response.json();
+    const topInventory = batches
+      .map((batch, index) => ({
+        id: batch._id,
+        sku: variants[index]?.skuCode ?? "Unknown SKU",
+        product: products[index]?.name ?? "Unknown product",
+        quantity: batch.quantity,
+        value: batch.quantity * (variants[index]?.costPrice ?? 0),
+      }))
+      .sort((a, b) => b.quantity - a.quantity)
+      .slice(0, 6);
 
-//     //// Query data by running Convex queries.
-//     const data = await ctx.runQuery(api.myFunctions.listNumbers, {
-//       count: 10,
-//     });
-//     console.log(data);
+    const recentActivity = [
+      ...purchaseOrders.map((order) => ({
+        id: order._id,
+        type: "Inbound" as const,
+        code: order.code,
+        at: order.orderedAt,
+        detail: "Purchase order created",
+      })),
+      ...outboundOrders.map((order) => ({
+        id: order._id,
+        type: "Outbound" as const,
+        code: order.orderCode,
+        at: order.orderDate,
+        detail: "Outbound order queued",
+      })),
+      ...receiveSessions.map((session) => ({
+        id: session._id,
+        type: "Receiving" as const,
+        code: session.receiveSessionCode,
+        at: session.receivedAt,
+        detail: "Receiving session updated",
+      })),
+    ]
+      .sort((a, b) => b.at - a.at)
+      .slice(0, 7);
 
-//     //// Write data by running Convex mutations.
-//     await ctx.runMutation(api.myFunctions.addNumber, {
-//       value: args.first,
-//     });
-//   },
-// });
+    return {
+      ready: true as const,
+      lastResetAt: organization._creationTime,
+      organization: {
+        name: organization.name,
+        slug: organization.slug,
+      },
+      branch: {
+        name: branch.name,
+        address: branch.address,
+      },
+      metrics: {
+        onHand,
+        activeSkus,
+        lowStock,
+        openInbound: purchaseOrders.length,
+        openOutbound: outboundOrders.length,
+        inventoryValue,
+      },
+      topInventory,
+      recentActivity,
+    };
+  },
+});
+
+/** Clears and reseeds only application tables. Better Auth data is preserved. */
+export const resetDemoData = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const cleared = await ctx.runMutation(clearAllTestData, {});
+    const seeded = await ctx.runMutation(seedAllTestData, {});
+
+    return {
+      cleared: cleared.totalDeleted,
+      seeded: seeded.summary,
+      completedAt: Date.now(),
+    };
+  },
+});

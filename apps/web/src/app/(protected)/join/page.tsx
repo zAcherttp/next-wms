@@ -42,6 +42,8 @@ function JoinPageContent() {
 
   const handleJoinOrg = (orgSlug: string) => {
     toast.success("Loading organization...");
+    // Clear selected branch to ensure fresh selection for new org
+    localStorage.removeItem("wms:selected-branch");
     authClient.organization.setActive({
       organizationSlug: orgSlug,
     });
@@ -49,7 +51,7 @@ function JoinPageContent() {
   };
 
   return (
-    <div className="flex min-h-screen w-full items-center justify-center">
+    <div className="flex min-h-screen w-full items-center justify-center bg-background">
       <div className="w-full max-w-100 space-y-6">
         {!showCreateForm ? (
           <>
@@ -107,6 +109,11 @@ function JoinPageContent() {
             </span>
             <CreateOrganizationForm
               onSuccess={(orgSlug) => {
+                // Clear selected branch to ensure fresh selection for new org
+                localStorage.removeItem("wms:selected-branch");
+                authClient.organization.setActive({
+                  organizationSlug: orgSlug,
+                });
                 setShowCreateForm(false);
                 router.push(`/${orgSlug}/dashboard`);
               }}

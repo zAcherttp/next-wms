@@ -35,7 +35,7 @@ export default function NotificationsPage() {
   return (
     <>
       {/* Notification List */}
-      <div className="flex w-full flex-col border-r md:w-[400px]">
+      <div className="flex w-full flex-col border-r md:w-100">
         <div className="flex h-10 items-center px-4">
           <span className="font-semibold">Notifications</span>
         </div>

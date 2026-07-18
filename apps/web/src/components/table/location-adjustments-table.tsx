@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,32 +14,33 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
-  ArrowUpDown,
-  Check,
-  ChevronDown,
+  CheckCircle,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
+  Eye,
   Filter,
-  Funnel,
+  Loader2,
+  MoreHorizontal,
+  Plus,
+  XCircle,
 } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
+import { AdjustmentRequestDetailDialog } from "@/components/adjustment-request-detail-dialog";
+import { FilterPopover } from "@/components/table/filter-popover";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Command,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   DropdownMenu,
-  DropdownMenuCheckboxItem,
   DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import {
@@ -46,12 +49,6 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
   Table,
   TableBody,
   TableCell,
@@ -59,158 +56,22 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import { cn } from "@/lib/utils";
-import {
-  type LocationAdjustmentRequest,
-  MOCK_LOCATION_ADJUSTMENTS,
-} from "@/mock/data/adjustments";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 
-const getBadgeStyleByStatus = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "pending":
-      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60";
-    case "approved":
-      return "bg-green-500/10 text-green-600 border-green-500/60";
-    case "rejected":
-      return "bg-red-500/10 text-red-600 border-red-500/60";
-    default:
-      return "bg-gray-500/10 text-gray-600 border-gray-500/60";
-  }
-};
-
-interface FilterPopoverProps {
-  label: string;
-  options: { label: string; value: string }[];
-  currentValue?: string | string[];
-  onChange: (value: string | string[] | undefined) => void;
-  isSort?: boolean;
-  variant?: "single" | "multi-select";
-}
-
-const FilterPopover = ({
-  label,
-  options,
-  currentValue,
-  onChange,
-  isSort = false,
-  variant = "single",
-}: FilterPopoverProps) => {
-  const [searchQuery, instantQuery, debouncedQuery] = useDebouncedInput(
-    "",
-    100,
-  );
-
-  const isFiltered =
-    variant === "single"
-      ? currentValue !== undefined && currentValue !== "default"
-      : Array.isArray(currentValue) && currentValue.length > 0;
-
-  const selectedValues = Array.isArray(currentValue) ? currentValue : [];
-  const allSelected = selectedValues.length === 0;
-
-  const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(debouncedQuery.toLowerCase()),
-  );
-
-  const toggleSelection = (value: string, e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    const currentArray = Array.isArray(currentValue) ? currentValue : [];
-    const newSelected = currentArray.includes(value)
-      ? currentArray.filter((v) => v !== value)
-      : [...currentArray, value];
-    onChange(newSelected.length === 0 ? undefined : newSelected);
-  };
-
-  const toggleAll = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    onChange(undefined);
-  };
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant={isFiltered ? "default" : "ghost"} size={"sm"}>
-          {label}
-          {variant === "multi-select" && selectedValues.length > 0 && (
-            <span className="ml-1 rounded-full bg-primary-foreground px-1.5 text-primary text-xs">
-              {selectedValues.length}
-            </span>
-          )}
-          {isSort ? <ArrowUpDown /> : <Funnel />}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
-        <Command shouldFilter={false}>
-          {variant === "multi-select" && (
-            <CommandInput
-              placeholder="Search..."
-              value={instantQuery}
-              onValueChange={searchQuery}
-              className="h-9"
-            />
-          )}
-          <CommandList>
-            {variant === "multi-select" ? (
-              <>
-                <CommandGroup>
-                  <CommandItem
-                    onSelect={() => toggleAll()}
-                    className="flex cursor-pointer items-center gap-2"
-                  >
-                    <Checkbox
-                      checked={allSelected}
-                      className="pointer-events-none"
-                    />
-                    <span>All</span>
-                  </CommandItem>
-                </CommandGroup>
-                <ScrollArea className="h-[200px]">
-                  <CommandGroup>
-                    {filteredOptions.map((option) => (
-                      <CommandItem
-                        key={option.value}
-                        value={option.value}
-                        onSelect={() => toggleSelection(option.value)}
-                        className="flex cursor-pointer items-center gap-2"
-                      >
-                        <Checkbox
-                          checked={selectedValues.includes(option.value)}
-                          className="pointer-events-none"
-                        />
-                        <span>{option.label}</span>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                </ScrollArea>
-              </>
-            ) : (
-              <CommandGroup>
-                {options.map((option) => (
-                  <CommandItem
-                    key={option.value}
-                    value={option.value}
-                    onSelect={() => onChange(option.value)}
-                    className={cn(
-                      "flex cursor-pointer items-center justify-between gap-2",
-                      currentValue === option.value && "bg-accent",
-                    )}
-                  >
-                    <span>{option.label}</span>
-                    {currentValue === option.value && (
-                      <Check className="h-4 w-4" />
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
+// Type for location adjustment request from Convex
+type LocationAdjustmentRequest = {
+  _id: Id<"adjustment_requests">;
+  requestCode: string;
+  productName: string;
+  fromLocation: string;
+  toLocation: string;
+  quantity: number;
+  reason: string;
+  status: string;
+  requestedBy: { fullName: string } | null;
+  createdAt: number;
 };
 
 // Status filter options
@@ -223,14 +84,17 @@ const statusFilterOptions = [
 interface LocationAdjustmentsTableProps {
   onApprove?: (id: string) => void;
   onReject?: (id: string) => void;
-  onView?: (id: string) => void;
+  onNewRequest: () => void;
 }
 
 export function LocationAdjustmentsTable({
   onApprove,
   onReject,
-  onView,
+  onNewRequest,
 }: LocationAdjustmentsTableProps) {
+  const { organizationId } = useCurrentUser();
+  const { currentBranch } = useBranches({ organizationId });
+
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
@@ -241,39 +105,83 @@ export function LocationAdjustmentsTable({
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [statusFilter, setStatusFilter] = React.useState<string[]>([]);
 
-  // Using mock data
-  const data = MOCK_LOCATION_ADJUSTMENTS;
+  // Mutations for approve and reject
+  const { mutate: approveRequest, isPending: isApproving } = useMutation({
+    mutationFn: useConvexMutation(api.cycleCount.approveAdjustmentRequest),
+  });
+
+  const { mutate: rejectRequest, isPending: isRejecting } = useMutation({
+    mutationFn: useConvexMutation(api.cycleCount.rejectAdjustmentRequest),
+  });
+
+  const handleApprove = React.useCallback(
+    (adjustmentRequestId: Id<"adjustment_requests">, requestCode: string) => {
+      approveRequest(
+        { adjustmentRequestId },
+        {
+          onSuccess: () => {
+            toast.success(
+              `Adjustment request ${requestCode} has been approved`,
+            );
+            onApprove?.(adjustmentRequestId as string);
+          },
+          onError: (error) => {
+            toast.error(
+              `Failed to approve adjustment request: ${error.message}`,
+            );
+          },
+        },
+      );
+    },
+    [approveRequest, onApprove],
+  );
+
+  const handleReject = React.useCallback(
+    (adjustmentRequestId: Id<"adjustment_requests">, requestCode: string) => {
+      rejectRequest(
+        { adjustmentRequestId },
+        {
+          onSuccess: () => {
+            toast.success(
+              `Adjustment request ${requestCode} has been rejected`,
+            );
+            onReject?.(adjustmentRequestId as string);
+          },
+          onError: (error) => {
+            toast.error(
+              `Failed to reject adjustment request: ${error.message}`,
+            );
+          },
+        },
+      );
+    },
+    [rejectRequest, onReject],
+  );
+
+  // Fetch real data from Convex
+  const { data: adjustments, isLoading } = useQuery({
+    ...convexQuery(
+      api.cycleCount.getLocationAdjustmentsForTable,
+      organizationId && currentBranch?._id
+        ? {
+            organizationId: organizationId as Id<"organizations">,
+            branchId: currentBranch._id as Id<"branches">,
+          }
+        : "skip",
+    ),
+    enabled: !!organizationId && !!currentBranch?._id,
+  });
+
+  const data = adjustments ?? [];
 
   const columns: ColumnDef<LocationAdjustmentRequest>[] = [
-    {
-      id: "select",
-      header: ({ table }) => (
-        <Checkbox
-          checked={
-            table.getIsAllPageRowsSelected() ||
-            (table.getIsSomePageRowsSelected() && "indeterminate")
-          }
-          onCheckedChange={(value) => table.toggleAllPageRowsSelected(!!value)}
-          aria-label="Select all"
-        />
-      ),
-      cell: ({ row }) => (
-        <Checkbox
-          checked={row.getIsSelected()}
-          onCheckedChange={(value) => row.toggleSelected(!!value)}
-          aria-label="Select row"
-        />
-      ),
-      enableSorting: false,
-      enableHiding: false,
-    },
     {
       accessorKey: "requestCode",
       header: "Request ID",
       cell: ({ row }) => (
-        <span className="font-medium text-primary">
+        <TableCellFirst className="text-primary">
           {row.getValue("requestCode")}
-        </span>
+        </TableCellFirst>
       ),
     },
     {
@@ -345,43 +253,64 @@ export function LocationAdjustmentsTable({
     },
     {
       id: "actions",
-      header: "Actions",
+      header: "Action",
       cell: ({ row }) => {
         const adjustment = row.original;
-        const isPending = adjustment.status === "Pending";
+        const isPending = adjustment.status?.toLowerCase() === "pending";
 
         return (
-          <div className="flex items-center gap-2">
-            {isPending ? (
-              <>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto p-0 text-green-600 hover:bg-transparent hover:text-green-700"
-                  onClick={() => onApprove?.(adjustment._id as string)}
-                >
-                  Approve
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-auto p-0 text-red-600 hover:bg-transparent hover:text-red-700"
-                  onClick={() => onReject?.(adjustment._id as string)}
-                >
-                  Reject
-                </Button>
-              </>
-            ) : (
-              <Button
-                variant="ghost"
-                size="sm"
-                className="h-auto p-0 text-primary hover:bg-transparent hover:text-primary/80"
-                onClick={() => onView?.(adjustment._id as string)}
-              >
-                View
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size={"icon-sm"}>
+                <span className="sr-only">Open menu</span>
+                <MoreHorizontal />
               </Button>
-            )}
-          </div>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                onClick={() =>
+                  navigator.clipboard.writeText(adjustment.requestCode)
+                }
+              >
+                Copy Request ID
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <AdjustmentRequestDetailDialog
+                adjustmentRequestId={adjustment._id}
+                trigger={
+                  <DropdownMenuItem onSelect={(e) => e.preventDefault()}>
+                    <Eye className="mr-2 h-4 w-4" />
+                    View details
+                  </DropdownMenuItem>
+                }
+              />
+              {isPending && (
+                <>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleApprove(adjustment._id, adjustment.requestCode);
+                    }}
+                    disabled={isApproving}
+                  >
+                    <CheckCircle className="mr-2 h-4 w-4 text-green-600" />
+                    Approve
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onSelect={(e) => {
+                      e.preventDefault();
+                      handleReject(adjustment._id, adjustment.requestCode);
+                    }}
+                    disabled={isRejecting}
+                  >
+                    <XCircle className="mr-2 h-4 w-4 text-red-600" />
+                    Reject
+                  </DropdownMenuItem>
+                </>
+              )}
+            </DropdownMenuContent>
+          </DropdownMenu>
         );
       },
     },
@@ -447,38 +376,16 @@ export function LocationAdjustmentsTable({
             }
             variant="multi-select"
           />
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm">
-                Columns <ChevronDown className="ml-1 h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {table
-                .getAllColumns()
-                .filter((column) => column.getCanHide())
-                .map((column) => {
-                  return (
-                    <DropdownMenuCheckboxItem
-                      key={column.id}
-                      className="capitalize"
-                      checked={column.getIsVisible()}
-                      onCheckedChange={(value) =>
-                        column.toggleVisibility(!!value)
-                      }
-                    >
-                      {column.id}
-                    </DropdownMenuCheckboxItem>
-                  );
-                })}
-            </DropdownMenuContent>
-          </DropdownMenu>
+          <Button size="sm" onClick={onNewRequest}>
+            <Plus className="mr-2 h-4 w-4" />
+            New Adjustment
+          </Button>
         </div>
       </div>
 
       {/* Table */}
       <div className="rounded-md border">
-        <Table>
+        <Table className="bg-card">
           <TableHeader>
             {table.getHeaderGroups().map((headerGroup) => (
               <TableRow key={headerGroup.id}>
@@ -496,7 +403,19 @@ export function LocationAdjustmentsTable({
             ))}
           </TableHeader>
           <TableBody>
-            {table.getRowModel().rows?.length ? (
+            {isLoading ? (
+              <TableRow>
+                <TableCell
+                  colSpan={columns.length}
+                  className="h-24 text-center"
+                >
+                  <div className="flex items-center justify-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading...</span>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ) : table.getRowModel().rows?.length ? (
               table.getRowModel().rows.map((row) => (
                 <TableRow
                   key={row.id}
@@ -535,7 +454,7 @@ export function LocationAdjustmentsTable({
         <div className="flex items-center space-x-2">
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.setPageIndex(0)}
             disabled={!table.getCanPreviousPage()}
           >
@@ -543,7 +462,7 @@ export function LocationAdjustmentsTable({
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -555,7 +474,7 @@ export function LocationAdjustmentsTable({
           </span>
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -563,7 +482,7 @@ export function LocationAdjustmentsTable({
           </Button>
           <Button
             variant="outline"
-            size="sm"
+            size="icon-sm"
             onClick={() => table.setPageIndex(table.getPageCount() - 1)}
             disabled={!table.getCanNextPage()}
           >

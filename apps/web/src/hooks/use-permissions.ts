@@ -32,7 +32,7 @@ export function useHasPermission(permissions: PermissionsInput) {
     queryKey: getPermissionQueryKey(userId ?? "", permissions),
     queryFn: async () => {
       const result = await authClient.organization.hasPermission({
-        permission: permissions,
+        permissions,
       });
       return result.data?.success === true;
     },
@@ -65,7 +65,7 @@ export function useHasPermissions(permissionSets: PermissionsInput[]) {
         permissionSets.map(async (permissions) => {
           try {
             const result = await authClient.organization.hasPermission({
-              permission: permissions,
+              permissions,
             });
             return result.data?.success === true;
           } catch {
@@ -97,7 +97,7 @@ export function usePrefetchPermissions() {
             queryKey: getPermissionQueryKey(userId, permissions),
             queryFn: async () => {
               const result = await authClient.organization.hasPermission({
-                permission: permissions,
+                permissions,
               });
               return result.data?.success === true;
             },

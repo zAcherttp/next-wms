@@ -47,5 +47,5 @@ function WheelPicker<T extends WheelPickerValue = string>({
   );
 }
 
-export { WheelPicker, WheelPickerWrapper };
 export type { WheelPickerClassNames, WheelPickerOption };
+export { WheelPicker, WheelPickerWrapper };

@@ -23,7 +23,7 @@ import { Switch } from "./switch";
 //   type WheelPickerOption,
 // } from "@/components/wheel-picker";
 
-export interface DateRangePickerProps {
+export type DateRangePickerProps = {
   /** Click handler for applying the updates from DateRangePicker. */
   onUpdate?: (values: {
     range: DateRange;
@@ -47,7 +47,7 @@ export interface DateRangePickerProps {
   locale?: string;
   /** Option for showing compare feature */
   showCompare?: boolean;
-}
+};
 
 const formatDate = (date: Date | undefined, locale = "en-us"): string => {
   if (!date) return "";
@@ -71,10 +71,10 @@ const getDateAdjustedForTimezone = (dateInput: Date | string): Date => {
   return dateInput;
 };
 
-export interface DateRange {
+export type DateRange = {
   from: Date;
   to: Date | undefined;
-}
+};
 /** Preset name type for type-safe preset handling */
 export type PresetName =
   | "last7"
@@ -85,10 +85,10 @@ export type PresetName =
   | "thisMonth"
   | "lastMonth";
 
-export interface Preset {
+export type Preset = {
   name: PresetName;
   label: string;
-}
+};
 
 /** Available date range presets */
 export const PRESETS: Preset[] = [
@@ -236,20 +236,24 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
   };
 
   const checkPreset = (): void => {
+    // Guard against undefined range.from
+    if (!range.from) {
+      setSelectedPreset(undefined);
+      return;
+    }
+
     for (const preset of PRESETS) {
       const presetRange = getPresetRange(preset.name);
 
       const normalizedRangeFrom = new Date(range.from);
       normalizedRangeFrom.setHours(0, 0, 0, 0);
-      const normalizedPresetFrom = new Date(
-        presetRange.from.setHours(0, 0, 0, 0),
-      );
+      const normalizedPresetFrom = new Date(presetRange.from);
+      normalizedPresetFrom.setHours(0, 0, 0, 0);
 
       const normalizedRangeTo = new Date(range.to ?? 0);
       normalizedRangeTo.setHours(0, 0, 0, 0);
-      const normalizedPresetTo = new Date(
-        presetRange.to?.setHours(0, 0, 0, 0) ?? 0,
-      );
+      const normalizedPresetTo = new Date(presetRange.to ?? 0);
+      normalizedPresetTo.setHours(0, 0, 0, 0);
 
       if (
         normalizedRangeFrom.getTime() === normalizedPresetFrom.getTime() &&
@@ -333,6 +337,8 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
   // Helper function to check if two date ranges are equal
   const areRangesEqual = (a?: DateRange, b?: DateRange): boolean => {
     if (!a || !b) return a === b; // If either is undefined, return true if both are undefined
+    // Guard against undefined from/to properties
+    if (!a.from || !b.from) return false;
     return (
       a.from.getTime() === b.from.getTime() &&
       (!a.to || !b.to || a.to.getTime() === b.to.getTime())
@@ -360,7 +366,7 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
       }}
     >
       <PopoverTrigger asChild>
-        <Button size={"lg"} variant="outline">
+        <Button size={"sm"} variant="outline">
           <div className="text-right">
             <div className="py-1">
               <div>{`${formatDate(range.from, locale)}${
@@ -378,7 +384,7 @@ export const DateRangePicker: FC<DateRangePickerProps> & {
               </div>
             )}
           </div>
-          <div className="-mr-2 scale-125 pl-1 opacity-60">
+          <div className="scale-125 pl-1 opacity-60">
             {isOpen ? (
               <ChevronUpIcon width={24} />
             ) : (

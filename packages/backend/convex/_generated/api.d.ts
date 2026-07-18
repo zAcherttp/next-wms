@@ -18,14 +18,22 @@ import type * as cycleCount from "../cycleCount.js";
 import type * as healthCheck from "../healthCheck.js";
 import type * as http from "../http.js";
 import type * as inventory from "../inventory.js";
+import type * as myFunctions from "../myFunctions.js";
 import type * as notifications from "../notifications.js";
+import type * as outboundOrders from "../outboundOrders.js";
+import type * as pickingSessions from "../pickingSessions.js";
 import type * as privateData from "../privateData.js";
 import type * as products from "../products.js";
 import type * as purchaseOrders from "../purchaseOrders.js";
 import type * as receiveSessions from "../receiveSessions.js";
+import type * as reports from "../reports.js";
 import type * as returnRequest from "../returnRequest.js";
 import type * as seedMockData from "../seedMockData.js";
+import type * as storageZones from "../storageZones.js";
 import type * as suppliers from "../suppliers.js";
+import type * as systemLookup from "../systemLookup.js";
+import type * as systemLookups from "../systemLookups.js";
+import type * as traceability from "../traceability.js";
 
 import type {
   ApiFromModules,
@@ -44,14 +52,22 @@ declare const fullApi: ApiFromModules<{
   healthCheck: typeof healthCheck;
   http: typeof http;
   inventory: typeof inventory;
+  myFunctions: typeof myFunctions;
   notifications: typeof notifications;
+  outboundOrders: typeof outboundOrders;
+  pickingSessions: typeof pickingSessions;
   privateData: typeof privateData;
   products: typeof products;
   purchaseOrders: typeof purchaseOrders;
   receiveSessions: typeof receiveSessions;
+  reports: typeof reports;
   returnRequest: typeof returnRequest;
   seedMockData: typeof seedMockData;
+  storageZones: typeof storageZones;
   suppliers: typeof suppliers;
+  systemLookup: typeof systemLookup;
+  systemLookups: typeof systemLookups;
+  traceability: typeof traceability;
 }>;
 
 /**

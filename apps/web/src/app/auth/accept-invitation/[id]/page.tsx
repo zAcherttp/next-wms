@@ -191,7 +191,7 @@ export default function AcceptInvitationPage() {
   if (status === "login-required") {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-[400px] max-w-md">
+        <Card className="w-100 max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-primary/10">
               <Building2 className="size-6 text-primary" />
@@ -231,7 +231,7 @@ export default function AcceptInvitationPage() {
 
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-[400px] max-w-md">
+        <Card className="w-100 max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/20">
               <CheckCircle className="size-6 text-blue-600 dark:text-blue-400" />
@@ -262,7 +262,7 @@ export default function AcceptInvitationPage() {
   if (status === "error") {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-[400px] max-w-md">
+        <Card className="w-100 max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-destructive/10">
               <XCircle className="size-6 text-destructive" />
@@ -283,7 +283,7 @@ export default function AcceptInvitationPage() {
   if (status === "success") {
     return (
       <div className="flex min-h-screen items-center justify-center p-4">
-        <Card className="w-[400px] max-w-md">
+        <Card className="w-100 max-w-md">
           <CardHeader className="text-center">
             <div className="mx-auto mb-4 flex size-12 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20">
               <CheckCircle className="size-6 text-green-600 dark:text-green-400" />

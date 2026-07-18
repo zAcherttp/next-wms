@@ -1,5 +1,6 @@
 "use client";
 
+import { useQueryClient } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,32 +13,35 @@ import {
   useReactTable,
 } from "@tanstack/react-table";
 import {
-  ArrowUpDown,
-  Check,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Filter,
-  Funnel,
   MoreHorizontal,
 } from "lucide-react";
 import * as React from "react";
+import { toast } from "sonner";
 import { InviteUserDialog } from "@/components/settings/invite-user-dialog";
+import { FilterPopover } from "@/components/table/filter-popover";
+import TableCellFirst from "@/components/table/table-cell-first";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -47,11 +51,6 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -69,7 +68,7 @@ import {
 } from "@/components/ui/table";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import { useMembers } from "@/hooks/use-members";
-import { useActiveOrganization } from "@/lib/auth/client";
+import { authClient, useActiveOrganization } from "@/lib/auth/client";
 import type { Member } from "@/lib/auth/types";
 import { cn } from "@/lib/utils";
 
@@ -86,60 +85,6 @@ const getRoleBadgeStyle = (role: string) => {
   }
 };
 
-interface FilterPopoverProps {
-  label: string;
-  options: { label: string; value: string }[];
-  currentValue?: string;
-  onChange: (value: string | undefined) => void;
-  isSort?: boolean;
-}
-
-const FilterPopover = ({
-  label,
-  options,
-  currentValue,
-  onChange,
-  isSort = false,
-}: FilterPopoverProps) => {
-  const isFiltered = currentValue !== undefined && currentValue !== "default";
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant={isFiltered ? "default" : "ghost"} size={"sm"}>
-          {label}
-          {isSort ? <ArrowUpDown /> : <Funnel />}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-50 p-0">
-        <Command shouldFilter={false}>
-          <CommandList>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  onSelect={() => {
-                    onChange(option.value === "all" ? undefined : option.value);
-                  }}
-                  className="flex justify-between"
-                >
-                  {option.label}
-                  {(currentValue === option.value ||
-                    (currentValue === "default" &&
-                      option.value === "default") ||
-                    (!currentValue && option.value === "all")) && (
-                    <Check className="h-4 w-4" />
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
-
 const getInitials = (name: string | null | undefined) => {
   if (!name) return "?";
   return name
@@ -149,165 +94,6 @@ const getInitials = (name: string | null | undefined) => {
     .toUpperCase()
     .slice(0, 2);
 };
-
-export const columns: ColumnDef<Member>[] = [
-  {
-    id: "user",
-    accessorFn: (row) => row.user?.name ?? row.user?.email ?? "",
-    header: () => {
-      return <span className="pl-1">User</span>;
-    },
-    cell: ({ row }) => {
-      const member = row.original;
-      const user = member.user;
-      return (
-        <div className="flex items-center gap-3">
-          <Avatar className="size-8">
-            <AvatarImage
-              src={user?.image ?? undefined}
-              alt={user?.name ?? ""}
-            />
-            <AvatarFallback className="text-xs">
-              {getInitials(user?.name)}
-            </AvatarFallback>
-          </Avatar>
-          <div className="flex flex-col">
-            <span className="font-medium">{user?.name ?? "Unknown"}</span>
-            <span className="text-muted-foreground text-xs">
-              {user?.email ?? ""}
-            </span>
-          </div>
-        </div>
-      );
-    },
-    filterFn: (row, _id, value) => {
-      const user = row.original.user;
-      const searchValue = value.toLowerCase();
-      return (
-        (user?.name?.toLowerCase().includes(searchValue) ?? false) ||
-        (user?.email?.toLowerCase().includes(searchValue) ?? false)
-      );
-    },
-  },
-  {
-    accessorKey: "role",
-    header: ({ column }) => {
-      const roleFilterOptions = [
-        { label: "All", value: "all" },
-        { label: "Owner", value: "owner" },
-        { label: "Admin", value: "admin" },
-        { label: "Member", value: "member" },
-      ];
-
-      const currentFilter = column.getFilterValue() as string | undefined;
-
-      return (
-        <div className="flex items-center justify-center">
-          <FilterPopover
-            label="Role"
-            options={roleFilterOptions}
-            currentValue={currentFilter}
-            onChange={(value) => column.setFilterValue(value)}
-          />
-        </div>
-      );
-    },
-    filterFn: (row, id, value) => {
-      const rowValue = row.getValue(id) as string;
-      return rowValue.toLowerCase() === value.toLowerCase();
-    },
-    cell: ({ row }) => (
-      <div className="text-center">
-        <Badge
-          className={cn(
-            "w-16 rounded-sm text-center capitalize",
-            getRoleBadgeStyle(row.getValue("role")),
-          )}
-          variant={"outline"}
-        >
-          {row.getValue("role")}
-        </Badge>
-      </div>
-    ),
-  },
-  {
-    accessorKey: "createdAt",
-    header: ({ column }) => {
-      const sortOptions = [
-        { label: "Default", value: "default" },
-        { label: "Ascending", value: "asc" },
-        { label: "Descending", value: "desc" },
-      ];
-
-      const currentSort = column.getIsSorted();
-      const currentValue = currentSort ? String(currentSort) : "default";
-
-      return (
-        <div className="flex items-center justify-end">
-          <FilterPopover
-            label="Joined At"
-            options={sortOptions}
-            currentValue={currentValue}
-            onChange={(value) => {
-              if (value === "default" || !value) {
-                column.clearSorting();
-              } else {
-                column.toggleSorting(value === "desc", false);
-              }
-            }}
-            isSort
-          />
-        </div>
-      );
-    },
-    cell: ({ row }) => {
-      const timestamp = row.getValue("createdAt") as string | Date;
-      const formatted = new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-      }).format(new Date(timestamp));
-
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
-  },
-  {
-    id: "actions",
-    enableHiding: false,
-    cell: ({ row }) => {
-      const member = row.original;
-
-      return (
-        <div className="flex justify-end pr-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size={"icon-sm"}>
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                onClick={() =>
-                  navigator.clipboard.writeText(member.user?.email ?? "")
-                }
-              >
-                Copy email
-              </DropdownMenuItem>
-              <DropdownMenuItem>Change role</DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="text-destructive">
-                Remove member
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-        </div>
-      );
-    },
-  },
-];
 
 export function MembersTable() {
   const { data: activeOrg } = useActiveOrganization();
@@ -326,6 +112,195 @@ export function MembersTable() {
 
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
+
+  const queryClient = useQueryClient();
+  const [removeDialogOpen, setRemoveDialogOpen] = React.useState(false);
+  const [memberToRemove, setMemberToRemove] = React.useState<Member | null>(
+    null,
+  );
+
+  const handleRemoveMember = async () => {
+    if (!memberToRemove || !activeOrg?.id) return;
+
+    try {
+      const { error } = await authClient.organization.removeMember({
+        memberIdOrEmail: memberToRemove.user?.email ?? "",
+        organizationId: activeOrg.id,
+      });
+      if (error) throw error;
+
+      toast.success("Member removed successfully");
+      queryClient.invalidateQueries({ queryKey: ["members", activeOrg.id] });
+      setRemoveDialogOpen(false);
+      setMemberToRemove(null);
+    } catch {
+      toast.error("Failed to remove member");
+    }
+  };
+
+  const columns: ColumnDef<Member>[] = [
+    {
+      id: "user",
+      accessorFn: (row) => row.user?.name ?? row.user?.email ?? "",
+      header: () => {
+        return <span className="pl-1">User</span>;
+      },
+      cell: ({ row }) => {
+        const member = row.original;
+        const user = member.user;
+        return (
+          <TableCellFirst className="flex items-center gap-3">
+            <Avatar className="size-8">
+              <AvatarImage
+                src={user?.image ?? undefined}
+                alt={user?.name ?? ""}
+              />
+              <AvatarFallback className="text-xs">
+                {getInitials(user?.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex flex-col">
+              <span className="font-medium">{user?.name ?? "Unknown"}</span>
+              <span className="text-muted-foreground text-xs">
+                {user?.email ?? ""}
+              </span>
+            </div>
+          </TableCellFirst>
+        );
+      },
+      filterFn: (row, _id, value) => {
+        const user = row.original.user;
+        const searchValue = value.toLowerCase();
+        return (
+          (user?.name?.toLowerCase().includes(searchValue) ?? false) ||
+          (user?.email?.toLowerCase().includes(searchValue) ?? false)
+        );
+      },
+    },
+    {
+      accessorKey: "role",
+      header: ({ column }) => {
+        const roleFilterOptions = [
+          { label: "All", value: "all" },
+          { label: "Owner", value: "owner" },
+          { label: "Admin", value: "admin" },
+          { label: "Member", value: "member" },
+        ];
+
+        const currentFilter = column.getFilterValue() as string | undefined;
+
+        return (
+          <div className="flex items-center justify-center">
+            <FilterPopover
+              label="Role"
+              options={roleFilterOptions}
+              currentValue={currentFilter}
+              onChange={(value) => column.setFilterValue(value)}
+            />
+          </div>
+        );
+      },
+      filterFn: (row, id, value) => {
+        const rowValue = row.getValue(id) as string;
+        return rowValue.toLowerCase() === value.toLowerCase();
+      },
+      cell: ({ row }) => (
+        <div className="text-center">
+          <Badge
+            className={cn(
+              "w-16 rounded-sm text-center capitalize",
+              getRoleBadgeStyle(row.getValue("role")),
+            )}
+            variant={"outline"}
+          >
+            {row.getValue("role")}
+          </Badge>
+        </div>
+      ),
+    },
+    {
+      accessorKey: "createdAt",
+      header: ({ column }) => {
+        const sortOptions = [
+          { label: "Default", value: "default" },
+          { label: "Ascending", value: "asc" },
+          { label: "Descending", value: "desc" },
+        ];
+
+        const currentSort = column.getIsSorted();
+        const currentValue = currentSort ? String(currentSort) : "default";
+
+        return (
+          <div className="flex items-center justify-end">
+            <FilterPopover
+              label="Joined At"
+              options={sortOptions}
+              currentValue={currentValue}
+              onChange={(value) => {
+                if (value === "default" || !value) {
+                  column.clearSorting();
+                } else {
+                  column.toggleSorting(value === "desc", false);
+                }
+              }}
+              isSort
+            />
+          </div>
+        );
+      },
+      cell: ({ row }) => {
+        const timestamp = row.getValue("createdAt") as string | Date;
+        const formatted = new Intl.DateTimeFormat("en-US", {
+          year: "numeric",
+          month: "short",
+          day: "2-digit",
+        }).format(new Date(timestamp));
+
+        return <div className="text-right font-medium">{formatted}</div>;
+      },
+    },
+    {
+      id: "actions",
+      header: "Action",
+      enableHiding: false,
+      cell: ({ row }) => {
+        const member = row.original;
+
+        return (
+          <div className="flex justify-end pr-1">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size={"icon-sm"}>
+                  <span className="sr-only">Open menu</span>
+                  <MoreHorizontal />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  onClick={() =>
+                    navigator.clipboard.writeText(member.user?.email ?? "")
+                  }
+                >
+                  Copy email
+                </DropdownMenuItem>
+                {/* <DropdownMenuItem>Change role</DropdownMenuItem> */}
+                <DropdownMenuSeparator />
+                <DropdownMenuItem
+                  className="text-destructive"
+                  onClick={() => {
+                    setMemberToRemove(member);
+                    setRemoveDialogOpen(true);
+                  }}
+                >
+                  Remove member
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        );
+      },
+    },
+  ];
 
   const table = useReactTable({
     data: members,
@@ -510,6 +485,29 @@ export function MembersTable() {
           </div>
         </div>
       </div>
+      {removeDialogOpen && memberToRemove && (
+        <AlertDialog open={removeDialogOpen} onOpenChange={setRemoveDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Member</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to remove{" "}
+                {memberToRemove.user?.name ?? memberToRemove.user?.email} from
+                the organization? This action cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleRemoveMember}
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              >
+                Remove
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      )}
     </div>
   );
 }

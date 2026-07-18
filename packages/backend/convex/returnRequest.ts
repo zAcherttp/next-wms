@@ -1,6 +1,7 @@
 import { v } from "convex/values";
 import type { Id } from "./_generated/dataModel";
 import { mutation, query } from "./_generated/server";
+import { logCRUDAction } from "./audit";
 
 // ================================================================
 // HELPER FUNCTIONS
@@ -52,6 +53,93 @@ async function getProductVariant(ctx: any, skuId: string) {
   } catch {
     return null;
   }
+}
+
+/**
+ * Check if all items in a receive session are resolved (COMPLETE or RETURNED)
+ * and update the session status to COMPLETE if so
+ */
+async function checkAndCompleteReceiveSession(
+  ctx: any,
+  purchaseOrderId: string,
+) {
+  // Find the receive session by purchaseOrderId
+  const receiveSession = await ctx.db
+    .query("receive_sessions")
+    .withIndex("purchaseOrderId", (q: any) =>
+      q.eq("purchaseOrderId", purchaseOrderId),
+    )
+    .first();
+
+  if (!receiveSession) {
+    return null;
+  }
+
+  // Get all receive session details
+  const details = await ctx.db
+    .query("receive_sessions_details")
+    .withIndex("receiveSessionId", (q: any) =>
+      q.eq("receiveSessionId", receiveSession._id),
+    )
+    .collect();
+
+  // Get COMPLETE and RETURNED status IDs
+  const completeStatus = await ctx.db
+    .query("system_lookups")
+    .withIndex("lookupType_lookupCode", (q: any) =>
+      q
+        .eq("lookupType", "ReceiveSessionItemStatus")
+        .eq("lookupCode", "COMPLETE"),
+    )
+    .first();
+
+  const returnedStatus = await ctx.db
+    .query("system_lookups")
+    .withIndex("lookupType_lookupCode", (q: any) =>
+      q
+        .eq("lookupType", "ReceiveSessionItemStatus")
+        .eq("lookupCode", "RETURNED"),
+    )
+    .first();
+
+  // Check if all items are either COMPLETE or RETURNED
+  const allItemsResolved = details.every((d: any) => {
+    const isComplete =
+      completeStatus && d.receiveSessionItemStatusTypeId === completeStatus._id;
+    const isReturned =
+      returnedStatus && d.receiveSessionItemStatusTypeId === returnedStatus._id;
+    return isComplete || isReturned;
+  });
+
+  if (allItemsResolved) {
+    // Get or create COMPLETE status for receive session
+    let sessionCompleteStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q: any) =>
+        q.eq("lookupType", "ReceiveSessionStatus").eq("lookupCode", "COMPLETE"),
+      )
+      .first();
+
+    if (!sessionCompleteStatus) {
+      const newStatusId = await ctx.db.insert("system_lookups", {
+        lookupType: "ReceiveSessionStatus",
+        lookupCode: "COMPLETE",
+        lookupValue: "Complete",
+        description: "Receive session is complete",
+        sortOrder: 3,
+      });
+      sessionCompleteStatus = await ctx.db.get(newStatusId);
+    }
+
+    // Update receive session status to COMPLETE
+    await ctx.db.patch(receiveSession._id, {
+      receiveSessionStatusTypeId: sessionCompleteStatus._id,
+    });
+
+    return receiveSession._id;
+  }
+
+  return null;
 }
 
 // ================================================================
@@ -138,7 +226,10 @@ export const listWithDetails = query({
         const supplier = await getSupplierById(ctx, request.supplierId);
 
         // Get requested by user
-        const requestedByUser = await getUserById(ctx, request.requestedByUserId);
+        const requestedByUser = await getUserById(
+          ctx,
+          request.requestedByUserId,
+        );
 
         // Get status
         const status = await getSystemLookup(ctx, request.returnStatusTypeId);
@@ -289,7 +380,10 @@ export const getReturnRequestWithDetails = query({
 
     // Step 3: Get related data for the header
     const supplier = await getSupplierById(ctx, returnRequest.supplierId);
-    const requestedByUser = await getUserById(ctx, returnRequest.requestedByUserId);
+    const requestedByUser = await getUserById(
+      ctx,
+      returnRequest.requestedByUserId,
+    );
     const status = await getSystemLookup(ctx, returnRequest.returnStatusTypeId);
 
     // Step 4: Query all associated return request details
@@ -309,7 +403,9 @@ export const getReturnRequestWithDetails = query({
         // Get product name if variant exists
         let productName: string | null = null;
         if (productVariant) {
-          const product = await ctx.db.get(productVariant.productId as Id<"products">);
+          const product = await ctx.db.get(
+            productVariant.productId as Id<"products">,
+          );
           productName = (product as { name?: string } | null)?.name ?? null;
         }
 
@@ -332,10 +428,6 @@ export const getReturnRequestWithDetails = query({
       (sum, detail) => sum + detail.quantityToReturn,
       0,
     );
-    const totalExpectedCredit = returnDetails.reduce(
-      (sum, detail) => sum + detail.expectedCreditAmount,
-      0,
-    );
 
     // Step 6: Return the complete return request with enriched details
     return {
@@ -349,7 +441,6 @@ export const getReturnRequestWithDetails = query({
       returnStatus: status ? { lookupValue: status.lookupValue } : null,
       totalSKUs,
       totalExpectedQuantity,
-      totalExpectedCredit,
       details: enrichedDetails,
     };
   },
@@ -415,14 +506,13 @@ export const createReturnRequest = mutation({
     supplierId: v.string(),
     requestedByUserId: v.string(),
     returnStatusTypeId: v.string(),
+    purchaseOrderId: v.string(),
     details: v.array(
       v.object({
-        batchId: v.string(),
         skuId: v.string(),
         quantityToReturn: v.number(),
         reasonTypeId: v.string(),
         customReasonNotes: v.optional(v.string()),
-        expectedCreditAmount: v.number(),
       }),
     ),
   },
@@ -442,22 +532,344 @@ export const createReturnRequest = mutation({
       requestedAt: Date.now(),
       returnStatusTypeId: args.returnStatusTypeId,
       isDeleted: false,
+      purchaseOrderId: args.purchaseOrderId,
     });
 
     // Step 3: Create all return request detail records
     for (const detail of args.details) {
       await ctx.db.insert("return_request_details", {
         returnRequestId,
-        batchId: detail.batchId,
         skuId: detail.skuId,
         quantityToReturn: detail.quantityToReturn,
         reasonTypeId: detail.reasonTypeId,
         customReasonNotes: detail.customReasonNotes,
-        expectedCreditAmount: detail.expectedCreditAmount,
       });
     }
 
+    // Log audit for return request creation
+    await logCRUDAction(ctx, {
+      organizationId: args.organizationId as Id<"organizations">,
+      action: "CREATE",
+      entityType: "return_requests",
+      entityId: returnRequestId,
+      newValue: { requestCode: args.requestCode, itemCount: args.details.length },
+      notes: `Created return request ${args.requestCode} with ${args.details.length} items`,
+    });
+
     // Step 4: Return the newly created return request ID
     return returnRequestId;
+  },
+});
+
+/**
+ * approveReturnRequest
+ *
+ * Purpose: Approves a return request by updating its status to APPROVED
+ *          and updates linked receive session items to RETURNED status
+ *
+ * Process:
+ * 1. Validates the return request exists
+ * 2. Fetches the APPROVED status lookup
+ * 3. Updates the return request status
+ * 4. Gets all return request details
+ * 5. Updates linked receive session item statuses to RETURNED
+ *
+ * Access: Restricted to authorized users with permission to approve returns
+ * Typical users: Warehouse managers, inventory supervisors
+ */
+export const approveReturnRequest = mutation({
+  args: {
+    returnRequestId: v.id("return_requests"),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Validate return request exists
+    const returnRequest = await ctx.db.get(args.returnRequestId);
+    if (!returnRequest || returnRequest.isDeleted) {
+      throw new Error("Return request not found or has been deleted");
+    }
+
+    // Step 2: Get the APPROVED status lookup for return request
+    const approvedStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ReturnStatus").eq("lookupCode", "APPROVED"),
+      )
+      .first();
+
+    if (!approvedStatus) {
+      throw new Error(
+        "APPROVED status lookup not found. Please ensure seed data has been run.",
+      );
+    }
+
+    // Step 3: Update the return request status
+    await ctx.db.patch(args.returnRequestId, {
+      returnStatusTypeId: approvedStatus._id,
+    });
+
+    // Step 4: Get all return request details
+    const details = await ctx.db
+      .query("return_request_details")
+      .withIndex("returnRequestId", (q) =>
+        q.eq("returnRequestId", args.returnRequestId),
+      )
+      .collect();
+
+    // Step 5: Get or create RETURNED status for receive session items
+    let returnedItemStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q
+          .eq("lookupType", "ReceiveSessionItemStatus")
+          .eq("lookupCode", "RETURNED"),
+      )
+      .first();
+
+    // Create RETURNED status if it doesn't exist
+    if (!returnedItemStatus) {
+      const newStatusId = await ctx.db.insert("system_lookups", {
+        lookupType: "ReceiveSessionItemStatus",
+        lookupCode: "RETURNED",
+        lookupValue: "Returned",
+        description: "Item has been returned to supplier",
+        sortOrder: 5,
+      });
+      returnedItemStatus = await ctx.db.get(newStatusId);
+    }
+
+    // Step 6: Update each linked receive session item status to RETURNED
+    for (const detail of details) {
+      if (detail.receiveSessionDetailId) {
+        const receiveDetail = await ctx.db.get(detail.receiveSessionDetailId);
+        if (receiveDetail) {
+          await ctx.db.patch(detail.receiveSessionDetailId, {
+            receiveSessionItemStatusTypeId: returnedItemStatus!._id,
+          });
+        }
+      }
+    }
+
+    // Step 7: Check if the receive session should be marked as COMPLETE
+    if (returnRequest.purchaseOrderId) {
+      await checkAndCompleteReceiveSession(ctx, returnRequest.purchaseOrderId);
+    }
+
+    // Log audit for return request approval
+    await logCRUDAction(ctx, {
+      organizationId: returnRequest.organizationId as Id<"organizations">,
+      action: "UPDATE",
+      entityType: "return_requests",
+      entityId: args.returnRequestId,
+      newValue: { status: "APPROVED" },
+      notes: `Approved return request ${returnRequest.requestCode}`,
+    });
+
+    return args.returnRequestId;
+  },
+});
+
+/**
+ * rejectReturnRequest
+ *
+ * Purpose: Rejects a return request by updating its status to REJECTED.
+ *          Updates linked receive session items to COMPLETE status and creates inventory batches.
+ *
+ * Process:
+ * 1. Validates the return request exists
+ * 2. Fetches the REJECTED status lookup
+ * 3. Updates the return request status
+ * 4. Gets all return request details with linked receive session items
+ * 5. Updates linked receive session item statuses to COMPLETE
+ * 6. Creates inventory batches for rejected (accepted into inventory) items
+ *
+ * Access: Restricted to authorized users with permission to reject returns
+ * Typical users: Warehouse managers, inventory supervisors
+ */
+export const rejectReturnRequest = mutation({
+  args: {
+    returnRequestId: v.id("return_requests"),
+    rejectionNotes: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Step 1: Validate return request exists
+    const returnRequest = await ctx.db.get(args.returnRequestId);
+    if (!returnRequest || returnRequest.isDeleted) {
+      throw new Error("Return request not found or has been deleted");
+    }
+
+    // Step 2: Get the REJECTED status lookup
+    const rejectedStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "ReturnStatus").eq("lookupCode", "REJECTED"),
+      )
+      .first();
+
+    if (!rejectedStatus) {
+      throw new Error(
+        "REJECTED status lookup not found. Please ensure seed data has been run.",
+      );
+    }
+
+    // Step 3: Update the return request status
+    await ctx.db.patch(args.returnRequestId, {
+      returnStatusTypeId: rejectedStatus._id,
+    });
+
+    // Step 4: Get all return request details
+    const details = await ctx.db
+      .query("return_request_details")
+      .withIndex("returnRequestId", (q) =>
+        q.eq("returnRequestId", args.returnRequestId),
+      )
+      .collect();
+
+    // Step 5: Get COMPLETE status for receive session items
+    let completeItemStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q
+          .eq("lookupType", "ReceiveSessionItemStatus")
+          .eq("lookupCode", "COMPLETE"),
+      )
+      .first();
+
+    if (!completeItemStatus) {
+      const newStatusId = await ctx.db.insert("system_lookups", {
+        lookupType: "ReceiveSessionItemStatus",
+        lookupCode: "COMPLETE",
+        lookupValue: "Complete",
+        description: "Item has been fully received",
+        sortOrder: 3,
+      });
+      completeItemStatus = await ctx.db.get(newStatusId);
+    }
+
+    // Get ACTIVE batch status for inventory batches
+    let activeBatchStatus = await ctx.db
+      .query("system_lookups")
+      .withIndex("lookupType_lookupCode", (q) =>
+        q.eq("lookupType", "BatchStatus").eq("lookupCode", "ACTIVE"),
+      )
+      .first();
+
+    if (!activeBatchStatus) {
+      const newStatusId = await ctx.db.insert("system_lookups", {
+        lookupType: "BatchStatus",
+        lookupCode: "ACTIVE",
+        lookupValue: "Active",
+        description: "Batch is active and available",
+        sortOrder: 1,
+      });
+      activeBatchStatus = await ctx.db.get(newStatusId);
+    }
+
+    // Step 6: Update each linked receive session item and create inventory batches
+    const createdBatches: any[] = [];
+
+    for (const detail of details) {
+      if (detail.receiveSessionDetailId) {
+        const receiveDetail = await ctx.db.get(detail.receiveSessionDetailId);
+        if (receiveDetail) {
+          // Update the receive session item status to COMPLETE
+          await ctx.db.patch(detail.receiveSessionDetailId, {
+            receiveSessionItemStatusTypeId: completeItemStatus!._id,
+          });
+
+          // Get receive session for branch info
+          const receiveSession = await ctx.db.get(
+            receiveDetail.receiveSessionId,
+          );
+          if (receiveSession && receiveDetail.recommendedZoneId) {
+            // Get branch for organization info
+            const branch = await ctx.db.get(receiveSession.branchId);
+            if (branch) {
+              // Generate batch numbers
+              const now = Date.now();
+              const date = new Date(now);
+              const dateStr = date.toISOString().slice(0, 10).replace(/-/g, "");
+
+              const startOfDay = new Date(
+                date.getFullYear(),
+                date.getMonth(),
+                date.getDate(),
+                0,
+                0,
+                0,
+                0,
+              ).getTime();
+              const endOfDay = new Date(
+                date.getFullYear(),
+                date.getMonth(),
+                date.getDate(),
+                23,
+                59,
+                59,
+                999,
+              ).getTime();
+
+              const todayBatches = await ctx.db
+                .query("inventory_batches")
+                .withIndex("branchId", (q) =>
+                  q.eq("branchId", receiveSession.branchId),
+                )
+                .filter((q) =>
+                  q.and(
+                    q.gte(q.field("receivedAt"), startOfDay),
+                    q.lte(q.field("receivedAt"), endOfDay),
+                  ),
+                )
+                .collect();
+
+              const sequence = (todayBatches.length + 1)
+                .toString()
+                .padStart(3, "0");
+              const supplierBatchNumber = `SB-${dateStr}-${sequence}`;
+              const internalBatchNumber = `IB-${dateStr}-${sequence}`;
+
+              // Create inventory batch with the quantity from return request
+              const batchId = await ctx.db.insert("inventory_batches", {
+                organizationId: branch.organizationId,
+                skuId: receiveDetail.skuId,
+                zoneId: receiveDetail.recommendedZoneId,
+                quantity: detail.quantityToReturn, // Use the return quantity as inventory
+                branchId: receiveSession.branchId,
+                supplierBatchNumber,
+                internalBatchNumber,
+                receivedAt: Date.now(),
+                batchStatusTypeId: activeBatchStatus!._id,
+                isDeleted: false,
+              });
+
+              createdBatches.push({
+                batchId,
+                skuId: receiveDetail.skuId,
+                quantity: detail.quantityToReturn,
+              });
+            }
+          }
+        }
+      }
+    }
+
+    // Step 7: Check if the receive session should be marked as COMPLETE
+    if (returnRequest.purchaseOrderId) {
+      await checkAndCompleteReceiveSession(ctx, returnRequest.purchaseOrderId);
+    }
+
+    // Log audit for return request rejection
+    await logCRUDAction(ctx, {
+      organizationId: returnRequest.organizationId as Id<"organizations">,
+      action: "UPDATE",
+      entityType: "return_requests",
+      entityId: args.returnRequestId,
+      newValue: { status: "REJECTED", batchesCreated: createdBatches.length },
+      notes: `Rejected return request ${returnRequest.requestCode}, created ${createdBatches.length} inventory batches`,
+    });
+
+    return {
+      returnRequestId: args.returnRequestId,
+      batchesCreated: createdBatches.length,
+    };
   },
 });

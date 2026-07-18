@@ -22,6 +22,7 @@
 import { paginationOptsValidator } from "convex/server";
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { logCRUDAction } from "./audit";
 
 /**
  * LIST - Get all suppliers with pagination and filters
@@ -204,6 +205,16 @@ export const create = mutation({
       isDeleted: false,
     });
 
+    // Log audit for supplier creation
+    await logCRUDAction(ctx, {
+      organizationId,
+      action: "CREATE",
+      entityType: "suppliers",
+      entityId: supplierId,
+      newValue: { name, email, contactPerson },
+      notes: `Created supplier "${name}"`,
+    });
+
     return supplierId;
   },
 });
@@ -220,12 +231,13 @@ export const update = mutation({
     email: v.optional(v.string()),
     phone: v.optional(v.string()),
     defaultLeadTimeDays: v.optional(v.number()),
+    brandId: v.optional(v.id("brands")),
     isActive: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // TODO: Add permission check
 
-    const { id, email, name, defaultLeadTimeDays, ...otherUpdates } = args;
+    const { id, email, name, defaultLeadTimeDays, brandId, ...otherUpdates } = args;
 
     const supplier = await ctx.db.get(id);
     if (!supplier) {
@@ -289,7 +301,27 @@ export const update = mutation({
       updates.defaultLeadTimeDays = defaultLeadTimeDays;
     }
 
+    // Validate brandId if updating
+    if (brandId !== undefined) {
+      const brand = await ctx.db.get(brandId);
+      if (!brand) {
+        throw new Error("Brand not found");
+      }
+      updates.brandId = brandId;
+    }
+
     await ctx.db.patch(id, updates);
+
+    // Log audit for supplier update
+    await logCRUDAction(ctx, {
+      organizationId: supplier.organizationId,
+      action: "UPDATE",
+      entityType: "suppliers",
+      entityId: id,
+      oldValue: { name: supplier.name, email: supplier.email },
+      newValue: updates,
+      notes: `Updated supplier "${supplier.name}"`,
+    });
 
     return id;
   },
@@ -328,6 +360,16 @@ export const remove = mutation({
     await ctx.db.patch(args.id, {
       isDeleted: true,
       deletedAt: Date.now(),
+    });
+
+    // Log audit for supplier deletion
+    await logCRUDAction(ctx, {
+      organizationId: supplier.organizationId,
+      action: "DELETE",
+      entityType: "suppliers",
+      entityId: args.id,
+      oldValue: { name: supplier.name, email: supplier.email },
+      notes: `Deleted supplier "${supplier.name}"`,
     });
 
     return args.id;
@@ -371,6 +413,7 @@ export const search = query({
 
 /**
  * GET ACTIVE - Get only active suppliers (for dropdowns, etc.)
+ * Returns suppliers enriched with brand names
  */
 export const getActive = query({
   args: {
@@ -386,6 +429,27 @@ export const getActive = query({
       .filter((q) => q.eq(q.field("isDeleted"), false))
       .collect();
 
-    return suppliers;
+    // Enrich with brand information
+    const brandIds = [...new Set(suppliers.map(s => s.brandId))];
+    const brands = await Promise.all(
+      brandIds.map(async (brandId) => {
+        const brand = await ctx.db.get(brandId);
+        // console.log(`Raw brand from DB for ID ${brandId}:`, JSON.stringify(brand, null, 2));
+        return { id: brandId, brand };
+      })
+    );
+    const brandMap = new Map(brands.map(b => [b.id, b.brand]));
+
+    const enrichedSuppliers = suppliers.map((supplier) => {
+      const brand = brandMap.get(supplier.brandId);
+      const brandName = brand?.name || "";
+      // console.log(`Supplier: ${supplier.name}, BrandId: ${supplier.brandId}, Brand Name: "${brandName}", Brand Object:`, JSON.stringify(brand, null, 2));
+      return {
+        ...supplier,
+        brandName,
+      };
+    });
+
+    return enrichedSuppliers;
   },
 });

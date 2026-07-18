@@ -49,7 +49,7 @@ export const syncUser = mutation({
         image: args.image,
         authUpdatedAt: args.updatedAt,
       });
-      console.log(`[Convex Sync] User updated: ${args.authId}`);
+      // console.log(`[Convex Sync] User updated: ${args.authId}`);
       return existingUser._id;
     } else {
       // Create new user
@@ -67,7 +67,7 @@ export const syncUser = mutation({
         isActive: true,
         isDeleted: false,
       });
-      console.log(`[Convex Sync] User created: ${args.authId}`);
+      // console.log(`[Convex Sync] User created: ${args.authId}`);
       return userId;
     }
   },
@@ -83,6 +83,25 @@ export const getUserByAuthId = query({
       .query("users")
       .withIndex("authId", (q) => q.eq("authId", args.authId))
       .first();
+  },
+});
+
+/**
+ * Get multiple users by Better Auth IDs
+ */
+export const batchGetUserIdByAuthId = query({
+  args: { authIds: v.array(v.string()) },
+  handler: async (ctx, args) => {
+    const users = await Promise.all(
+      args.authIds.map(async (authId) => {
+        const user = await ctx.db
+          .query("users")
+          .withIndex("authId", (q) => q.eq("authId", authId))
+          .first();
+        return user ? { authId, _id: user._id } : null;
+      })
+    );
+    return users.filter((u) => u !== null);
   },
 });
 
@@ -152,9 +171,9 @@ export const syncMember = mutation({
       .first();
 
     if (!org) {
-      console.log(
-        `[Convex Sync] Organization ${args.organizationAuthId} not synced yet, member will be created when org is synced`
-      );
+      // console.log(
+      //   `[Convex Sync] Organization ${args.organizationAuthId} not synced yet, member will be created when org is synced`
+      // );
       return null;
     }
 
@@ -167,9 +186,9 @@ export const syncMember = mutation({
       .first();
 
     if (existingMember) {
-      console.log(
-        `[Convex Sync] Member already exists: user ${args.userAuthId} in org ${args.organizationAuthId}`
-      );
+      // console.log(
+      //   `[Convex Sync] Member already exists: user ${args.userAuthId} in org ${args.organizationAuthId}`
+      // );
       return existingMember._id;
     }
 
@@ -181,9 +200,9 @@ export const syncMember = mutation({
       organizationAuthId: args.organizationAuthId,
     });
 
-    console.log(
-      `[Convex Sync] Member created: user ${args.userAuthId} added to org ${args.organizationAuthId}`
-    );
+    // console.log(
+    //   `[Convex Sync] Member created: user ${args.userAuthId} added to org ${args.organizationAuthId}`
+    // );
     return memberId;
   },
 });
@@ -216,9 +235,9 @@ export const deleteMember = mutation({
     // Delete member
     await ctx.db.delete(member._id);
 
-    console.log(
-      `[Convex Sync] Member deleted: user ${args.userAuthId} removed from org ${args.organizationAuthId}`
-    );
+    // console.log(
+    //   `[Convex Sync] Member deleted: user ${args.userAuthId} removed from org ${args.organizationAuthId}`
+    // );
     return member._id;
   },
 });
@@ -258,9 +277,9 @@ export const deleteAllMembersOfOrganization = mutation({
       await ctx.db.delete(member._id);
     }
 
-    console.log(
-      `[Convex Sync] Deleted ${members.length} members from organization ${args.organizationAuthId}`
-    );
+    // console.log(
+    //   `[Convex Sync] Deleted ${members.length} members from organization ${args.organizationAuthId}`
+    // );
 
     return { deletedCount: members.length };
   },
@@ -316,9 +335,9 @@ export const createMemberIfNeeded = mutation({
       organizationAuthId: args.organizationAuthId,
     });
 
-    console.log(
-      `[Convex Sync] Retroactive member created: user ${args.userAuthId} added to org ${args.organizationAuthId}`
-    );
+    // console.log(
+    //   `[Convex Sync] Retroactive member created: user ${args.userAuthId} added to org ${args.organizationAuthId}`
+    // );
     return memberId;
   },
 });
@@ -358,8 +377,7 @@ export const syncOrganization = mutation({
       });
       return existingOrg._id;
     } else {
-      // Note: For new organizations, we should create them here with default values
-      // The application can update the organization-specific fields later
+      // Create new organization with default values
       const orgId = await ctx.db.insert("organizations", {
         authId: args.authId,
         name: args.name,
@@ -372,6 +390,18 @@ export const syncOrganization = mutation({
         isActive: true,
         isDeleted: false,
       });
+
+      // Create a default branch for the new organization
+      // This prevents the app from freezing when there are no branches
+      await ctx.db.insert("branches", {
+        organizationId: orgId,
+        name: "Main Warehouse",
+        address: "",
+        phoneNumber: "",
+        isActive: true,
+        isDeleted: false,
+      });
+
       return orgId;
     }
   },

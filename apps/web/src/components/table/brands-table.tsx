@@ -12,49 +12,50 @@ import {
   getSortedRowModel,
   type SortingState,
   useReactTable,
+  type VisibilityState,
 } from "@tanstack/react-table";
 import { api } from "@wms/backend/convex/_generated/api";
+
 import {
-  ArrowUpDown,
-  Check,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Filter,
-  Funnel,
   MoreHorizontal,
+  Plus,
+  Settings2,
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
-import { CreateBrandDialog } from "@/components/table/create-brand-dialog";
-import { Badge } from "@/components/ui/badge";
+import { ImportExcelButtonBrands } from "@/components/import-excel-button-brands";
+import { FilterPopover } from "@/components/table/filter-popover";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Input } from "@/components/ui/input";
 import {
   InputGroup,
   InputGroupAddon,
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -72,128 +73,252 @@ import {
 } from "@/components/ui/table";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import type { Brand } from "@/lib/types";
-import { cn } from "@/lib/utils";
+import type { BrandWithProductCount } from "@/lib/types";
 
-const getStatusBadgeStyle = (isActive: boolean) => {
-  return isActive
-    ? "bg-green-500/10 text-green-500 border-green-500/60"
-    : "bg-gray-500/10 text-gray-500 border-gray-500/60";
-};
+// CreateBrandDialog component
+function CreateBrandDialog() {
+  const { organizationId } = useCurrentUser();
+  const [open, setOpen] = React.useState(false);
+  const [name, setName] = React.useState("");
 
-interface FilterPopoverProps {
-  label: string;
-  options: { label: string; value: string }[];
-  currentValue?: string;
-  onChange: (value: string | undefined) => void;
-  isSort?: boolean;
-}
+  const { mutate, isPending } = useMutation({
+    mutationFn: useConvexMutation(api.brands.createBrand),
+  });
 
-const FilterPopover = ({
-  label,
-  options,
-  currentValue,
-  onChange,
-  isSort = false,
-}: FilterPopoverProps) => {
-  const isFiltered = currentValue !== undefined && currentValue !== "default";
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim() || !organizationId) return;
+
+    mutate(
+      { name: name.trim(), organizationId },
+      {
+        onSuccess: () => {
+          toast.success(`Brand "${name}" created successfully`);
+          setName("");
+          setOpen(false);
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to create brand",
+          );
+        },
+      },
+    );
+  };
 
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant={isFiltered ? "default" : "ghost"} size={"sm"}>
-          {label}
-          {isSort ? <ArrowUpDown /> : <Funnel />}
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button>
+          <Plus />
+          Add New
         </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-50 p-0">
-        <Command shouldFilter={false}>
-          <CommandList>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  onSelect={() => {
-                    onChange(option.value === "all" ? undefined : option.value);
-                  }}
-                  className="flex justify-between"
-                >
-                  {option.label}
-                  {(currentValue === option.value ||
-                    (currentValue === "default" &&
-                      option.value === "default") ||
-                    (!currentValue && option.value === "all")) && (
-                    <Check className="h-4 w-4" />
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+      </DialogTrigger>
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Create New Brand</DialogTitle>
+            <DialogDescription>
+              Add a new brand to your organization.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="name">Brand Name</Label>
+              <Input
+                id="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter brand name..."
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending || !name.trim()}>
+              {isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
   );
-};
+}
 
-export const columns: ColumnDef<Brand>[] = [
+// EditBrandDialog component
+function EditBrandDialog({
+  brand,
+  open,
+  onOpenChange,
+}: {
+  brand: BrandWithProductCount;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}) {
+  const [name, setName] = React.useState(brand.name);
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: useConvexMutation(api.brands.updateBrand),
+  });
+
+  React.useEffect(() => {
+    setName(brand.name);
+  }, [brand.name]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!name.trim()) return;
+
+    mutate(
+      { id: brand._id, name: name.trim() },
+      {
+        onSuccess: () => {
+          toast.success(`Brand renamed to "${name}"`);
+          onOpenChange(false);
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to update brand",
+          );
+        },
+      },
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <form onSubmit={handleSubmit}>
+          <DialogHeader>
+            <DialogTitle>Edit Brand</DialogTitle>
+            <DialogDescription>Update the brand name.</DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-name">Brand Name</Label>
+              <Input
+                id="edit-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Enter brand name..."
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isPending || !name.trim()}>
+              {isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// Actions Cell Component
+function ActionsCell({ brand }: { brand: BrandWithProductCount }) {
+  const [editOpen, setEditOpen] = React.useState(false);
+
+  const { mutate: deactivate } = useMutation({
+    mutationFn: useConvexMutation(api.brands.deactivateBrand),
+  });
+
+  const { mutate: updateBrand } = useMutation({
+    mutationFn: useConvexMutation(api.brands.updateBrand),
+  });
+
+  const handleDeactivate = () => {
+    deactivate(
+      { id: brand._id },
+      {
+        onSuccess: () => {
+          toast.success(`Brand "${brand.name}" deactivated`);
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to deactivate",
+          );
+        },
+      },
+    );
+  };
+
+  const handleActivate = () => {
+    updateBrand(
+      { id: brand._id, isActive: true },
+      {
+        onSuccess: () => {
+          toast.success(`Brand "${brand.name}" activated`);
+        },
+        onError: (error) => {
+          toast.error(
+            error instanceof Error ? error.message : "Failed to activate",
+          );
+        },
+      },
+    );
+  };
+
+  return (
+    <>
+      <div className="flex justify-end">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-sm">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setEditOpen(true)}>
+              Edit name
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {brand.isActive ? (
+              <DropdownMenuItem
+                className="text-destructive"
+                onClick={handleDeactivate}
+              >
+                Deactivate
+              </DropdownMenuItem>
+            ) : (
+              <DropdownMenuItem
+                className="text-green-600"
+                onClick={handleActivate}
+              >
+                Activate
+              </DropdownMenuItem>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      <EditBrandDialog
+        brand={brand}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+    </>
+  );
+}
+
+export const columns: ColumnDef<BrandWithProductCount>[] = [
   {
     accessorKey: "name",
-    header: () => {
-      return <span className="pl-1">Brand</span>;
-    },
-    cell: ({ row }) => (
-      <div className="pl-1 font-medium">{row.getValue("name")}</div>
-    ),
-    filterFn: (row, _id, value) => {
-      const name = row.getValue("name") as string;
-      return name.toLowerCase().includes(value.toLowerCase());
-    },
-  },
-  {
-    accessorKey: "isActive",
-    header: ({ column }) => {
-      const statusFilterOptions = [
-        { label: "All", value: "all" },
-        { label: "Active", value: "true" },
-        { label: "Inactive", value: "false" },
-      ];
-
-      const currentFilter = column.getFilterValue() as string | undefined;
-
-      return (
-        <div className="flex items-center justify-center">
-          <FilterPopover
-            label="Status"
-            options={statusFilterOptions}
-            currentValue={currentFilter}
-            onChange={(value) => column.setFilterValue(value)}
-          />
-        </div>
-      );
-    },
-    filterFn: (row, id, value) => {
-      const rowValue = row.getValue(id) as boolean;
-      return String(rowValue) === value;
-    },
-    cell: ({ row }) => {
-      const isActive = row.getValue("isActive") as boolean;
-      return (
-        <div className="text-center">
-          <Badge
-            className={cn(
-              "w-16 rounded-sm text-center",
-              getStatusBadgeStyle(isActive),
-            )}
-            variant={"outline"}
-          >
-            {isActive ? "Active" : "Inactive"}
-          </Badge>
-        </div>
-      );
-    },
-  },
-  {
-    accessorKey: "_creationTime",
     header: ({ column }) => {
       const sortOptions = [
         { label: "Default", value: "default" },
@@ -205,9 +330,41 @@ export const columns: ColumnDef<Brand>[] = [
       const currentValue = currentSort ? String(currentSort) : "default";
 
       return (
-        <div className="flex items-center justify-end">
+        <div className="flex items-center">
           <FilterPopover
-            label="Created At"
+            label="Name"
+            options={sortOptions}
+            currentValue={currentValue}
+            onChange={(value) => {
+              if (value === "default" || !value) {
+                column.clearSorting();
+              } else {
+                column.toggleSorting(value === "desc", false);
+              }
+            }}
+            isSort
+          />
+        </div>
+      );
+    },
+    cell: ({ row }) => <TableCellFirst>{row.getValue("name")}</TableCellFirst>,
+  },
+  {
+    accessorKey: "productCount",
+    header: ({ column }) => {
+      const sortOptions = [
+        { label: "Default", value: "default" },
+        { label: "Ascending", value: "asc" },
+        { label: "Descending", value: "desc" },
+      ];
+
+      const currentSort = column.getIsSorted();
+      const currentValue = currentSort ? String(currentSort) : "default";
+
+      return (
+        <div className="flex items-center justify-center">
+          <FilterPopover
+            label="Product count"
             options={sortOptions}
             currentValue={currentValue}
             onChange={(value) => {
@@ -223,92 +380,22 @@ export const columns: ColumnDef<Brand>[] = [
       );
     },
     cell: ({ row }) => {
-      const timestamp = row.getValue("_creationTime") as number;
-      const formatted = new Intl.DateTimeFormat("en-US", {
-        year: "numeric",
-        month: "short",
-        day: "2-digit",
-      }).format(new Date(timestamp));
-
-      return <div className="text-right font-medium">{formatted}</div>;
+      const count = row.getValue("productCount") as number;
+      return <div className="text-center">{count}</div>;
     },
   },
   {
     id: "actions",
-    enableHiding: false,
-    cell: function ActionsCell({ row }) {
-      const brand = row.original;
-
-      const { mutate: deactivate } = useMutation({
-        mutationFn: useConvexMutation(api.brands.deactivateBrand),
-      });
-
-      const { mutate: updateBrand } = useMutation({
-        mutationFn: useConvexMutation(api.brands.updateBrand),
-      });
-
-      const handleDeactivate = () => {
-        deactivate(
-          { id: brand._id },
-          {
-            onSuccess: () => {
-              toast.success(`Brand "${brand.name}" deactivated`);
-            },
-            onError: (error) => {
-              toast.error(
-                error instanceof Error ? error.message : "Failed to deactivate",
-              );
-            },
-          },
-        );
-      };
-
-      const handleChangeName = () => {
-        const newName = prompt("Enter new brand name:", brand.name);
-        if (newName && newName !== brand.name) {
-          updateBrand(
-            { id: brand._id, name: newName },
-            {
-              onSuccess: () => {
-                toast.success(`Brand renamed to "${newName}"`);
-              },
-              onError: (error) => {
-                toast.error(
-                  error instanceof Error ? error.message : "Failed to rename",
-                );
-              },
-            },
-          );
-        }
-      };
-
+    header: () => {
       return (
-        <div className="flex justify-end pr-1">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size={"icon-sm"}>
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={handleChangeName}>
-                Change name
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={handleDeactivate}
-                disabled={!brand.isActive}
-              >
-                Deactivate
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+        <div className="text-right">
+          <span className="font-medium">Action</span>
         </div>
       );
+    },
+    enableHiding: false,
+    cell: ({ row }) => {
+      return <ActionsCell brand={row.original} />;
     },
   },
 ];
@@ -317,18 +404,21 @@ export function BrandsTable() {
   const { organizationId } = useCurrentUser();
 
   const { data: brands, isLoading } = useQuery({
-    ...convexQuery(api.brands.listAll, {
-      organizationId: organizationId as unknown as string,
+    ...convexQuery(api.brands.listBrandsWithProductCount, {
+      organizationId: organizationId as string,
     }),
     enabled: !!organizationId,
   });
 
+  // State for filtering and sorting
   const [sorting, setSorting] = React.useState<SortingState>([]);
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
-  const [rowSelection, setRowSelection] = React.useState({});
+  const [columnVisibility, setColumnVisibility] =
+    React.useState<VisibilityState>({});
 
+  // Debounced search input
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
 
@@ -341,21 +431,30 @@ export function BrandsTable() {
     getPaginationRowModel: getPaginationRowModel(),
     getSortedRowModel: getSortedRowModel(),
     getFilteredRowModel: getFilteredRowModel(),
-    onRowSelectionChange: setRowSelection,
+    onColumnVisibilityChange: setColumnVisibility,
     state: {
       sorting,
       columnFilters,
-      rowSelection,
+      columnVisibility,
+    },
+    initialState: {
+      pagination: {
+        pageSize: 10,
+      },
     },
   });
 
+  // Apply debounced filter to name column
   React.useEffect(() => {
     table.getColumn("name")?.setFilterValue(debouncedFilterValue);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [debouncedFilterValue, table]);
 
+  // Calculate active filters count
   const activeFiltersCount =
     sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);
 
+  // Handler to clear all filters
   const handleClearAllFilters = () => {
     table.resetColumnFilters();
     table.resetSorting();
@@ -370,12 +469,15 @@ export function BrandsTable() {
     );
   }
 
+  const totalBrands = brands?.length ?? 0;
+
   return (
     <div className="w-full">
       <div className="flex flex-row justify-between pb-4">
-        <InputGroup className="max-w-60">
+        {/* Search Input */}
+        <InputGroup className="max-w-50">
           <InputGroupInput
-            placeholder="Search by brand name..."
+            placeholder="Filter brands by name..."
             value={instantFilterValue}
             onChange={(event) => setFilterValue(event.target.value)}
           />
@@ -383,16 +485,53 @@ export function BrandsTable() {
             <Filter />
           </InputGroupAddon>
         </InputGroup>
+
+        {/* Action Buttons */}
         <div className="flex items-center gap-2">
+          {/* Clear Filters Button */}
           {activeFiltersCount >= 2 && (
-            <Button
-              variant={"default"}
-              className=""
-              onClick={handleClearAllFilters}
-            >
+            <Button variant="default" onClick={handleClearAllFilters}>
               Clear filters ({activeFiltersCount})
             </Button>
           )}
+
+          {/* Column Visibility Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline">
+                <Settings2 className="mr-1 size-4" />
+                Columns
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {table
+                .getAllColumns()
+                .filter((column) => column.getCanHide())
+                .map((column) => {
+                  return (
+                    <DropdownMenuItem
+                      key={column.id}
+                      className="capitalize"
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <Checkbox
+                        checked={column.getIsVisible()}
+                        onCheckedChange={(value) =>
+                          column.toggleVisibility(!!value)
+                        }
+                        className="mr-2"
+                      />
+                      {column.id}
+                    </DropdownMenuItem>
+                  );
+                })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {/* Import Excel Button */}
+          <ImportExcelButtonBrands />
+
+          {/* Create Brand Button */}
           <CreateBrandDialog />
         </div>
       </div>
@@ -447,7 +586,7 @@ export function BrandsTable() {
         </Table>
       </div>
       <div className="flex items-center justify-between space-x-2 py-4">
-        <div className="hidden items-center gap-2 lg:flex">
+        <div className="flex items-center gap-2">
           <Label htmlFor="Showing" className="font-medium text-sm">
             Showing
           </Label>
@@ -474,8 +613,8 @@ export function BrandsTable() {
         </div>
         <div className="flex w-full items-center gap-8 lg:w-fit">
           <div className="flex w-fit items-center justify-center font-medium text-sm">
-            Page {table.getState().pagination.pageIndex + 1} of{" "}
-            {table.getPageCount()}
+            Showing {table.getRowModel().rows.length} brand(s) of {totalBrands}{" "}
+            total
           </div>
           <div className="ml-auto flex items-center gap-2 lg:ml-0">
             <Button

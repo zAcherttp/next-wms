@@ -1,7 +1,6 @@
 "use client";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useTransition } from "react";
 import { toast } from "sonner";
@@ -27,6 +26,12 @@ const SignInFormSchema = z.object({
   password: z.string().min(8, "Password must be at least 8 characters"),
   rememberMe: z.boolean(),
 });
+
+const DEMO_ACCOUNTS = [
+  { label: "Administrator", email: "admin@testwarehouse.com" },
+  { label: "Manager", email: "manager@testwarehouse.com" },
+  { label: "Viewer", email: "testuser@testwarehouse.com" },
+] as const;
 
 export default function SignInForm() {
   const router = useRouter();
@@ -85,22 +90,27 @@ export default function SignInForm() {
   });
 
   return (
-    <Card className="min-w-md">
+    <Card className="w-full sm:w-[400px]">
       <CardHeader>
         <CardTitle className="text-lg md:text-xl">Sign In</CardTitle>
         <CardDescription className="text-xs md:text-sm">
-          with your account to access WMS or{" "}
-          <Link
-            className="underline"
-            href={{
-              pathname: "sign-up",
-            }}
-          >
-            create a new one.
-          </Link>
+          Choose a fixed demo identity, then enter the shared demo password.
         </CardDescription>
       </CardHeader>
       <CardContent>
+        <div className="mb-5 grid grid-cols-3 gap-2">
+          {DEMO_ACCOUNTS.map((account) => (
+            <Button
+              key={account.email}
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => form.setFieldValue("email", account.email)}
+            >
+              {account.label}
+            </Button>
+          ))}
+        </div>
         <form
           noValidate
           id="sign-in-form"
@@ -142,16 +152,16 @@ export default function SignInForm() {
                   field.state.meta.isTouched && !field.state.meta.isValid;
 
                 return (
-                  <Field data-invalid={isInvalid} className="gap-2">
-                    <div className="flex items-center">
-                      <FieldLabel htmlFor={field.name}>Password</FieldLabel>
-                      <Link
-                        href="#"
-                        className="ml-auto inline-block text-sm underline"
-                      >
-                        Forgot your password?
-                      </Link>
-                    </div>
+                  <Field
+                    data-invalid={isInvalid}
+                    className="grid grid-cols-[1fr_auto] gap-2"
+                  >
+                    <FieldLabel
+                      htmlFor={field.name}
+                      className="col-start-1 row-start-1"
+                    >
+                      Password
+                    </FieldLabel>
                     <Input
                       id={field.name}
                       name={field.name}
@@ -162,9 +172,19 @@ export default function SignInForm() {
                       aria-invalid={isInvalid}
                       placeholder="••••••••"
                       autoComplete="current-password"
+                      className="col-span-2 row-start-2"
                     />
+                    {/* <Link
+                      href="#"
+                      className="col-start-2 row-start-1 ml-auto inline-block text-sm underline"
+                    >
+                      Forgot your password?
+                    </Link> */}
                     {isInvalid && (
-                      <FieldError errors={field.state.meta.errors} />
+                      <FieldError
+                        errors={field.state.meta.errors}
+                        className="col-span-2 row-start-3"
+                      />
                     )}
                   </Field>
                 );

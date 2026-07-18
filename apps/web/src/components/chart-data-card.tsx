@@ -1,7 +1,7 @@
 "use client";
 
 import { TrendingDown, TrendingUp } from "lucide-react";
-import { useMemo } from "react";
+import React, { useMemo } from "react";
 import { Area, AreaChart, CartesianGrid, XAxis } from "recharts";
 import {
   type ChartConfig,
@@ -17,18 +17,18 @@ import {
 import { cn } from "@/lib/utils";
 import { useChartStore } from "@/store/chart";
 
-export interface ChartDataPoint {
+export type ChartDataPoint = {
   label: string;
   value: number;
   /** True if this is a projected/estimated value (not actual data) */
   isProjected?: boolean;
-}
+};
 
-export interface ChartDataCardProps {
+export type ChartDataCardProps = {
   /** Card title (e.g., "Total Completed", "Active Orders") */
   title: string;
   /** Current period value to display */
-  value: number;
+  value: number | string;
   /** Percentage change from previous period (can be negative) */
   changePercent: number;
   /** Whether the change is favorable/good (controls color: green=true, red=false) */
@@ -41,13 +41,13 @@ export interface ChartDataCardProps {
   color: string;
   /** Optional class name for the container */
   className?: string;
-}
+};
 
 /**
  * A general-purpose data card with a mini chart visualization.
  * Supports projected data with Line mode (single value) or Area mode (min/max range).
  */
-export function ChartDataCard({
+export const ChartDataCard = React.memo(function ChartDataCard({
   title,
   value,
   changePercent,
@@ -122,7 +122,8 @@ export function ChartDataCard({
     },
   };
 
-  const formattedValue = value.toLocaleString();
+  const formattedValue =
+    typeof value === "number" ? value.toLocaleString("en-US") : value;
 
   return (
     <div
@@ -176,8 +177,8 @@ export function ChartDataCard({
         </div>
 
         {/* Chart Section */}
-        <div className="h-auto w-full lg:w-full xl:w-[200px] min-[520px]:w-[200px]">
-          <ChartContainer config={chartConfig}>
+        <div className="h-20 w-full lg:w-full xl:w-50 min-[520px]:w-50">
+          <ChartContainer config={chartConfig} className="h-full w-full">
             <AreaChart
               accessibilityLayer
               data={chartData}
@@ -257,4 +258,4 @@ export function ChartDataCard({
       </div>
     </div>
   );
-}
+});

@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -12,38 +14,42 @@ import {
   useReactTable,
   type VisibilityState,
 } from "@tanstack/react-table";
+import { api } from "@wms/backend/convex/_generated/api";
+import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
-  ArrowUpDown,
-  Check,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Eye,
   Filter,
-  Funnel,
   MoreHorizontal,
   Play,
   Trash2,
 } from "lucide-react";
+import { useParams, useRouter } from "next/navigation";
 import * as React from "react";
+import { toast } from "sonner";
 import { CreateCycleCountSessionDialog } from "@/components/create-cycle-count-session-dialog";
 import { CycleCountSessionDetailDialog } from "@/components/cycle-count-session-detail-dialog";
+import { FilterPopover } from "@/components/table/filter-popover";
+import TableCellFirst from "@/components/table/table-cell-first";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Command,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -53,12 +59,6 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import {
   Table,
   TableBody,
   TableCell,
@@ -66,170 +66,34 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useBranches } from "@/hooks/use-branches";
+import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { CycleCountSessionListItem } from "@/lib/types";
-import { cn } from "@/lib/utils";
-import { MOCK_CYCLE_COUNT_SESSIONS } from "@/mock/data/cycle-count";
-
-const getBadgeStyleByStatus = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "active":
-    case "in progress":
-      return "bg-green-500/10 text-green-600 border-green-500/60";
-    case "completed":
-      return "bg-blue-500/10 text-blue-600 border-blue-500/60";
-    case "pending":
-      return "bg-yellow-500/10 text-yellow-600 border-yellow-500/60";
-    case "cancelled":
-      return "bg-red-500/10 text-red-600 border-red-500/60";
-    default:
-      return "bg-gray-500/10 text-gray-600 border-gray-500/60";
-  }
-};
-
-interface FilterPopoverProps {
-  label: string;
-  options: { label: string; value: string }[];
-  currentValue?: string | string[];
-  onChange: (value: string | string[] | undefined) => void;
-  isSort?: boolean;
-  variant?: "single" | "multi-select";
-}
-
-const FilterPopover = ({
-  label,
-  options,
-  currentValue,
-  onChange,
-  isSort = false,
-  variant = "single",
-}: FilterPopoverProps) => {
-  const [searchQuery, instantQuery, debouncedQuery] = useDebouncedInput(
-    "",
-    100,
-  );
-
-  const isFiltered =
-    variant === "single"
-      ? currentValue !== undefined && currentValue !== "default"
-      : Array.isArray(currentValue) && currentValue.length > 0;
-
-  const selectedValues = Array.isArray(currentValue) ? currentValue : [];
-  const allSelected = selectedValues.length === 0;
-
-  const filteredOptions = options.filter((option) =>
-    option.label.toLowerCase().includes(debouncedQuery.toLowerCase()),
-  );
-
-  const toggleSelection = (value: string, e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    const currentArray = Array.isArray(currentValue) ? currentValue : [];
-    const newSelected = currentArray.includes(value)
-      ? currentArray.filter((v) => v !== value)
-      : [...currentArray, value];
-    onChange(newSelected.length === 0 ? undefined : newSelected);
-  };
-
-  const toggleAll = (e?: React.MouseEvent) => {
-    e?.preventDefault();
-    e?.stopPropagation();
-    onChange(undefined);
-  };
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant={isFiltered ? "default" : "ghost"} size={"sm"}>
-          {label}
-          {variant === "multi-select" && selectedValues.length > 0 && (
-            <span className="ml-1 rounded-full bg-primary-foreground px-1.5 text-primary text-xs">
-              {selectedValues.length}
-            </span>
-          )}
-          {isSort ? <ArrowUpDown /> : <Funnel />}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-[200px] p-0">
-        <Command shouldFilter={false}>
-          {variant === "multi-select" && (
-            <CommandInput
-              placeholder="Search..."
-              value={instantQuery}
-              onValueChange={searchQuery}
-              className="h-9"
-            />
-          )}
-          <CommandList>
-            <ScrollArea className="max-h-[200px]">
-              <CommandGroup>
-                {variant === "multi-select" && (
-                  <CommandItem
-                    onSelect={() => toggleAll()}
-                    className="cursor-pointer"
-                  >
-                    <div
-                      className={cn(
-                        "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                        allSelected
-                          ? "bg-primary text-primary-foreground"
-                          : "opacity-50",
-                      )}
-                    >
-                      {allSelected && <Check className="h-3 w-3" />}
-                    </div>
-                    All
-                  </CommandItem>
-                )}
-                {filteredOptions.map((option) => {
-                  if (variant === "multi-select") {
-                    const isSelected = selectedValues.includes(option.value);
-                    return (
-                      <CommandItem
-                        key={option.value}
-                        onSelect={() => toggleSelection(option.value)}
-                        className="cursor-pointer"
-                      >
-                        <div
-                          className={cn(
-                            "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
-                            isSelected
-                              ? "bg-primary text-primary-foreground"
-                              : "opacity-50",
-                          )}
-                        >
-                          {isSelected && <Check className="h-3 w-3" />}
-                        </div>
-                        {option.label}
-                      </CommandItem>
-                    );
-                  }
-                  return (
-                    <CommandItem
-                      key={option.value}
-                      onSelect={() => onChange(option.value)}
-                      className="cursor-pointer"
-                    >
-                      {option.label}
-                      {currentValue === option.value && (
-                        <Check className="ml-auto h-4 w-4" />
-                      )}
-                    </CommandItem>
-                  );
-                })}
-              </CommandGroup>
-            </ScrollArea>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 
 export function CycleCountSessionsTable() {
-  // Using mock data instead of Convex
-  const cycleCountSessions = MOCK_CYCLE_COUNT_SESSIONS;
-  const isPending = false;
+  const { organizationId } = useCurrentUser();
+  const router = useRouter();
+  const params = useParams();
+
+  const { currentBranch } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: false,
+  });
+
+  const { data: cycleCountSessions, isLoading } = useQuery({
+    ...convexQuery(
+      api.cycleCount.listWithDetails,
+      organizationId && currentBranch?._id
+        ? {
+            organizationId: organizationId as string,
+            branchId: currentBranch._id as string,
+          }
+        : "skip",
+    ),
+    enabled: !!organizationId && !!currentBranch?._id,
+  });
 
   // Detail dialog state
   const [detailDialogOpen, setDetailDialogOpen] = React.useState(false);
@@ -237,62 +101,63 @@ export function CycleCountSessionsTable() {
     string | null
   >(null);
 
-  const _handleViewDetails = (sessionId: string) => {
-    setSelectedSessionId(sessionId);
-    setDetailDialogOpen(true);
-  };
-
   const handleViewDetailsCallback = React.useCallback((sessionId: string) => {
     setSelectedSessionId(sessionId);
     setDetailDialogOpen(true);
   }, []);
 
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = React.useState(false);
+  const [sessionToDelete, setSessionToDelete] = React.useState<string | null>(
+    null,
+  );
+
+  const { mutate: deleteSession, isPending: isDeleting } = useMutation({
+    mutationFn: useConvexMutation(api.cycleCount.cancelCycleCountSession),
+    onSuccess: () => {
+      toast.success("Session cancelled successfully");
+      setDeleteDialogOpen(false);
+      setSessionToDelete(null);
+    },
+    onError: (error) => {
+      toast.error(
+        error instanceof Error ? error.message : "Failed to cancel session",
+      );
+    },
+  });
+
+  const handleDeleteClick = React.useCallback((sessionId: string) => {
+    setSessionToDelete(sessionId);
+    setDeleteDialogOpen(true);
+  }, []);
+
+  const handleConfirmDelete = () => {
+    if (sessionToDelete) {
+      deleteSession({ sessionId: sessionToDelete as Id<"work_sessions"> });
+    }
+  };
+
   const columns: ColumnDef<CycleCountSessionListItem>[] = React.useMemo(
     () => [
-      {
-        id: "select",
-        header: ({ table }) => (
-          <Checkbox
-            checked={
-              table.getIsAllPageRowsSelected() ||
-              (table.getIsSomePageRowsSelected() && "indeterminate")
-            }
-            onCheckedChange={(value) =>
-              table.toggleAllPageRowsSelected(!!value)
-            }
-            aria-label="Select all"
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            checked={row.getIsSelected()}
-            onCheckedChange={(value) => row.toggleSelected(!!value)}
-            aria-label="Select row"
-          />
-        ),
-        enableSorting: false,
-        enableHiding: false,
-      },
       {
         accessorKey: "sessionCode",
         header: "Session ID",
         cell: ({ row }) => (
-          <button
-            type="button"
+          <TableCellFirst
             onClick={() =>
               handleViewDetailsCallback(row.original._id.toString())
             }
-            className="font-medium text-primary hover:underline"
+            className="cursor-pointer text-primary hover:underline"
           >
             {row.getValue("sessionCode")}
-          </button>
+          </TableCellFirst>
         ),
       },
       {
         accessorKey: "name",
         header: "Name",
         cell: ({ row }) => (
-          <div className="max-w-[300px] truncate">{row.getValue("name")}</div>
+          <div className="max-w-75 truncate">{row.getValue("name")}</div>
         ),
       },
       {
@@ -405,6 +270,7 @@ export function CycleCountSessionsTable() {
       },
       {
         id: "actions",
+        header: "Action",
         enableHiding: false,
         cell: ({ row }) => {
           const session = row.original;
@@ -419,9 +285,16 @@ export function CycleCountSessionsTable() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                {status === "active" || status === "pending" ? (
-                  <DropdownMenuItem>
+                {status === "active" ||
+                status === "pending" ||
+                status === "in progress" ? (
+                  <DropdownMenuItem
+                    onClick={() =>
+                      router.push(
+                        `/${params.workspace}/inventory/cycle-count/${session._id}/proceed`,
+                      )
+                    }
+                  >
                     <Play className="mr-2 h-4 w-4" />
                     Proceed
                   </DropdownMenuItem>
@@ -435,7 +308,10 @@ export function CycleCountSessionsTable() {
                   View Details
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive"
+                  onClick={() => handleDeleteClick(session._id.toString())}
+                >
                   <Trash2 className="mr-2 h-4 w-4" />
                   Delete
                 </DropdownMenuItem>
@@ -445,7 +321,7 @@ export function CycleCountSessionsTable() {
         },
       },
     ],
-    [handleViewDetailsCallback],
+    [handleViewDetailsCallback, router, params.workspace, handleDeleteClick],
   );
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
@@ -459,8 +335,14 @@ export function CycleCountSessionsTable() {
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
 
+  // Memoize the data to prevent unnecessary table re-renders
+  const tableData = React.useMemo(
+    () => cycleCountSessions ?? [],
+    [cycleCountSessions],
+  );
+
   const table = useReactTable({
-    data: cycleCountSessions ?? [],
+    data: tableData,
     columns,
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
@@ -478,9 +360,15 @@ export function CycleCountSessionsTable() {
     },
   });
 
+  // Use a ref to avoid table dependency in useEffect
+  const tableRef = React.useRef(table);
+  tableRef.current = table;
+
   React.useEffect(() => {
-    table.getColumn("sessionCode")?.setFilterValue(debouncedFilterValue);
-  }, [debouncedFilterValue, table]);
+    tableRef.current
+      .getColumn("sessionCode")
+      ?.setFilterValue(debouncedFilterValue);
+  }, [debouncedFilterValue]);
 
   const activeFiltersCount =
     sorting.length + columnFilters.length + (instantFilterValue ? 1 : 0);
@@ -491,12 +379,12 @@ export function CycleCountSessionsTable() {
     setFilterValue("");
   };
 
-  if (isPending) {
+  if (isLoading) {
     return (
       <div className="w-full space-y-4">
         <div className="flex flex-row justify-between pb-4">
-          <div className="h-10 w-[200px] animate-pulse rounded bg-muted" />
-          <div className="h-10 w-[100px] animate-pulse rounded bg-muted" />
+          <div className="h-10 w-50 animate-pulse rounded bg-muted" />
+          <div className="h-10 w-25 animate-pulse rounded bg-muted" />
         </div>
         <div className="overflow-hidden rounded-md border">
           <div className="bg-card p-4">
@@ -521,8 +409,30 @@ export function CycleCountSessionsTable() {
         onOpenChange={setDetailDialogOpen}
       />
 
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action will mark the session as cancelled. Only active or
+              pending sessions can be cancelled.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleConfirmDelete}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Cancelling..." : "Continue"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
       <div className="flex flex-row justify-between pb-4">
-        <InputGroup className="max-w-[250px]">
+        <InputGroup className="max-w-62.5">
           <InputGroupInput
             placeholder="Search by session name or ID..."
             value={instantFilterValue}
@@ -604,7 +514,7 @@ export function CycleCountSessionsTable() {
         <div className="space-x-2">
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.firstPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -612,7 +522,7 @@ export function CycleCountSessionsTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.previousPage()}
             disabled={!table.getCanPreviousPage()}
           >
@@ -620,7 +530,7 @@ export function CycleCountSessionsTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.nextPage()}
             disabled={!table.getCanNextPage()}
           >
@@ -628,7 +538,7 @@ export function CycleCountSessionsTable() {
           </Button>
           <Button
             variant="outline"
-            size="icon"
+            size="icon-sm"
             onClick={() => table.lastPage()}
             disabled={!table.getCanNextPage()}
           >

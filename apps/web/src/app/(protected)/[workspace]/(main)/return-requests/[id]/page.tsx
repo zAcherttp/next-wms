@@ -1,5 +1,7 @@
 "use client";
 
+import { convexQuery } from "@convex-dev/react-query";
+import { useQuery } from "@tanstack/react-query";
 import {
   type ColumnDef,
   flexRender,
@@ -7,9 +9,7 @@ import {
   getPaginationRowModel,
   useReactTable,
 } from "@tanstack/react-table";
-// import { convexQuery } from "@convex-dev/react-query";
-// import { useQuery, useQueryClient } from "@tanstack/react-query";
-// import { api } from "@wms/backend/convex/_generated/api";
+import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
   ArrowLeft,
@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import * as React from "react";
+import TableCellFirst from "@/components/table/table-cell-first";
 // import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -46,28 +47,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
-import { cn } from "@/lib/utils";
-// import { useConvex } from "convex/react";
-import { getReturnRequestById } from "@/mock/data/return-requests";
-
-const getBadgeStyleByStatus = (status: string) => {
-  switch (status.toLowerCase()) {
-    case "waiting":
-    case "pending":
-      return "bg-yellow-500/5 text-yellow-500 border-yellow-500/60";
-    case "approved":
-    case "accepted":
-      return "bg-green-500/5 text-green-500 border-green-500/60";
-    case "returned":
-    case "completed":
-      return "bg-blue-500/5 text-blue-500 border-blue-500/60";
-    case "rejected":
-    case "cancelled":
-      return "bg-red-500/5 text-red-500 border-red-500/60";
-    default:
-      return "bg-orange-500/5 text-orange-500 border-orange-500/60";
-  }
-};
+import { cn, getBadgeStyleByStatus } from "@/lib/utils";
 
 // Define the detail item type based on what the API returns
 type DetailItem = {
@@ -86,7 +66,7 @@ const columns: ColumnDef<DetailItem>[] = [
     accessorKey: "skuCode",
     header: "SKU",
     cell: ({ row }) => (
-      <div className="font-medium">{row.getValue("skuCode")}</div>
+      <TableCellFirst>{row.getValue("skuCode")}</TableCellFirst>
     ),
   },
   {
@@ -104,34 +84,20 @@ const columns: ColumnDef<DetailItem>[] = [
     ),
   },
   {
-    accessorKey: "expectedCreditAmount",
-    header: "Expected Credit",
-    cell: ({ row }) => {
-      const amount = row.getValue("expectedCreditAmount") as number;
-      const formatted = new Intl.NumberFormat("en-US", {
-        style: "currency",
-        currency: "USD",
-      }).format(amount);
-      return <div className="text-right font-medium">{formatted}</div>;
-    },
-  },
-  {
     id: "reason.lookupValue",
     accessorFn: (row) => row.reason?.lookupValue,
     header: "Reason",
     cell: ({ row }) => {
       const reason = row.getValue("reason.lookupValue") as string;
-      const notes = row.original.customReasonNotes;
-      return (
-        <div className="max-w-[200px]">
-          <div className="font-medium">{reason ?? "-"}</div>
-          {notes && (
-            <div className="truncate text-muted-foreground text-xs">
-              {notes}
-            </div>
-          )}
-        </div>
-      );
+      return <div className="font-medium">{reason ?? "-"}</div>;
+    },
+  },
+  {
+    accessorKey: "customReasonNotes",
+    header: "Notes",
+    cell: ({ row }) => {
+      const notes = row.getValue("customReasonNotes") as string | undefined;
+      return <div className="max-w-[300px] text-sm">{notes || "-"}</div>;
     },
   },
 ];
@@ -140,20 +106,13 @@ export default function ReturnRequestDetailPage() {
   const params = useParams();
   const workspace = params.workspace as string;
   const returnRequestId = params.id as string;
-  // const queryClient = useQueryClient();
-  // const convex = useConvex();
 
-  // COMMENTED OUT: Convex query - using mock data instead
-  // const { data: returnRequest, isPending } = useQuery({
-  //   ...convexQuery(api.returnRequest.getReturnRequestWithDetails, {
-  //     returnRequestId: returnRequestId as Id<"return_requests">,
-  //   }),
-  //   enabled: !!returnRequestId,
-  // });
-
-  // Using mock data instead of Convex
-  const returnRequest = getReturnRequestById(returnRequestId);
-  const isPending = false;
+  const { data: returnRequest, isLoading: isPending } = useQuery({
+    ...convexQuery(api.returnRequest.getReturnRequestWithDetails, {
+      returnRequestId: returnRequestId as Id<"return_requests">,
+    }),
+    enabled: !!returnRequestId,
+  });
 
   const [setFilterValue, instantFilterValue, debouncedFilterValue] =
     useDebouncedInput("", 300);
@@ -185,29 +144,12 @@ export default function ReturnRequestDetailPage() {
     },
   });
 
-  // COMMENTED OUT: Convex mutation for status update - using mock data
-  // const handleStatusUpdate = async (newStatus: string) => {
-  //   try {
-  //     await convex.mutation(api.returnRequest.setReturnRequestStatus, {
-  //       returnRequestId: returnRequestId as Id<"return_requests">,
-  //       returnStatusTypeId: newStatus,
-  //     });
-  //     toast.success("Status updated successfully");
-  //     queryClient.invalidateQueries({
-  //       queryKey: ["returnRequest", returnRequestId],
-  //     });
-  //   } catch (error) {
-  //     toast.error("Failed to update status");
-  //     console.error(error);
-  //   }
-  // };
-
   if (isPending) {
     return (
       <div className="flex flex-col gap-4 p-2">
-        <div className="h-8 w-[200px] animate-pulse rounded bg-muted" />
-        <div className="h-[200px] w-full animate-pulse rounded bg-muted" />
-        <div className="h-[300px] w-full animate-pulse rounded bg-muted" />
+        <div className="h-8 w-50 animate-pulse rounded bg-muted" />
+        <div className="h-50 w-full animate-pulse rounded bg-muted" />
+        <div className="h-50 w-full animate-pulse rounded bg-muted" />
       </div>
     );
   }
@@ -322,7 +264,7 @@ export default function ReturnRequestDetailPage() {
 
           <Separator className="my-4" />
 
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2">
             <div className="rounded-lg border p-4 text-center">
               <p className="font-bold text-2xl">{returnRequest.totalSKUs}</p>
               <p className="text-muted-foreground text-sm">Total SKUs</p>
@@ -333,17 +275,6 @@ export default function ReturnRequestDetailPage() {
               </p>
               <p className="text-muted-foreground text-sm">Total Quantity</p>
             </div>
-            <div className="rounded-lg border p-4 text-center">
-              <p className="font-bold text-2xl">
-                {new Intl.NumberFormat("en-US", {
-                  style: "currency",
-                  currency: "USD",
-                }).format(returnRequest.totalExpectedCredit)}
-              </p>
-              <p className="text-muted-foreground text-sm">
-                Total Expected Credit
-              </p>
-            </div>
           </div>
         </CardContent>
       </Card>
@@ -353,7 +284,7 @@ export default function ReturnRequestDetailPage() {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-lg">Return Items</CardTitle>
-            <InputGroup className="max-w-[200px]">
+            <InputGroup className="max-w-50">
               <InputGroupInput
                 placeholder="Filter SKU..."
                 value={instantFilterValue}
@@ -423,7 +354,7 @@ export default function ReturnRequestDetailPage() {
             <div className="space-x-2">
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.firstPage()}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -431,7 +362,7 @@ export default function ReturnRequestDetailPage() {
               </Button>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.previousPage()}
                 disabled={!table.getCanPreviousPage()}
               >
@@ -439,7 +370,7 @@ export default function ReturnRequestDetailPage() {
               </Button>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.nextPage()}
                 disabled={!table.getCanNextPage()}
               >
@@ -447,7 +378,7 @@ export default function ReturnRequestDetailPage() {
               </Button>
               <Button
                 variant="outline"
-                size="icon"
+                size="icon-sm"
                 onClick={() => table.lastPage()}
                 disabled={!table.getCanNextPage()}
               >

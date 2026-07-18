@@ -1,165 +1,95 @@
-# Next WMS
+# Northstar WMS
 
-A warehouse management system for the course SE100.
+Full warehouse operations demo revived from an SE100 course project. The public `/demo` route is read-only, uses live Convex data, and needs no account. Authenticated routes retain the complete operator workspace.
 
-## Project Structure
+## Product surface
 
-```txt
-next-wms/
-├── apps/
-│   └── web/              # Next.js web application (port 3001)
-└── packages/
-    ├── api/              # tRPC API routes and procedures
-    ├── auth/             # Better Auth authentication
-    └── db/               # Drizzle ORM database schema and migrations
-```
+- Live operations dashboard and reports
+- Product, SKU, category, brand, and supplier master data
+- Purchase, receiving, outbound, picking, return, transfer, and adjustment flows
+- Cycle counting, traceability, audit logs, notifications, and role permissions
+- Interactive 3D warehouse layout editor
+- Public evaluator demo backed by Convex
+- Deterministic demo reset at 00:00, 06:00, 12:00, and 18:00 UTC
 
-## Tech Stack
+## Stack
 
-- **Framework:** Next.js 16
-- **API:** tRPC
-- **Database:** Drizzle ORM + Neon (PostgreSQL)
-- **Auth:** Better Auth
-- **UI:** React 19, Tailwind 4, Shadcn
-- **Monorepo:** Turborepo + pnpm workspaces
-- **Validation:** Zod
-- **Code Quality:** Biome
+- Next.js 16 and React 19
+- Convex for operational data, realtime queries, functions, and cron jobs
+- Better Auth with Neon for authenticated operator accounts
+- Tailwind CSS 4, Radix UI, TanStack Query/Table, Motion, and React Three Fiber
+- Turborepo and pnpm workspaces
 
-## Prerequisites
+## Local setup
 
-- Node.js 20+
-- pnpm 10.18.3+
-- PostgreSQL database (or Neon account)
-
-## Getting Started
-
-### 1. Install Dependencies
+Requirements: Node.js 20+ and pnpm 10.28+.
 
 ```bash
 pnpm install
-```
-
-### 2. Environment Setup
-
-Create `.env` files in `apps/web/` based on .env.example.
-
-```env
-# Database
-DATABASE_URL="postgresql://..."
-
-# Auth
-BETTER_AUTH_SECRET="your-secret-key"
-BETTER_AUTH_URL="http://localhost:3000"
-CORS_ORIGIN="http://localhost:3000"
-```
-
-### 3. Database Setup
-
-```bash
-# Generate migrations
-pnpm db:generate
-
-# Push schema to database
-pnpm db:push
-
-# Open Drizzle Studio (optional)
-pnpm db:studio
-```
-
-### 4. Run Development Server
-
-```bash
-# Run all apps
+cp apps/web/.env.example apps/web/.env.local
+pnpm --dir packages/backend db:app:setup
+pnpm seed:demo
+pnpm --dir packages/backend db:auth:push
+pnpm seed:auth
 pnpm dev
-
-# Or run web app only
-pnpm dev:web
 ```
 
-The web app will be available at `http://localhost:3000`.
+Open `http://localhost:3000`. Root redirects to `/demo`. Full operator login lives at `/auth/sign-in`.
 
-## Available Scripts
+The auth initializer is idempotent and binds Neon identities to Convex's seeded
+users:
 
-### Root Commands
+| Login | Better Auth role | WMS role |
+| --- | --- | --- |
+| `admin@testwarehouse.com` | owner | Administrator |
+| `manager@testwarehouse.com` | admin | Warehouse Manager |
+| `testuser@testwarehouse.com` | member | Viewer |
+
+All use `DEMO_ACCOUNT_PASSWORD` from `apps/web/.env.local` (or the shell).
+Account, organization, membership, and role
+mutations are blocked at runtime. Better Auth may only write session lifecycle
+records so users can sign in, sign out, and select the fixed organization.
+
+## Quality gates
 
 ```bash
-pnpm dev              # Run all apps in development mode
-pnpm build            # Build all packages and apps
-pnpm check-types      # Type check all packages
-pnpm check            # Run Biome linter and formatter
+pnpm check-types
+pnpm build:web
 ```
 
-### Web App Commands
+`pnpm check` writes Biome fixes. Review its diff before committing.
+
+## Vercel + Convex
+
+Set these Vercel variables before deploying:
+
+| Variable | Scope | Purpose |
+| --- | --- | --- |
+| `CONVEX_DEPLOY_KEY` | Production / Preview | Deploy matching Convex backend |
+| `AUTH_DATABASE_URL` | Production / Preview | Neon pooled PostgreSQL URL |
+| `BETTER_AUTH_SECRET` | Production / Preview | 32+ character auth secret |
+| `SITE_URL` | Production / Preview | Exact Vercel origin |
+| `RESEND_API_KEY` | Production / Preview | Auth email delivery |
+| `RESEND_EMAIL_FROM` | Production / Preview | Verified sender |
+
+`NEXT_PUBLIC_CONVEX_URL` is injected into the Next build by `convex deploy`.
+`DEMO_ACCOUNT_PASSWORD` is only needed while running `pnpm seed:auth`; it is not
+needed by the deployed runtime.
+
+1. Create a production deployment in Convex.
+2. Generate production and preview deploy keys.
+3. Import this repository into Vercel with repository root as project root.
+4. Add `CONVEX_DEPLOY_KEY` to Production and Preview using their matching keys.
+5. Add authenticated-app variables from `apps/web/.env.example` if operator login is required.
+6. Deploy. `vercel.json` runs Convex deployment before the Next.js build.
+7. Seed production once:
 
 ```bash
-pnpm dev:web          # Run web app only
+pnpm --dir packages/backend exec convex run seedMockData:seedAllTestData --prod
+pnpm --dir packages/backend db:auth:push
+pnpm seed:auth
 ```
 
-### Database Commands
+Preview Convex deployments seed automatically through `--preview-run`.
 
-```bash
-pnpm db:generate      # Generate new migrations
-pnpm db:push          # Push schema changes to database
-pnpm db:migrate       # Run migrations
-pnpm db:studio        # Open Drizzle Studio
-```
-
-## Package Details
-
-### `@next-wms/api`
-
-- tRPC router definitions
-- API procedures and middleware
-- Type-safe API client
-
-### `@next-wms/auth`
-
-- Better Auth configuration
-- Authentication middleware
-- User session management
-
-### `@next-wms/db`
-
-- Drizzle ORM schema
-- Database migrations
-- Database client exports
-
-## Development Workflow
-
-1. Make changes to packages in `packages/*`
-2. Changes are automatically picked up (no build needed in dev)
-3. Run type checking: `pnpm check-types`
-4. Format code: `pnpm check`
-5. Commit and push
-
-## Building for Production
-
-```bash
-# Build all packages and apps
-pnpm build
-
-# Start production server
-cd apps/web
-pnpm start
-```
-
-## Troubleshooting
-
-### TypeScript can't find workspace packages
-
-Make sure dependencies are installed and TypeScript server is restarted:
-
-```bash
-pnpm install
-# In VS Code: Ctrl+Shift+P → "TypeScript: Restart TS Server"
-```
-
-### Database connection issues
-
-- Verify `DATABASE_URL` in `.env`
-- Check database is accessible
-- Run `pnpm db:push` to sync schema
-
-## License
-
-Private
+Detailed assessment and production checklist: [`docs/REVIVAL.md`](docs/REVIVAL.md).

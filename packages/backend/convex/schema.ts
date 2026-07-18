@@ -17,7 +17,7 @@ export default defineSchema({
     logo: v.optional(v.string()),
     authMetadata: v.optional(v.string()), // JSON string from Better Auth
     authCreatedAt: v.number(), // timestamp from Better Auth
-    
+
     // Application-specific fields
     name: v.string(),
     address: v.string(),
@@ -73,7 +73,7 @@ export default defineSchema({
     image: v.optional(v.string()),
     authCreatedAt: v.number(), // timestamp from Better Auth
     authUpdatedAt: v.number(), // timestamp from Better Auth
-    
+
     // Application-specific fields
     username: v.string(),
     fullName: v.string(),
@@ -105,7 +105,10 @@ export default defineSchema({
     .index("userAuthId", ["userAuthId"])
     .index("organizationAuthId", ["organizationAuthId"])
     .index("userId_organizationId", ["userId", "organizationId"])
-    .index("userAuthId_organizationAuthId", ["userAuthId", "organizationAuthId"]),
+    .index("userAuthId_organizationAuthId", [
+      "userAuthId",
+      "organizationAuthId",
+    ]),
 
   user_branch_assignments: defineTable({
     userId: v.id("users"),
@@ -196,12 +199,6 @@ export default defineSchema({
     .index("isActive", ["isActive"])
     .index("isDeleted", ["isDeleted"]),
 
-  product_type_templates: defineTable({
-    organizationId: v.id("organizations"),
-    templateName: v.string(),
-    fieldDefinitions: v.any(), // jsonb
-  }).index("organizationId", ["organizationId"]),
-
   product_variants: defineTable({
     productId: v.id("products"),
     skuCode: v.string(),
@@ -213,11 +210,13 @@ export default defineSchema({
     volumeM3: v.optional(v.number()),
     temperatureSensitive: v.boolean(),
     stackingLimit: v.optional(v.number()),
+    supplierId: v.optional(v.id("suppliers")),
     customFields: v.optional(v.any()), // jsonb
     isActive: v.boolean(),
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
   })
+    .index("supplierId", ["supplierId"])
     .index("productId", ["productId"])
     .index("skuCode", ["skuCode"])
     .index("isActive", ["isActive"])
@@ -225,7 +224,7 @@ export default defineSchema({
 
   product_barcodes: defineTable({
     skuId: v.id("product_variants"),
-    barcodeTypeId: v.id("system_lookups"),
+    barcodeTypeId: v.optional(v.id("system_lookups")),
     barcodeValue: v.string(),
   })
     .index("skuId", ["skuId"])
@@ -255,10 +254,11 @@ export default defineSchema({
   storage_zones: defineTable({
     branchId: v.id("branches"),
     name: v.string(),
+    parentId: v.optional(v.id("storage_zones")),
     path: v.string(), // ltree as string
-    zoneTypeId: v.id("system_lookups"),
+    zoneTypeId: v.optional(v.id("system_lookups")),
     storageBlockType: v.string(),
-    zoneAttributes: v.optional(v.any()), // jsonb
+    zoneAttributes: v.optional(v.record(v.string(), v.any())), // object with dynamic attributes
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
   })
@@ -295,6 +295,7 @@ export default defineSchema({
     quantityOrdered: v.number(),
     unitCost: v.number(),
     quantityReceived: v.number(),
+    recommendedZoneId: v.optional(v.id("storage_zones")),
   })
     .index("purchaseOrderId", ["purchaseOrderId"])
     .index("skuId", ["skuId"]),
@@ -308,7 +309,10 @@ export default defineSchema({
     branchId: v.id("branches"),
     receivedAt: v.number(),
     receiveSessionStatusTypeId: v.id("system_lookups"),
+    assignedWorkerId: v.optional(v.id("users")),
+    notes: v.optional(v.string()),
   })
+    .index("assignedWorkerId", ["assignedWorkerId"])
     .index("purchaseOrderId", ["purchaseOrderId"])
     .index("branchId", ["branchId"])
     .index("receiveSessionCode", ["receiveSessionCode"])
@@ -322,6 +326,7 @@ export default defineSchema({
     notes: v.optional(v.string()),
     recommendedZoneId: v.optional(v.id("storage_zones")),
     receiveSessionItemStatusTypeId: v.id("system_lookups"),
+    returnTypeId: v.optional(v.id("system_lookups")),
   })
     .index("receiveSessionId", ["receiveSessionId"])
     .index("skuId", ["skuId"])
@@ -370,11 +375,13 @@ export default defineSchema({
     zoneId: v.optional(v.id("storage_zones")),
     batchId: v.optional(v.id("inventory_batches")),
     scannedAt: v.optional(v.number()),
+    scannedByUserId: v.optional(v.id("users")), // Track who scanned this item
     notes: v.optional(v.string()),
   })
     .index("sessionId", ["sessionId"])
     .index("skuId", ["skuId"])
-    .index("batchId", ["batchId"]),
+    .index("batchId", ["batchId"])
+    .index("zoneId", ["zoneId"]),
 
   session_metrics: defineTable({
     sessionId: v.id("work_sessions"),
@@ -388,10 +395,14 @@ export default defineSchema({
     sessionId: v.id("work_sessions"),
     zoneId: v.id("storage_zones"),
     assignedUserId: v.id("users"),
+    assignmentStatusTypeId: v.optional(v.id("system_lookups")), // not_started/in_progress/completed
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
   })
     .index("sessionId", ["sessionId"])
     .index("zoneId", ["zoneId"])
-    .index("assignedUserId", ["assignedUserId"]),
+    .index("assignedUserId", ["assignedUserId"])
+    .index("assignmentStatusTypeId", ["assignmentStatusTypeId"]),
 
   // ================================================================
   // INVENTORY TRACKING
@@ -469,11 +480,14 @@ export default defineSchema({
     orderDate: v.number(),
     requestedShipDate: v.optional(v.number()),
     trackingNumber: v.optional(v.string()),
+    vehicleArrivedAt: v.optional(v.number()),
     createdByUserId: v.id("users"),
     outboundStatusTypeId: v.id("system_lookups"),
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
+    assignedWorkerId: v.optional(v.id("users")),
   })
+    .index("assignedWorkerId", ["assignedWorkerId"])
     .index("organizationId", ["organizationId"])
     .index("branchId", ["branchId"])
     .index("orderCode", ["orderCode"])
@@ -489,6 +503,41 @@ export default defineSchema({
   })
     .index("outboundOrderId", ["outboundOrderId"])
     .index("skuId", ["skuId"]),
+
+  // ================================================================
+  // PICKING SESSIONS
+  // ================================================================
+
+  picking_sessions: defineTable({
+    organizationId: v.id("organizations"),
+    branchId: v.id("branches"),
+    outboundOrderId: v.id("outbound_orders"),
+    sessionCode: v.string(),
+    assignedUserId: v.optional(v.id("users")),
+    statusTypeId: v.optional(v.id("system_lookups")),
+    startedAt: v.optional(v.number()),
+    completedAt: v.optional(v.number()),
+    isDeleted: v.boolean(),
+    deletedAt: v.optional(v.number()),
+  })
+    .index("organizationId", ["organizationId"])
+    .index("branchId", ["branchId"])
+    .index("outboundOrderId", ["outboundOrderId"])
+    .index("sessionCode", ["sessionCode"])
+    .index("assignedUserId", ["assignedUserId"])
+    .index("statusTypeId", ["statusTypeId"])
+    .index("isDeleted", ["isDeleted"]),
+
+  picking_session_details: defineTable({
+    pickingSessionId: v.id("picking_sessions"),
+    skuId: v.id("product_variants"),
+    batchId: v.optional(v.id("inventory_batches")),
+    quantityRequired: v.number(),
+    quantityPicked: v.number(),
+  })
+    .index("pickingSessionId", ["pickingSessionId"])
+    .index("skuId", ["skuId"])
+    .index("batchId", ["batchId"]),
 
   // ================================================================
   // INVENTORY ADJUSTMENTS
@@ -545,6 +594,7 @@ export default defineSchema({
     requestedByUserId: v.string(),
     requestedAt: v.number(),
     returnStatusTypeId: v.string(),
+    purchaseOrderId: v.optional(v.string()),
     isDeleted: v.boolean(),
     deletedAt: v.optional(v.number()),
   })
@@ -554,21 +604,24 @@ export default defineSchema({
     .index("supplierId", ["supplierId"])
     .index("requestedByUserId", ["requestedByUserId"])
     .index("returnStatusTypeId", ["returnStatusTypeId"])
-    .index("isDeleted", ["isDeleted"]),
+    .index("isDeleted", ["isDeleted"])
+    .index("purchaseOrderId", ["purchaseOrderId"]),
 
   return_request_details: defineTable({
     returnRequestId: v.id("return_requests"),
-    batchId: v.string(),
+    batchId: v.optional(v.string()),
     skuId: v.string(),
     quantityToReturn: v.number(),
     reasonTypeId: v.string(),
     customReasonNotes: v.optional(v.string()),
-    expectedCreditAmount: v.number(),
+    expectedCreditAmount: v.optional(v.number()),
+    receiveSessionDetailId: v.optional(v.id("receive_sessions_details")),
   })
     .index("returnRequestId", ["returnRequestId"])
     .index("batchId", ["batchId"])
     .index("skuId", ["skuId"])
-    .index("reasonTypeId", ["reasonTypeId"]),
+    .index("reasonTypeId", ["reasonTypeId"])
+    .index("receiveSessionDetailId", ["receiveSessionDetailId"]),
 
   // ================================================================
   // INTERNAL TRANSFERS
@@ -699,12 +752,20 @@ export default defineSchema({
   // ================================================================
 
   system_lookups: defineTable({
+    organizationId: v.optional(v.id("organizations")),
     lookupType: v.string(),
     lookupCode: v.string(),
     lookupValue: v.string(),
     description: v.string(),
     sortOrder: v.number(),
   })
+    .index("by_organization", ["organizationId"])
+    .index("by_organization_type", ["organizationId", "lookupType"])
+    .index("by_organization_type_code", [
+      "organizationId",
+      "lookupType",
+      "lookupCode",
+    ])
     .index("lookupType", ["lookupType"])
     .index("lookupType_lookupCode", ["lookupType", "lookupCode"]),
 });

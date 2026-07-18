@@ -1,7 +1,7 @@
 "use client";
 
-import { convexQuery, useConvexMutation } from "@convex-dev/react-query";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useConvexMutation } from "@convex-dev/react-query";
+import { useMutation } from "@tanstack/react-query";
 import {
   type ColumnDef,
   type ColumnFiltersState,
@@ -16,33 +16,25 @@ import {
 import { api } from "@wms/backend/convex/_generated/api";
 import type { Id } from "@wms/backend/convex/_generated/dataModel";
 import {
-  ArrowUpDown,
-  Check,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
   ChevronsRight,
   Filter,
-  Funnel,
   MoreHorizontal,
 } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { BranchDetailsDialog } from "@/components/table/branch-details-dialog";
 import { CreateBranchDialog } from "@/components/table/create-branch-dialog";
+import { FilterPopover } from "@/components/table/filter-popover";
+import TableCellFirst from "@/components/table/table-cell-first";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-  Command,
-  CommandGroup,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -52,11 +44,6 @@ import {
   InputGroupInput,
 } from "@/components/ui/input-group";
 import { Label } from "@/components/ui/label";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -72,6 +59,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { useBranches } from "@/hooks/use-branches";
 import { useCurrentUser } from "@/hooks/use-current-user";
 import { useDebouncedInput } from "@/hooks/use-debounced-input";
 import type { Branch } from "@/lib/types";
@@ -83,69 +71,13 @@ const getStatusBadgeStyle = (isActive: boolean) => {
     : "bg-gray-500/10 text-gray-500 border-gray-500/60";
 };
 
-interface FilterPopoverProps {
-  label: string;
-  options: { label: string; value: string }[];
-  currentValue?: string;
-  onChange: (value: string | undefined) => void;
-  isSort?: boolean;
-}
-
-const FilterPopover = ({
-  label,
-  options,
-  currentValue,
-  onChange,
-  isSort = false,
-}: FilterPopoverProps) => {
-  const isFiltered = currentValue !== undefined && currentValue !== "default";
-
-  return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant={isFiltered ? "default" : "ghost"} size={"sm"}>
-          {label}
-          {isSort ? <ArrowUpDown /> : <Funnel />}
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent className="w-50 p-0">
-        <Command shouldFilter={false}>
-          <CommandList>
-            <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={option.value}
-                  onSelect={() => {
-                    onChange(option.value === "all" ? undefined : option.value);
-                  }}
-                  className="flex justify-between"
-                >
-                  {option.label}
-                  {(currentValue === option.value ||
-                    (currentValue === "default" &&
-                      option.value === "default") ||
-                    (!currentValue && option.value === "all")) && (
-                    <Check className="h-4 w-4" />
-                  )}
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
-  );
-};
-
 export const columns: ColumnDef<Branch>[] = [
   {
     accessorKey: "name",
     header: () => {
       return <span className="pl-1">Branch</span>;
     },
-    cell: ({ row }) => (
-      <div className="pl-1 font-medium">{row.getValue("name")}</div>
-    ),
+    cell: ({ row }) => <TableCellFirst>{row.getValue("name")}</TableCellFirst>,
     filterFn: (row, _id, value) => {
       const name = row.getValue("name") as string;
       return name.toLowerCase().includes(value.toLowerCase());
@@ -296,6 +228,7 @@ export const columns: ColumnDef<Branch>[] = [
   },
   {
     id: "actions",
+    header: "Action",
     enableHiding: false,
     cell: function ActionsCell({ row }) {
       const branch = row.original;
@@ -351,8 +284,6 @@ export const columns: ColumnDef<Branch>[] = [
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-              <DropdownMenuSeparator />
               <DropdownMenuItem onClick={() => setDetailsOpen(true)}>
                 Details
               </DropdownMenuItem>
@@ -385,16 +316,9 @@ export const columns: ColumnDef<Branch>[] = [
 export function BranchesTable() {
   const { organizationId } = useCurrentUser();
 
-  const { data: branches, isLoading } = useQuery({
-    ...convexQuery(
-      api.branches.listAll,
-      organizationId
-        ? {
-            organizationId: organizationId as Id<"organizations">,
-            includeDeleted: true,
-          }
-        : "skip",
-    ),
+  const { data: branches, isLoading } = useBranches({
+    organizationId: organizationId as Id<"organizations"> | undefined,
+    includeDeleted: true,
   });
 
   const [sorting, setSorting] = React.useState<SortingState>([]);
